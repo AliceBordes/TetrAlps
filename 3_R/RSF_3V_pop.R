@@ -34,6 +34,8 @@ library(lubridate)
 library(tidyr)
 library(dplyr)
 library(raster)
+library(terra)
+library(tidyterra)
 library(animove)
 library(lubridate)
 library(lidR)
@@ -71,11 +73,14 @@ borders_3V<- fortify(borders_3V)
 preraster3V_slope_brute<-paste0(base,"/1_RAW_DATA/raster.3V.slope.tif")
 
 # Analyse à 9m
-carto_habitats_3V_brute <- paste0(base,"/1_RAW_DATA/landcover_T2L_1m_trois_vallees.tif") #carto Clara
+#carto_habitats_3V_brute <- paste0(base,"/1_RAW_DATA/landcover_T2L_1m_trois_vallees.tif") #carto Clara
+carto_habitats_3V <- terra::rast(paste0(base,"/1_RAW_DATA/landcover_T2L_1m_trois_vallees.tif")) #carto Clara
 #********************************************************************
 
 
-
+ggplot()+
+  geom_spatraster(data=carto_habitats_3V)+
+  scale_fill_dicrete
 
 
 
@@ -97,28 +102,29 @@ raster_slope_3V_brute<-raster(preraster3V_slope_brute)  # nothing --> RasterLaye
 raster_slope_3V <- raster::crop(raster_slope_3V_brute,e) # Cut out a geographic subset and save the raster with the new extents --> reduce the limits of the raster
 #crs(raster_slope_3V) #display the coordinate system
 
-plot(raster_slope_3V) # zoom on the interest study area (without saving the raster new extents)
-
 # here the resolution of the raster slope = 1m 
 # to save time for the next analyses --> create raster slope with resolution at 10m
 raster_slope_3V_10<-aggregate(raster_slope_3V,10)
-par(mfrow=c(1,2))
-
-plot(raster_slope_3V)
-plot(raster_slope_3V_10)
 
 #raster::readAll(raster_slope_3V) # to save a raster in the RAM (intern memory of the computer), to save time
 
 #raster high vegetation
-par(mfrow=c(1,1))
 carto_habitats_3V <- raster(carto_habitats_3V_brute)
 carto_habitats_3V <- crop(carto_habitats_3V,e)
-plot(carto_habitats_3V)
+
 
 # carte d'occupation des sols OSO (produite par le Centre d'Expertise Scientifique sur l'occupation des sols (CES OSO))
 oso <- terra::rast("M:/CESBIO/OSO_20220101_RASTER_V1-0/DATA/OCS_2022.tif") 
 oso <- raster::crop(oso,e)
+
+
+par(mfrow=c(2,2))
+
+plot(raster_slope_3V)
+plot(raster_slope_3V_10)
+plot(carto_habitats_3V)
 plot(oso)
+par(mfrow=c(1,1))
 
 #********************************************************************
 
