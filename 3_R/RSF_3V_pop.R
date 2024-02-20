@@ -65,22 +65,13 @@ borders_3V <- sf::st_read(paste0(base,"/1_RAW_DATA/borders_3V.gpkg"))
 borders_3V<-borders_3V$geom
 borders_3V<- fortify(borders_3V)
 
-# borders_3V_1<-borders_3V[[1]][[1]]
-# colnames(borders_3V_1)<-c("X","Y")
-#st_transform(borders_3V,9794)
-
 # slope 3V
-preraster3V_slope_brute<-paste0(base,"/1_RAW_DATA/raster.3V.slope.tif")
+raster3V_slope<-terra::rast(paste0(base,"/1_RAW_DATA/raster.3V.slope.tif"))
 
 # Analyse à 9m
 #carto_habitats_3V_brute <- paste0(base,"/1_RAW_DATA/landcover_T2L_1m_trois_vallees.tif") #carto Clara
 carto_habitats_3V <- terra::rast(paste0(base,"/1_RAW_DATA/landcover_T2L_1m_trois_vallees.tif")) #carto Clara
 #********************************************************************
-
-
-ggplot()+
-  geom_spatraster(data=carto_habitats_3V)+
-  scale_fill_dicrete
 
 
 
@@ -94,54 +85,74 @@ ggplot()+
 
 ## Shape de la zone d'etude restreinte
 #e <- extent(971000,985000,6471000,6486000)
-e<-extent(borders_3V)
+e<-ext(borders_3V)
 # visualyze the raster of the slope for the study area
-
-#raster_slope_3V <- terra::rast(raster_slope_3V) # RasterLayer --> SpatRaster
-raster_slope_3V_brute<-raster(preraster3V_slope_brute)  # nothing --> RasterLayer object
-raster_slope_3V <- raster::crop(raster_slope_3V_brute,e) # Cut out a geographic subset and save the raster with the new extents --> reduce the limits of the raster
-#crs(raster_slope_3V) #display the coordinate system
+raster_slope_3V<-terra::crop(raster3V_slope,e)
 
 # here the resolution of the raster slope = 1m 
 # to save time for the next analyses --> create raster slope with resolution at 10m
-raster_slope_3V_10<-aggregate(raster_slope_3V,10)
+raster_slope_3V_10<-terra::aggregate(raster_slope_3V,fact=10)
 
 #raster::readAll(raster_slope_3V) # to save a raster in the RAM (intern memory of the computer), to save time
 
 #raster high vegetation
-carto_habitats_3V <- raster(carto_habitats_3V_brute)
-carto_habitats_3V <- crop(carto_habitats_3V,e)
+carto_habitats_3V <- terra::crop(carto_habitats_3V,e)
+carto_habitats_3V<-as.factor(carto_habitats_3V) #indicate discrete values for my map categories
 
 
 # carte d'occupation des sols OSO (produite par le Centre d'Expertise Scientifique sur l'occupation des sols (CES OSO))
 oso <- terra::rast("M:/CESBIO/OSO_20220101_RASTER_V1-0/DATA/OCS_2022.tif") 
-oso <- raster::crop(oso,e)
+oso <- terra::crop(oso,e)
 
 
+#### 1.1_Viewing imported maps ####
 par(mfrow=c(2,2))
 
 plot(raster_slope_3V)
+plot(borders_3V,add=T) # add 3V borders
 plot(raster_slope_3V_10)
+plot(borders_3V,add=T) # add 3V borders
 plot(carto_habitats_3V)
+plot(borders_3V,add=T) # add 3V borders
 plot(oso)
+plot(borders_3V,add=T) # add 3V borders
+
 par(mfrow=c(1,1))
 
+#View habitat cartography realised by Clara Leblanc
+ggplot()+
+  geom_spatraster(data=carto_habitats_3V)+
+  geom_sf(data = borders_3V,fill=NA,color="black",lwd =2)+
+  scale_fill_manual(
+    values = c("#CCCCCC","#666666","#333333","#FFCCCC","#FFFF66","#FF99CC","#99FF99","#339966","#CC9966","#99CCFF","#99FFFF","#0066FF","white","white"),
+    breaks = c("21","22","23","31","32","40","51","52","60","92","93","94","100"),
+    # labels = c("sol mineral fin","sol mineral grossier","falaise", "ligneux bas","herbacees","arbustes","arbres feuillus","arbres resineux","bati","plan d'eau naturel","plan d'eau artificiel","cours d'eau",  "non classe" ))+
+    labels = c("Fine mineral soil","Coarse mineral soil","Cliff", "Low ligneous","Herbaceous","Shrubs","Deciduous trees","Resinous trees","Buildings","Natural pond","Artificial pond","Waterway",  "Unclassified" ))+
+  labs( title="Habitat cartography",
+        x = "Longitude",
+        y = "Latitude",
+        fill = "Legend")
 #********************************************************************
 
 
-#plot in red the bird locations in winter
+
+### Loading birds locations 
+#********************************************************************
+
+#focus on bird locations in winter season
 grouse_winter_raw<-as.data.frame(data_bg_3V%>%filter(saison=="hiver"))
 
 #create a list of data.frames for each animal
 grouse_winter<-multiple_dt_indiv(grouse_winter_raw,"nom")
 
 
-
-#' The first day of location data often shows some unrealistic movements. We remove those observations
-for(i in 1:length(grouse_winter))
-{
-  grouse_winter[[i]]<- grouse_winter[[i]][(grouse_winter[[i]]["date"]) > (first(grouse_winter[[i]]["date"]) + ddays(1)),]
-}
+#******* not working yet
+#' #' The first day of location data often shows some unrealistic movements. We remove those observations
+#' for(i in 1:length(grouse_winter))
+#' {
+#'   grouse_winter[[i]]<- grouse_winter[[i]][(grouse_winter[[i]]["date"]) > (first(grouse_winter[[i]]["date"]) + ddays(1)),]
+#' }
+#*******
 
 #pr 1 animal:
 #grouse_winter <- grouse_winter[(grouse_winter$date) > min(grouse_winter$date) + days(1), ]
@@ -163,38 +174,14 @@ for(i in 1:length(grouse_winter_telemetry))
 
 grouse_winter_pretelemetry_all<-pre_telemetry(data_bg_3V)
 grouse_winter_telemetry_all<-as.telemetry(grouse_winter_pretelemetry_all[,-1])
-
-#View(grouse_winter_telemetry[[1]])
-
-color.vect<-c("black","red","purple","blue","lightblue")
-
-windows()
-plot(raster_slope_3V,
-     ext=e,
-     legend.args = list(text = 'Slope'),
-     xlab="x coordinate (Lambert 93)",
-     ylab="y coordinate (Lambert 93)",
-     main="Locations of tagged-black grouses at the 3 valleys site (winter)")
-
-for (i in (1:length(grouse_winter_pretelemetry)))
-{
-  points(grouse_winter_pretelemetry[[i]]$X_GPS_lambert93, # x coordinate
-         grouse_winter_pretelemetry[[i]]$Y_GPS_lambert93, # y coordinate
-         col=color.vect[i],pch=20,cex=0.5)                  # points visual features 
-}
-plot(borders_3V,add=T) # add 3V borders
+#********************************************************************
 
 
-# plot the study site with ggplot()
 
-#convert the raster to points for plotting
-map <- rasterToPoints(raster_slope_3V_10)
-cartohab<-rasterToPoints(carto_habitats_3V)
-#Make the points a dataframe for ggplot
-map_df <- data.frame(map)
-cartohab_df <- data.frame(cartohab)
-#Make appropriate column headings
-colnames(map_df) <- c("X_GPS", "Y_GPS", "slope")
+
+#### 1.2_Visulising GPS winter locations of 3V birds ####
+#********************************************************************
+
 
 # create a list with bird's names to plot the correct legend
 vect_nicknames<-list()
@@ -211,8 +198,8 @@ names(grouse_winter_pretelemetry)<-vect_nicknames
 # plot the birds
 g_positions_birds<-ggplot()+
   #geom_raster(data=map_df,aes(x=X_GPS, y=Y_GPS,fill=slope))+
-  geom_raster(data=cartohab_df,aes(x=x, y=y,fill=landcover_1m))+
-  geom_sf(data = borders_3V,fill=NA,color="black",size=2)+
+  geom_spatraster(data=raster_slope_3V_10)+
+  geom_sf(data = borders_3V,fill=NA,color="black",lwd =2)+
   geom_point(data = bind_rows(grouse_winter_pretelemetry, .id="df"),aes(x=X_GPS_lambert93,y=Y_GPS_lambert93,colour = df))+
   theme_bw() +
   #coord_equal() +
@@ -242,10 +229,8 @@ g_positions_birds
 
 #********************************************************************
 
-g_positions_birds<-ggplot()+
-  #geom_raster(data=map_df,aes(x=X_GPS, y=Y_GPS,fill=slope))+
-  geom_raster(data=cartohab_df,aes(x=x, y=y,fill=landcover_1m))
-  
+
+
 # Describing the spatial correlations between observation data
 #********************************************************************
 
