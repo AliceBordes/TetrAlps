@@ -124,10 +124,10 @@ ggplot()+
   geom_spatraster(data=carto_habitats_3V)+
   geom_sf(data = borders_3V,fill=NA,color="black",lwd =2)+
   scale_fill_manual(
-    values = c("#CCCCCC","#666666","#333333","#FFCCCC","#FFFF66","#FF99CC","#99FF99","#339966","#CC9966","#99CCFF","#99FFFF","#0066FF","white","white"),
-    breaks = c("21","22","23","31","32","40","51","52","60","92","93","94","100"),
-    # labels = c("sol mineral fin","sol mineral grossier","falaise", "ligneux bas","herbacees","arbustes","arbres feuillus","arbres resineux","bati","plan d'eau naturel","plan d'eau artificiel","cours d'eau",  "non classe" ))+
-    labels = c("Fine mineral soil","Coarse mineral soil","Cliff", "Low ligneous","Herbaceous","Shrubs","Deciduous trees","Resinous trees","Buildings","Natural pond","Artificial pond","Waterway",  "Unclassified" ))+
+    values = c("#CC9966","#CCCCCC","#666666","#333333","#99CC99","#FFFF66","#FFCCCC","#FF99CC","#99FF99","#99FF00","#339966","#993300","#99CCFF","#99FFFF","#0066FF","white","white"),
+    breaks = c("20","21","22","23","30","31","32","40","50","51","52","60","92","93","94","100"),
+    # labels = c("sol non classé",sol mineral fin","sol mineral grossier","falaise", "pelouse seche ou rocheuse","herbacées,"ligneux bas","arbustes","arbres non classés,"arbres feuillus","arbres resineux","bati","plan d'eau naturel","plan d'eau artificiel","cours d'eau",  "non classe" ))+
+    labels = c("Unclassified soil","Fine mineral soil","Coarse mineral soil","Cliff","Dry or rocky grassland","Herbaceous", "Low ligneous","Shrubs","Unclassified trees","Deciduous trees","Resinous trees","Buildings","Natural pond","Artificial pond","Waterway",  "Unclassified" ))+
   labs( title="Habitat cartography",
         x = "Longitude",
         y = "Latitude",
@@ -173,7 +173,10 @@ for(i in 1:length(grouse_winter_telemetry))
 }
 
 grouse_winter_pretelemetry_all<-pre_telemetry(data_bg_3V)
-grouse_winter_telemetry_all<-as.telemetry(grouse_winter_pretelemetry_all[,-1])
+#******* not working yet
+# grouse_winter_telemetry_all<-as.telemetry(grouse_winter_pretelemetry_all[,-1])
+#******* 
+#*
 #********************************************************************
 
 

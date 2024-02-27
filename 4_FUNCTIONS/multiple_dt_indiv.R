@@ -15,6 +15,7 @@
 
 multiple_dt_indiv<-function(data,pattern)
 {
+  data <- as.data.frame(data)
   pattern<-as.character(pattern)
   dt.list<-list()
   
