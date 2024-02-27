@@ -43,6 +43,8 @@ library(tmap)
 library(ggplot2)
 library(sjmisc)
 library(here)
+library(ggforce)
+library(ggnewscale)
 #********************************************************************
 
 
@@ -137,9 +139,9 @@ ggplot()+
 
 #Settings
 #********************************************************************
-graph_title= " day (9am-1pm) "
-UTC1='08:00:00'
-UTC2='12:00:00'
+graph_title= " day (0am-0pm) "
+UTC1='00:00:00'
+UTC2='24:00:00'
 
 #********************************************************************
 
@@ -212,16 +214,18 @@ names(loteck_hiv2024_3V_pretelemetry)<-vect_nicknames
 
 # plot the birds
 g_positions_birds<-ggplot()+
-  #geom_raster(data=map_df,aes(x=X_GPS, y=Y_GPS,fill=slope))+
   geom_spatraster(data=raster_slope_3V_10)+
+  scale_fill_gradientn("Slope (°)", limits=c(0,90),colours=c("#FFFFFF","#CCCCCC" ,"#666666","#333333","#000000")) +
+  new_scale("fill") + #to supply an new fill scale 
   geom_sf(data = borders_3V,fill=NA,color="black",lwd =2)+
   geom_point(data = bind_rows(loteck_hiv2024_3V_pretelemetry, .id="df"),aes(x=X_GPS_lambert93,y=Y_GPS_lambert93,colour = df))+
+  scale_color_discrete(name = "Bird name")+
+  geom_mark_ellipse(data = bind_rows(loteck_hiv2024_3V_pretelemetry, .id="df"),aes(x=X_GPS_lambert93,y=Y_GPS_lambert93,fill=df,colour=df),expand=0,inherit.aes = FALSE)+
+  # draw the the smallest possible ellipse that can enclose the points in each group
+  scale_fill_discrete("Strict movement area")+
   theme_bw() +
-  #coord_equal() +
   xlim(e[1],e[2])+
   ylim(e[3],e[4])+
-  #scale_fill_gradientn("Slope (°)", limits=c(0,90),colours=c("#CCFFCC","#FFFFCC" ,"#FFCC99","#FF9966","#FF6600")) +
-  scale_fill_gradientn("Slope (°)", limits=c(0,90),colours=c("#FFFFFF","#CCCCCC" ,"#666666","#333333","#000000")) +
   theme(plot.title = element_text(size=18, face="bold"),
         axis.title.x = element_text(size=16),
         axis.title.y = element_text(size=16, angle=90),
@@ -232,14 +236,13 @@ g_positions_birds<-ggplot()+
         panel.grid.minor = element_blank(),
         legend.position = "right",
         legend.key = element_blank())+
-  scale_color_discrete(name = "Bird name")+
   ggtitle(paste0("2024 February",graph_title,"positions of \n6 GPS-tagged (biotrack) birds at the 3 Valleys site"))+
   xlab("x coordinate (Lambert 93)")+
   ylab("y coordinate (Lambert 93)")
 
 g_positions_birds
 
-ggsave(plot=g_positions_birds,file=paste0(base,"/6_FIGURES/field_data/","6_biotracks_g_positions_birds_",graph_name,format(Sys.time(), "%d.%b%Y"),".png"),scale=3)
+ggsave(plot=g_positions_birds,file=paste0(base,"/6_FIGURES/field_data/","6_biotracks_g_positions_birds_",graph_name,"_ellipses_",format(Sys.time(), "%d.%b%Y"),".png"),scale=3)
 
 #********************************************************************
 
