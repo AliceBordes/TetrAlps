@@ -288,3 +288,58 @@ ggsave(plot=g_positions_birds_2,file=paste0(base,"/6_FIGURES/field_data/","6_bio
 
 #********************************************************************
 
+
+
+
+#' # Minimal example of rsf.fit - home range vizualisation
+#********************************************************************
+
+
+#' ctmm.guess --> large approximation of the maximum likelyhood, inaccurate estimation of the parameters 
+loteck_hiv2024_3V_guess <- lapply(loteck_hiv2024_3V_telemetry,ctmm.guess, CTMM=ctmm(isotropic = TRUE), interactive = FALSE) #isotropic = TRUE => s'éloigne du centre de manière identique dans toutes les directions
+
+#plots a variogram object overlayed with a continuous-time movement model guesstimated from the variogram's shape
+# isotropic = TRUE beacuse we consider the home range (espace vital) 
+# as a sphere (attractor center), 
+# even if an ellipse is more realistic (anisotropy) 
+# but the function is not optized with (isotropic=F)
+
+#model selected (approximation)
+loteck_hiv2024_3V_guess_summary<-lapply(loteck_hiv2024_3V_guess,summary)
+
+
+# selection of the 5 best model structures
+fitted_models_loteck_hiv2024_3V<-lapply(loteck_hiv2024_3V_telemetry,ctmm.select,CTMM=loteck_hiv2024_3V_guess, verbose=TRUE)
+#CTMM = GUESS marche pas toujours, CTMM = A ctmm movement-model object containing the initial parameter guesses
+fitted_models_loteck_hiv2024_3V_summary<-lapply(fitted_models_loteck_hiv2024_3V,summary)
+# "OUF anisotropic" is the "best" model, IID is the conventional model 
+best_model<-fitted_models_loteck_hiv2024_3V[[1]][1]
+
+# Visualizing the SVF of the guess model and comparison of the 2 best fitted models on variogram
+
+# population variogram considering the irregular sampling schedule
+timelags <- c(1,12,24,36) %#% "hour" # the order has no importance
+SVF <- lapply(loteck_hiv2024_3V_telemetry,variogram,dt=timelags) # population variogram considering the GPS were programmed to cycle between 1, 12, 24 hour sampling intervals
+
+
+windows()
+par(mfcol=c(1,2))
+for ( i in (1:length(loteck_hiv2024_3V_guess)))
+{
+  plot(SVF, CTMM=loteck_hiv2024_3V_guess[[i]], col.CTMM=i,new=F, fraction=0.2,level=c(0.5,0.95),main=loteck_hiv2024_3V_guess_summary[[i]]$name,sub=paste(" \narea estimated =",round(loteck_hiv2024_3V_guess_summary[[i]]$CI[1,2],3)),cex.sub=1.2,font.sub=2,cex.lab=1.5,cex.main=2.2) #variogram.fit(vg.grouse) is more approximative
+  plot(SVF, CTMM=loteck_hiv2024_3V_guess[[i]], col.CTMM=i,new=F, fraction=0.0005,level=c(0.5,0.95),cex.sub=2,cex.lab=1.5) #variogram.fit(vg.grouse) is more approximative
+}
+
+#visualizing the home range density estimates against the position data                                                                                                                                         
+
+#' Fit akde (take into account the autocorrelation of the positions in the dataset)
+loteck_hiv2024_3V_akde<-lapply(loteck_hiv2024_3V_telemetry,akde,CTMM=best_model)
+
+windows()
+par(mfrow=c(1,6))
+for ( i in (1:length(loteck_hiv2024_3V_guess)))
+{
+  plot(loteck_hiv2024_3V_telemetry[[i]],UD=loteck_hiv2024_3V_akde[[i]],main=vect_nicknames[[i]])
+}
+
+#********************************************************************
