@@ -45,6 +45,11 @@ library(sjmisc)
 library(here)
 library(ggforce)
 library(ggnewscale)
+# devtools::install_github("16EAGLE/basemaps")
+library(basemaps)
+#devtools::install_github("16EAGLE/moveVis")
+library(moveVis)
+
 #********************************************************************
 
 
@@ -78,7 +83,6 @@ raster3V_slope<-terra::rast(paste0(base,"/1_RAW_DATA/raster.3V.slope.tif"))
 #carto_habitats_3V_brute <- paste0(base,"/1_RAW_DATA/landcover_T2L_1m_trois_vallees.tif") #carto Clara
 carto_habitats_3V <- terra::rast(paste0(base,"/1_RAW_DATA/landcover_T2L_1m_trois_vallees.tif")) #carto Clara
 #********************************************************************
-
 
 
 
@@ -119,21 +123,52 @@ plot(borders_3V,add=T) # add 3V borders
 
 par(mfrow=c(1,1))
 
-#View habitat cartography realised by Clara Leblanc
-ggplot()+
-  geom_spatraster(data=carto_habitats_3V)+
-  geom_sf(data = borders_3V,fill=NA,color="black",lwd =2)+
-  scale_fill_manual(
-    values = c("#CC9966","#CCCCCC","#666666","#333333","#99CC99","#FFFF66","#FFCCCC","#FF99CC","#99FF99","#99FF00","#339966","#993300","#99CCFF","#99FFFF","#0066FF","white","white"),
-    breaks = c("20","21","22","23","30","31","32","40","50","51","52","60","92","93","94","100"),
-    # labels = c("sol non classé",sol mineral fin","sol mineral grossier","falaise", "pelouse seche ou rocheuse","herbacées,"ligneux bas","arbustes","arbres non classés,"arbres feuillus","arbres resineux","bati","plan d'eau naturel","plan d'eau artificiel","cours d'eau",  "non classe" ))+
-    labels = c("Unclassified soil","Fine mineral soil","Coarse mineral soil","Cliff","Dry or rocky grassland","Herbaceous", "Low ligneous","Shrubs","Unclassified trees","Deciduous trees","Resinous trees","Buildings","Natural pond","Artificial pond","Waterway",  "Unclassified" ))+
-  labs( title="Habitat cartography",
-        x = "Longitude",
-        y = "Latitude",
-        fill = "Legend")
-#********************************************************************
 
+
+#View habitat cartography realised by Clara Leblanc
+
+# # Convert SpatRaster to RasterLayer
+# carto_habitats_3V <- raster(carto_habitats_3V)
+# 
+# # Sample points from SpatRaster
+# raster_points <- rasterToPoints(carto_habitats_3V, size = 1000, asRaster = FALSE)
+# 
+# # Convert points to data frame
+# raster_df <- as.data.frame(raster_points)
+# 
+# # Convert data frame to sf object
+# carto_habitats_sf <- st_as_sf(raster_df, coords = c("x", "y"), crs = st_crs(raster_layer))
+# 
+# # Transform to WGS84
+# carto_habitats_sf <- st_transform(carto_habitats_sf, 4326)  # 4326 is the EPSG code for WGS84
+
+carto_clara<- 
+  ggplot()+
+    xlim(e[1],e[2])+
+    ylim(e[3],e[4])+
+    geom_spatraster(data=carto_habitats_3V)+
+    geom_sf(data = borders_3V,fill=NA,color="black",lwd =2)+
+    scale_fill_manual(
+      values = c("#CC9966","#CCCCCC","#666666","#333333","#99CC99","#FFFF66","#FFCCCC","#FF99CC","#99FF99","#99FF00","#339966","#993300","#99CCFF","#99FFFF","#0066FF","white","white"),
+      breaks = c("20","21","22","23","30","31","32","40","50","51","52","60","92","93","94","100"),
+      # labels = c("sol non classé",sol mineral fin","sol mineral grossier","falaise", "pelouse seche ou rocheuse","herbacées,"ligneux bas","arbustes","arbres non classés,"arbres feuillus","arbres resineux","bati","plan d'eau naturel","plan d'eau artificiel","cours d'eau",  "non classe" ))+
+      labels = c("Unclassified soil","Fine mineral soil","Coarse mineral soil","Cliff","Dry or rocky grassland","Herbaceous", "Low ligneous","Shrubs","Unclassified trees","Deciduous trees","Resinous trees","Buildings","Natural pond","Artificial pond","Waterway",  "Unclassified" ))+
+    labs( title="Habitat cartography",
+          x = "Longitude",
+          y = "Latitude",
+          fill = "Legend")
+carto_clara
+
+# Save the plot
+ggsave(plot=carto_clara, "carto_clara.tiff", device = "tiff")
+
+
+# dg <- layer_data(carto_clara) %>% 
+#   select(group, x, y) %>% 
+#   split(.$group) %>%
+#   lapply(function(d){d[,-1]})
+
+#********************************************************************
 
 
 
@@ -186,11 +221,11 @@ for(i in 1:length(loteck_hiv2024_3V_telemetry))
   loteck_hiv2024_3V_telemetry[[i]]<- as.telemetry(loteck_hiv2024_3V_telemetry[[i]])
 }
 
-# loteck_hiv2024_3V_pretelemetry_all<-pre_telemetry(loteck_hiv2024_3V)
-#******* not working yet
-# loteck_hiv2024_3V_telemetry_all<-as.telemetry(loteck_hiv2024_3V_pretelemetry_all[,-1])
-#******* 
-#*
+# building 1 unique telemetry object for all bird and adding bird names
+names(loteck_hiv2024_3V_telemetry)<-unique(data_loteck_hiv2024_3V$ani_nom)
+loteck_hiv2024_3V_telemetry_all<-do.call(rbind,loteck_hiv2024_3V_telemetry)
+loteck_hiv2024_3V_telemetry_all$animal.nickname<- gsub("\\..*", "", row.names(loteck_hiv2024_3V_telemetry_all))
+
 #********************************************************************
 
 
@@ -242,7 +277,7 @@ g_positions_birds<-ggplot()+
 
 g_positions_birds
 
-ggsave(plot=g_positions_birds,file=paste0(base,"/6_FIGURES/field_data/","6_biotracks_g_positions_birds_",graph_name,"_ellipses_",format(Sys.time(), "%d.%b%Y"),".png"),scale=3)
+# ggsave(plot=g_positions_birds,file=paste0(base,"/6_FIGURES/field_data/","6_biotracks_g_positions_birds_",graph_name,"_ellipses_",format(Sys.time(), "%d.%b%Y"),".png"),scale=3)
 
 #********************************************************************
 
@@ -284,18 +319,62 @@ g_positions_birds_2<-ggplot()+
 
 g_positions_birds_2
 
-ggsave(plot=g_positions_birds_2,file=paste0(base,"/6_FIGURES/field_data/","6_biotracks_g_positions_birds_2_",graph_name,format(Sys.time(), "%d.%b%Y"),".png"),scale=3)
+# ggsave(plot=g_positions_birds_2,file=paste0(base,"/6_FIGURES/field_data/","6_biotracks_g_positions_birds_2_",graph_name,format(Sys.time(), "%d.%b%Y"),".png"),scale=3)
 
 #********************************************************************
 
 
 
 
+
+
+
+
+#### 2_Dynamic map for movements vizualisation ####
+
+move_loteck_hiv2024_3V<-df2move(as.data.frame(loteck_hiv2024_3V_telemetry_all), proj="+init=epsg:4326 ",x="longitude",y="latitude",time = "timestamp",track_id="animal.nickname") # conversion in a move class object
+
+# align move_data to a uniform time scale
+temp = 1
+unit = "hours"
+m <- align_move(move_loteck_hiv2024_3V, res = temp, unit = unit)  #only work in WGS84 with longitude and latitude coordinates
+
+# create spatial frames with a OpenStreetMap watercolour map
+
+  # change coordinates system to plot the habitat map behind the animation
+  # project(carto_habitats_3V,crs(move_loteck_hiv2024_3V))
+
+
+frames <- frames_spatial(m,path_colours = c("red","blue","green","pink","orange","purple"),
+                          alpha = 0.5, trace_show = TRUE,margin_factor = 1.2) %>% 
+  add_labels(x = "Longitude", y = "Latitude", 
+             title = paste0("February 2024 movements of 6 black grouse during",graph_title,"\nGPS sensor type = biotrack\nStudy site = Trois Vallées ski resort", 
+                            paste(subtitle = "\nTemporal resolution =",temp,unit))) %>% # add some customizations, such as axis labels
+  add_northarrow() %>% 
+  add_scalebar() %>% 
+  add_timestamps(type = "label") %>% 
+  add_progress()
+
+frames[[34]] # preview one of the frames, e.g. the 100th frame
+
+
+# animate frames
+animate_frames(frames, out_file = "moveVis0.gif", width = 1000, height = 1000,overwrite = T)
+
+
+
+#### 3_Data analysis ####
+
+
+#### 3.1_Home range vizualisation ####
 #' # Minimal example of rsf.fit - home range vizualisation
 #********************************************************************
 
+#### 3.1.1_Fit to theorical continuous-time movement models (IID, OUT, OU...) (ctmm.guess) ####
 
-#' ctmm.guess --> large approximation of the maximum likelyhood, inaccurate estimation of the parameters 
+
+#*********
+#' ctmm.guess --> large approximation of the maximum likelyhood, inaccurate estimation of the parameters
 loteck_hiv2024_3V_guess <- lapply(loteck_hiv2024_3V_telemetry,ctmm.guess, CTMM=ctmm(isotropic = TRUE), interactive = FALSE) #isotropic = TRUE => s'éloigne du centre de manière identique dans toutes les directions
 
 #plots a variogram object overlayed with a continuous-time movement model guesstimated from the variogram's shape
@@ -308,15 +387,27 @@ loteck_hiv2024_3V_guess <- lapply(loteck_hiv2024_3V_telemetry,ctmm.guess, CTMM=c
 loteck_hiv2024_3V_guess_summary<-lapply(loteck_hiv2024_3V_guess,summary)
 
 
-# selection of the 5 best model structures
-fitted_models_loteck_hiv2024_3V<-lapply(loteck_hiv2024_3V_telemetry,ctmm.select,CTMM=loteck_hiv2024_3V_guess, verbose=TRUE)
+
 #CTMM = GUESS marche pas toujours, CTMM = A ctmm movement-model object containing the initial parameter guesses
+fitted_models_loteck_hiv2024_3V<-lapply(loteck_hiv2024_3V_telemetry,ctmm.select,CTMM=loteck_hiv2024_3V_guess, verbose=TRUE)
+# selection of the 4 best model structures
 fitted_models_loteck_hiv2024_3V_summary<-lapply(fitted_models_loteck_hiv2024_3V,summary)
 # "OUF anisotropic" is the "best" model, IID is the conventional model 
-best_model<-fitted_models_loteck_hiv2024_3V[[1]][1]
+best_model<-list()
+for (i in 1:6)
+{
+  best_model[[i]]<-fitted_models_loteck_hiv2024_3V[[i]][1]
+}
+#*********
 
+
+
+
+
+#### 3.1.2_Vizualising data autocorrelation (semi-variance function and variogram) ####
+
+#*********
 # Visualizing the SVF of the guess model and comparison of the 2 best fitted models on variogram
-
 # population variogram considering the irregular sampling schedule
 timelags <- c(1,12,24,36) %#% "hour" # the order has no importance
 SVF <- lapply(loteck_hiv2024_3V_telemetry,variogram,dt=timelags) # population variogram considering the GPS were programmed to cycle between 1, 12, 24 hour sampling intervals
@@ -329,17 +420,45 @@ for ( i in (1:length(loteck_hiv2024_3V_guess)))
   plot(SVF, CTMM=loteck_hiv2024_3V_guess[[i]], col.CTMM=i,new=F, fraction=0.2,level=c(0.5,0.95),main=loteck_hiv2024_3V_guess_summary[[i]]$name,sub=paste(" \narea estimated =",round(loteck_hiv2024_3V_guess_summary[[i]]$CI[1,2],3)),cex.sub=1.2,font.sub=2,cex.lab=1.5,cex.main=2.2) #variogram.fit(vg.grouse) is more approximative
   plot(SVF, CTMM=loteck_hiv2024_3V_guess[[i]], col.CTMM=i,new=F, fraction=0.0005,level=c(0.5,0.95),cex.sub=2,cex.lab=1.5) #variogram.fit(vg.grouse) is more approximative
 }
+#*********
 
-#visualizing the home range density estimates against the position data                                                                                                                                         
 
+
+
+
+# 3.1.3_Visualizing the home range density estimates against the position data                                                                                                                                         
+
+#*********
 #' Fit akde (take into account the autocorrelation of the positions in the dataset)
-loteck_hiv2024_3V_akde<-lapply(loteck_hiv2024_3V_telemetry,akde,CTMM=best_model)
+loteck_hiv2024_3V_akde <- mapply(ctmm::akde, loteck_hiv2024_3V_telemetry[1:6], best_model[1:6], SIMPLIFY = FALSE, units=FALSE)
+# same:
+# loteck_hiv2024_3V_akde<-list()
+# for (i in (1:length(vect_nicknames)))
+# {
+#   loteck_hiv2024_3V_akde[[i]]<-akde(loteck_hiv2024_3V_telemetry[[i]],CTMM=best_model[[i]])
+# }
+
+
+
+#### Home-range (taking into account data autocorrelation) ####
+# print the home-range area of each bird using akde (way to take the autocorr of data into account through ctmm=  (if not IID model))
 
 windows()
 par(mfrow=c(1,6))
-for ( i in (1:length(loteck_hiv2024_3V_guess)))
+for ( i in (1:length(vect_nicknames)))
 {
   plot(loteck_hiv2024_3V_telemetry[[i]],UD=loteck_hiv2024_3V_akde[[i]],main=vect_nicknames[[i]])
+  # print the home-range area (ha) of the bird
+  mtext(paste("95% Home-range area at 5% =\n",
+              round(
+                (summary(loteck_hiv2024_3V_akde[[i]],units=F)$CI[rownames(summary(loteck_hiv2024_3V_akde[[i]],units=F)$CI) == "area (square meters)",colnames(summary(loteck_hiv2024_3V_akde[[i]],units=F)$CI)=="est"])
+                /1000000 # square meters --> square kilometers  #,units=F to set the area in square meters
+                ,2) # round 2 digits 
+              ," ha"),side=3, line=-5)
+  
 }
+#*********
+
+
 
 #********************************************************************
