@@ -61,18 +61,44 @@ base<-here()
 data_bg_3V<-readRDS(paste0(base,"/1_RAW_DATA/tot.ind.trois_vallees2.rds"))
 
 # 3V borders 
-borders_3V <- sf::st_read(paste0(base,"/1_RAW_DATA/borders_3V.gpkg"))
-borders_3V<-borders_3V$geom
-borders_3V<- fortify(borders_3V)
+borders_3V_vect <- terra::vect(paste0(base,"/1_RAW_DATA/borders_3V.gpkg"))
 
 # slope 3V
-raster3V_slope<-terra::rast(paste0(base,"/1_RAW_DATA/raster.3V.slope.tif"))
+slope_3V<-terra::rast(paste0(base,"/2_DATA/slope_3V_ign.tif"))
 
 # Analyse à 9m
 #carto_habitats_3V_brute <- paste0(base,"/1_RAW_DATA/landcover_T2L_1m_trois_vallees.tif") #carto Clara
 carto_habitats_3V <- terra::rast(paste0(base,"/1_RAW_DATA/landcover_T2L_1m_trois_vallees.tif")) #carto Clara
+carto_habitats_3V<-as.factor(carto_habitats_3V) #indicate discrete values for my map categories
+
+# strava
+strava <- terra::rast(paste0(base, "/2_DATA/strava/strava_Trois_Vallees_winter_single.tif"))
+
+# mnt
+mnt<-terra::rast(paste0(base, "/2_DATA/mnt_ign.tif"))
+# mnt_9<-terra::rast(paste0(base, "/2_DATA/mnt_9_mean_ign.tif"))
+
 #********************************************************************
 
+
+
+
+### Settings
+#********************************************************************
+## Shape the study area
+#e <- extent(971000,985000,6471000,6486000)
+e1<-ext(borders_3V_vect)
+e2<-ext(as.polygons(ext(data_bg_3V), crs=crs(data_bg_3V)))
+
+e<-c(min(e1[1],e2[1])-1000,max(e1[2],e2[2])+1000,min(e1[3],e2[3])-1000,max(e1[4],e2[4])+1000) 
+# e_poly<-ext(as.polygons(ext(e), crs=crs(data_bg_3V)))
+# ext(e_poly)
+
+
+# change the coordinate system of the SpatVector from (9..,9..,6..,6..) to (6..,6..,45..,45..)
+# borders_3V_vect_lat_long<-project(borders_3V_vect, y="+proj=longlat +datum=WGS84")
+# e<-ext(borders_3V_vect_lat_long)
+#********************************************************************
 
 
 
@@ -83,22 +109,20 @@ carto_habitats_3V <- terra::rast(paste0(base,"/1_RAW_DATA/landcover_T2L_1m_trois
 ### Loading maps of the study site
 #********************************************************************
 
-## Shape de la zone d'etude restreinte
-#e <- extent(971000,985000,6471000,6486000)
-e<-ext(borders_3V)
 # visualyze the raster of the slope for the study area
-raster_slope_3V<-terra::crop(raster3V_slope,e)
+slope_3V<-terra::crop(slope_3V,e)
 
 # here the resolution of the raster slope = 1m 
-# to save time for the next analyses --> create raster slope with resolution at 10m
-raster_slope_3V_10<-terra::aggregate(raster_slope_3V,fact=10)
+# to save time for the next analyses --> create raster slope with resolution at 9m
+slope_3V_9<-terra::aggregate(slope_3V,fact=9,fun="mean")
+mnt_9 <- terra::aggregate(mnt,9,fun="mean")
 
-#raster::readAll(raster_slope_3V) # to save a raster in the RAM (intern memory of the computer), to save time
+#raster::readAll(slope_3V) # to save a raster in the RAM (intern memory of the computer), to save time
 
 #raster high vegetation
 carto_habitats_3V <- terra::crop(carto_habitats_3V,e)
-carto_habitats_3V<-as.factor(carto_habitats_3V) #indicate discrete values for my map categories
-
+carto_habitats_3V_9<- terra::aggregate(carto_habitats_3V,9,fun="modal") # fact = 9 =  number of cells (pixels) in each direction (horizontally and vertically)
+  # fun = "modal" for a categorial raster = retains the majoritary class 
 
 # carte d'occupation des sols OSO (produite par le Centre d'Expertise Scientifique sur l'occupation des sols (CES OSO))
 oso <- terra::rast("M:/CESBIO/OSO_20220101_RASTER_V1-0/DATA/OCS_2022.tif") 
@@ -106,23 +130,29 @@ oso <- terra::crop(oso,e)
 
 
 #### 1.1_Viewing imported maps ####
-par(mfrow=c(2,2))
+par(mfrow=c(2,4))
 
-plot(raster_slope_3V)
-plot(borders_3V,add=T) # add 3V borders
-plot(raster_slope_3V_10)
-plot(borders_3V,add=T) # add 3V borders
-plot(carto_habitats_3V)
-plot(borders_3V,add=T) # add 3V borders
-plot(oso)
-plot(borders_3V,add=T) # add 3V borders
+plot(slope_3V,main="Slope(°)\nresolution=1m")
+plot(borders_3V_vect,add=T) # add 3V borders
+plot(slope_3V_9,main="Slope(°)\nresolution=9m")
+plot(borders_3V_vect,add=T) # add 3V borders
+plot(carto_habitats_3V,main="Habitat cartography\nresolution=1m")
+plot(borders_3V_vect,add=T) # add 3V borders
+plot(oso,main="OSO\nresolution=10m")
+plot(borders_3V_vect,add=T) # add 3V borders
+plot(strava,main="Strava, 4 attendance levels\nresolution=1m")
+plot(borders_3V_vect,add=T) # add 3V borders
+plot(mnt,main="MNT\nresolution=1m")
+plot(borders_3V_vect,add=T)
+plot(mnt_9,main="MNT\nresolution=9m")
+plot(borders_3V_vect,add=T)
 
 par(mfrow=c(1,1))
 
 #View habitat cartography realised by Clara Leblanc
 ggplot()+
   geom_spatraster(data=carto_habitats_3V)+
-  geom_sf(data = borders_3V,fill=NA,color="black",lwd =2)+
+  geom_sf(data = borders_3V_vect,fill=NA,color="black",lwd =2)+
   scale_fill_manual(
     values = c("#CC9966","#CCCCCC","#666666","#333333","#99CC99","#FFFF66","#FFCCCC","#FF99CC","#99FF99","#99FF00","#339966","#993300","#99CCFF","#99FFFF","#0066FF","white","white"),
     breaks = c("20","21","22","23","30","31","32","40","50","51","52","60","92","93","94","100"),
@@ -146,25 +176,19 @@ grouse_winter_raw<-as.data.frame(data_bg_3V%>%filter(saison=="hiver"))
 grouse_winter<-multiple_dt_indiv(grouse_winter_raw,"nom")
 
 
-#******* not working yet
-#' #' The first day of location data often shows some unrealistic movements. We remove those observations
-#' for(i in 1:length(grouse_winter))
-#' {
-#'   grouse_winter[[i]]<- grouse_winter[[i]][(grouse_winter[[i]]["date"]) > (first(grouse_winter[[i]]["date"]) + ddays(1)),]
-#' }
-#*******
-
-#pr 1 animal:
-#grouse_winter <- grouse_winter[(grouse_winter$date) > min(grouse_winter$date) + days(1), ]
-
-
-
 #' Create a dt formatted like a telemetry object
-grouse_winter_pretelemetry<-grouse_winter
+grouse_winter_pretelemetry<- lapply(grouse_winter,pre_telemetry)
+
+
+# # Removing the first day of location data as it often shows some unrealistic movements
 for(i in 1:length(grouse_winter_pretelemetry))
 {
-  grouse_winter_pretelemetry[[i]]<- pre_telemetry(grouse_winter_pretelemetry[[i]])
+  grouse_winter_pretelemetry[[i]] <- grouse_winter_pretelemetry[[i]] %>% filter (study.local.timestamp >= (first(grouse_winter_pretelemetry[[i]]["study.local.timestamp"]) + ddays(1) ))
 }
+
+# Removing the bird with no location data after removing the first day of movements
+grouse_winter_pretelemetry<- grouse_winter_pretelemetry[sapply(grouse_winter_pretelemetry, function(x) dim(x)[1]) > 0]
+
 
 grouse_winter_telemetry<-grouse_winter_pretelemetry
 for(i in 1:length(grouse_winter_telemetry))
@@ -173,8 +197,10 @@ for(i in 1:length(grouse_winter_telemetry))
 }
 
 grouse_winter_pretelemetry_all<-pre_telemetry(data_bg_3V)
+
 #******* not working yet
 # grouse_winter_telemetry_all<-as.telemetry(grouse_winter_pretelemetry_all[,-1])
+    # impossible d’utiliser xtfrm sur un tableau de données (data frame)
 #******* 
 #*
 #********************************************************************
@@ -186,6 +212,26 @@ grouse_winter_pretelemetry_all<-pre_telemetry(data_bg_3V)
 #********************************************************************
 
 
+windows()
+#View habitat cartography realised by Clara Leblanc
+ggplot()+
+  geom_spatraster(data=carto_habitats_3V)+
+  geom_point(data = bind_rows(grouse_winter_pretelemetry, .id="df"),aes(x=X_GPS_lambert93,y=Y_GPS_lambert93,colour = "black"))+
+  scale_colour_manual(values="black")+
+  geom_sf(data = borders_3V_vect,fill=NA,color="black",lwd =2)+
+  scale_fill_manual(
+    values = c("#CC9966","#CCCCCC","#666666","#333333","#99CC99","#FFFF66","#FFCCCC","#FF99CC","#99FF99","#99FF00","#339966","#993300","#99CCFF","#99FFFF","#0066FF","white","white"),
+    breaks = c("20","21","22","23","30","31","32","40","50","51","52","60","92","93","94","100"),
+    # labels = c("sol non classé",sol mineral fin","sol mineral grossier","falaise", "pelouse seche ou rocheuse","herbacées,"ligneux bas","arbustes","arbres non classés,"arbres feuillus","arbres resineux","bati","plan d'eau naturel","plan d'eau artificiel","cours d'eau",  "non classe" ))+
+    labels = c("Unclassified soil","Fine mineral soil","Coarse mineral soil","Cliff","Dry or rocky grassland","Herbaceous", "Low ligneous","Shrubs","Unclassified trees","Deciduous trees","Resinous trees","Buildings","Natural pond","Artificial pond","Waterway",  "Unclassified" ))+
+  labs( title="Habitat cartography",
+        x = "Longitude",
+        y = "Latitude",
+        fill = "Legend")
+
+
+
+
 # create a list with bird's names to plot the correct legend
 vect_nicknames<-list()
 for(i in (1:length(grouse_winter_pretelemetry)))
@@ -193,6 +239,7 @@ for(i in (1:length(grouse_winter_pretelemetry)))
   vect_nicknames[[i]]<-unique(grouse_winter_pretelemetry[[i]]["individual.local.identifier"])
 }
 vect_nicknames<-unlist(vect_nicknames)
+vect_nicknames<-as.vector(vect_nicknames)
 
 # renamed each data frame from the list of data frames by the name of each bird 
 names(grouse_winter_pretelemetry)<-vect_nicknames
@@ -201,8 +248,8 @@ names(grouse_winter_pretelemetry)<-vect_nicknames
 # plot the birds
 g_positions_birds<-ggplot()+
   #geom_raster(data=map_df,aes(x=X_GPS, y=Y_GPS,fill=slope))+
-  geom_spatraster(data=raster_slope_3V_10)+
-  geom_sf(data = borders_3V,fill=NA,color="black",lwd =2)+
+  geom_spatraster(data=slope_3V_9)+
+  geom_sf(data = borders_3V_vect,fill=NA,color="black",lwd =2)+
   geom_point(data = bind_rows(grouse_winter_pretelemetry, .id="df"),aes(x=X_GPS_lambert93,y=Y_GPS_lambert93,colour = df))+
   theme_bw() +
   #coord_equal() +
@@ -221,7 +268,7 @@ g_positions_birds<-ggplot()+
         panel.grid.minor = element_blank(),
         legend.position = "right",
         legend.key = element_blank())+
-  scale_color_discrete(name = "Animal")+
+  scale_color_discrete(name = "Animal",labels=vect_nicknames)+
   ggtitle("All positions of the 38 GPS-tagged birds at the 3 Valleys site (winter)")+
   xlab("x coordinate (Lambert 93)")+
   ylab("y coordinate (Lambert 93)")
@@ -244,14 +291,15 @@ g_positions_birds
 # To prospect if the sampling there is a regular or irregular sampling schedule 
 # or to visualyze data when the sampling rate changes during data collection
 par(mfrow=c(1,1))
-dt.plot(grouse_winter_telemetry) #here the sampling is semi-irregular 
+dt.plot(grouse_winter_telemetry,main="Log-scale plot of the sorted sampling interval between 2 consecutive GPS positions") #here the sampling is semi-irregular 
 
 # visualizing the irregular sampling schedule 
 
 dt_box<-data.frame("birds"=1:length(grouse_winter_telemetry),"interval_hr"=summary(grouse_winter_telemetry)$interval,"animal"=vect_nicknames)
 
-ggplot(data=dt_box,aes(x=birds,y=interval_hr))+
+ggplot(data=dt_box[-33,],aes(x=birds,y=interval_hr))+
   geom_boxplot()+
+  # scale_y_continuous(trans = 'log10')+
   geom_dotplot(binaxis="y", stackdir='center', dotsize=0.5)+
   xlab("Birds")+
   ylab("Time interval between 2 positions (hours)")+
@@ -290,29 +338,31 @@ plot(SVF_0,fraction=0.005,level=c(0.5,0.95))
 title("Population variogram\n(assuming homogenous sampling schedule)")
 
 # population variogram considering the irregular sampling schedule
-timelags <- c(1,12,24,36) %#% "hour" # the order has no importance
+timelags <- c(1,2,4,8) %#% "hour" # the order has no importance
 SVF <- lapply(grouse_winter_telemetry,variogram,dt=timelags) # population variogram considering the GPS were programmed to cycle between 1, 12, 24 hour sampling intervals
 SVF<- mean(SVF)
-plot(SVF,fraction=0.005,level=c(0.5,0.95),main="Population variogram \n(considering the irregular sampling schedule)")
+plot(SVF,fraction=0.005,level=c(0.5,0.95),main="Population variogram \n(considering the irregular sampling schedule with the most common time intervals : 1h, 2h, 4h, 8h)")
 
-#  HISTOGRAM of time between 2 locations 
-par(mfrow=c(1,1))
-windows()
 
-ggplot(data = bind_rows(grouse_winter_pretelemetry, .id="df"),aes(x=as.POSIXct(dt,format="%d %H:%M:%S")))+
-  geom_histogram(fill="#FF6666", bins = 50)+
-  facet_grid(df ~ .)+
-  scale_x_datetime(date_labels = "%d d %H h")+
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
-  xlab("Time between 2 locations")
-
-ggplot(data = bind_rows(grouse_winter_pretelemetry, .id="df"),aes(x=as.POSIXct(dt,format="%d %H:%M:%S")))+
-  geom_histogram(fill="#FF6666", bins = 50)+
-  facet_grid(df ~ .)+
-  scale_x_datetime(date_labels = "%d d %H h %M min",breaks ="3 hours",expand = c(0, 0))+
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
-  xlab("Time between 2 locations")
-
+#************************************** not working anymore
+# #  HISTOGRAM of time between 2 locations 
+# par(mfrow=c(1,1))
+# windows()
+# 
+# ggplot(data = bind_rows(grouse_winter_pretelemetry, .id="df"),aes(x=as.POSIXct(dt,format="%d %H:%M:%S")))+
+#   geom_histogram(fill="#FF6666", bins = 50)+
+#   facet_grid(df ~ .)+
+#   scale_x_datetime(date_labels = "%d d %H h")+
+#   theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+#   xlab("Time between 2 locations")
+# 
+# ggplot(data = bind_rows(grouse_winter_pretelemetry, .id="df"),aes(x=as.POSIXct(dt,format="%d %H:%M:%S")))+
+#   geom_histogram(fill="#FF6666", bins = 50)+
+#   facet_grid(df ~ .)+
+#   scale_x_datetime(date_labels = "%d d %H h %M min",breaks ="3 hours",expand = c(0, 0))+
+#   theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+#   xlab("Time between 2 locations")
+#**************************************
 
 #' ctmm.guess --> large approximation of the maximum likelyhood, inaccurate estimation of the parameters 
 grouse_winter_guess <- lapply(grouse_winter_telemetry,ctmm.guess, CTMM=ctmm(isotropic = TRUE), interactive = FALSE) #isotropic = TRUE => s'éloigne du centre de manière identique dans toutes les directions
@@ -365,8 +415,8 @@ for ( i in (1:length(grouse_winter_guess)))
 #********************************************************************
 
 #' Create named list of rasters
-raster::readAll(raster_slope_3V_10) # to save the raster in the RAM and save time
-be <- list("slope1" = raster_slope_3V_10)
+# raster::readAll(slope_3V_9) # to save the raster (not Spatraster) in the RAM and save time 
+be <- list("slope1" = slope_3V_9)
 
 #' The integrator = "Riemann" option is still experimental, we use it here because it is much faster
 grouse_winter_rsf_riemann<-list()
@@ -405,7 +455,7 @@ mean_akde<-ctmm:mean(grouse_winter_akde)
 #rsf with more raster than the slope
 
 #' Create named list of rasters
-be2 <- list("slope1" = raster_slope_3V_10,"high_vegetation"=raster_high_vege_classif_9m_10)
+be2 <- list("slope1" = slope_3V_9,"high_vegetation"=raster_high_vege_classif_9m_9)
 
 #' The integrator = "Riemann" option is still experimental, we use it here because it is much faster
 grouse_winter_rsf_riemann2<-list()
