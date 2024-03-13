@@ -193,7 +193,9 @@ grouse_winter_pretelemetry<- grouse_winter_pretelemetry[sapply(grouse_winter_pre
 grouse_winter_telemetry<-grouse_winter_pretelemetry
 for(i in 1:length(grouse_winter_telemetry))
 {
-  grouse_winter_telemetry[[i]]<- as.telemetry(grouse_winter_telemetry[[i]])
+  grouse_winter_telemetry[[i]]<- as.telemetry(grouse_winter_telemetry[[i]],datum="WGS84")
+  grouse_winter_telemetry[[i]]["x"] <- grouse_winter_pretelemetry[[i]]["X_GPS_lambert93"]
+  grouse_winter_telemetry[[i]]["y"] <- grouse_winter_pretelemetry[[i]]["Y_GPS_lambert93"]
 }
 
 grouse_winter_pretelemetry_all<-pre_telemetry(data_bg_3V)
@@ -281,10 +283,10 @@ g_positions_birds
 
 
 
-# Describing the spatial correlations between observation data
+#### 2_Describing the spatial correlations between observation data ####
 #********************************************************************
 
-#' Fit ctmm model : Continuous-Time Movement Modeling
+#### 2.1_Sampling schedule ####
 
 # Pooling Variograms : If multiple individuals exhibit similar movement behaviors
 
@@ -329,6 +331,7 @@ ggplot(data=bind_rows(grouse_winter_pretelemetry, .id="df"),aes(x=fct_reorder(in
         legend.title = element_text(size=16))
 
 
+#### 2.2_Positions autocorrelation ####
 
 par(mfrow=c(1,2))
 # population variogram assuming homogenous sampling schedule (which is not the case)
@@ -364,7 +367,13 @@ plot(SVF,fraction=0.005,level=c(0.5,0.95),main="Population variogram \n(consider
 #   xlab("Time between 2 locations")
 #**************************************
 
-#' ctmm.guess --> large approximation of the maximum likelyhood, inaccurate estimation of the parameters 
+
+#### 3_Fitting a RSF ####
+
+#' Fit ctmm model : Continuous-Time Movement Modeling
+
+# Model fitting and selection first requires a prototype model with guesstimated parameters 
+#' ctmm.guess --> large approximation of the maximum likelyhood, inaccurate estimation of the parameters (VS ctmm.fit() Performs maximum likelihood parameter and interval estimation of ctmm models using each model’s exact likelihood function)
 grouse_winter_guess <- lapply(grouse_winter_telemetry,ctmm.guess, CTMM=ctmm(isotropic = TRUE), interactive = FALSE) #isotropic = TRUE => s'éloigne du centre de manière identique dans toutes les directions
 
 #plots a variogram object overlayed with a continuous-time movement model guesstimated from the variogram's shape
@@ -373,7 +382,7 @@ grouse_winter_guess <- lapply(grouse_winter_telemetry,ctmm.guess, CTMM=ctmm(isot
 # even if an ellipse is more realistic (anisotropy) 
 # but the function is not optized with (isotropic=F)
 
-#model selected (approximation)
+#model selected (approximation of the parameters)
 grouse_winter_guess_summary<-lapply(grouse_winter_guess,summary)
 
 
@@ -384,27 +393,54 @@ fitted_models_grouse_winter_summary<-lapply(fitted_models_grouse_winter,summary)
 # "OUF anisotropic" is the "best" model, IID is the conventional model 
 best_model<-fitted_models_grouse_winter[[1]][1]
 
+
+
+
 # Visualizing the SVF of the guess model and comparison of the 2 best fitted models on variogram
-windows()
-par(mfcol=c(2,5))
-for ( i in (1:length(grouse_winter_guess)))
-{
-  plot(SVF, CTMM=grouse_winter_guess[[i]], col.CTMM=i,new=F, fraction=0.2,level=c(0.5,0.95),main=grouse_winter_guess_summary[[i]]$name,sub=paste(" \narea estimated =",round(grouse_winter_guess_summary[[i]]$CI[1,2],3)),cex.sub=1.2,font.sub=2,cex.lab=1.5,cex.main=2.2) #variogram.fit(vg.grouse) is more approximative
-  plot(SVF, CTMM=grouse_winter_guess[[i]], col.CTMM=i,new=F, fraction=0.0005,level=c(0.5,0.95),cex.sub=2,cex.lab=1.5) #variogram.fit(vg.grouse) is more approximative
+# and save
+for (i in 1:length(grouse_winter_guess)) {
+  if (i %% 5 == 1) { # Start a new page for every 5 plots
+    png(filename = paste0(here(), "/5_OUTPUTS/RSF/variograms/indiv_variogram", i, "_", i + 4, ".png"),height = 1000,width = 2400) # Naming files correctly
+    par(mfcol = c(2,5))
+  }
+  
+  plot(SVF, CTMM = grouse_winter_guess[[i]], col.CTMM = i, new = FALSE, fraction = 0.2, level = c(0.5, 0.95),
+       main = paste0(vect_nicknames[i], "\n", grouse_winter_guess_summary[[i]]$name),
+       sub = paste("\narea estimated =", round(grouse_winter_guess_summary[[i]]$CI[1, 2], 3)),
+       cex.sub = 1.2, font.sub = 2, cex.lab = 1.5, cex.main = 1.5)
+  
+  plot(SVF, CTMM = grouse_winter_guess[[i]], col.CTMM = i, new = FALSE, fraction = 0.0005, level = c(0.5, 0.95),
+       cex.sub = 2, cex.lab = 1.5)
+  
+  if (i %% 5 == 0 || i == length(grouse_winter_guess)) {
+    dev.off() # Close the device after every 5 plots or at the end
+  }
 }
+
 
 #visualizing the home range density estimates against the position data                                                                                                                                         
 
 #' Fit akde (take into account the autocorrelation of the positions in the dataset)
 grouse_winter_akde<-lapply(grouse_winter_telemetry,akde,CTMM=best_model)
 
-windows()
-par(mfrow=c(1,5))
-for ( i in (1:length(grouse_winter_guess)))
-{
+# and save
+
+for (i in 1:length(grouse_winter_guess)) {
+  if (i %% 9 == 1) { # Start a new page for every 5 plots
+    jpeg(filename = paste0(here(), "/5_OUTPUTS/RSF/home_range_akde/home_range_akde", i, "_", i + 8, ".png"), units="in", width=15, height = 10, res =300) # Naming files correctly
+    par(mfcol = c(3,3))
+  }
+  
   plot(grouse_winter_telemetry[[i]],UD=grouse_winter_akde[[i]],main=vect_nicknames[[i]])
+  
+  if (i %% 9 == 0 || i == length(grouse_winter_guess)) {
+    dev.off() # Close the device after every 5 plots or at the end
+  }
 }
 
+
+plot(slope_3V_9,ext=e)
+plot(grouse_winter_telemetry[[1]],UD=grouse_winter_akde[[1]],units=F,xlim=c(e[1],e[2]),ylim=c(e[3],e[4]),add=T,col.grid=NA,bty="n") #col.grid=NA --> to removed the white grid in background
 
 
 #********************************************************************
