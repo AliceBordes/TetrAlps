@@ -12,7 +12,7 @@
 
 
 
-### Loading packages 
+### Loading packages ----
 #********************************************************************
 library(tidyverse)
 library(remotes)
@@ -43,28 +43,29 @@ library(tmap)
 library(ggplot2)
 library(sjmisc)
 library(here)
+library(ggspatial)
 #********************************************************************
 
 
-### Loading functions
+### Loading functions ----
 #********************************************************************
 source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/my_telemetry_transfo_data.R")
 source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/multiple_dt_indiv.R")
 #********************************************************************
 
 
-### Loading data
+### Loading data ----
 #********************************************************************
 base<-here()
 
 ### DATASETS
 
 # GPS locations of black grouses
-data_bg_3V<-readRDS(paste0(base,"/1_RAW_DATA/tot.ind.trois_vallees2.rds"))
+data_bg_3V<-readRDS(file.path(base,"1_RAW_DATA/tot.ind.trois_vallees2.rds"))
 
 # Main characteristics of tegged-black grouse
-# synth_bg_all_sites<-read.csv2(paste0(base,"/1_RAW_DATA/bilan_captures_tetras_all_sites_feb2024.csv"),sep=",")[,-1]
-synth_bg_all_sites<-read.csv2(paste0(base,"/1_RAW_DATA/bilan_captures_tetras_all_sites_mar2024_x_y_coord.csv"),sep=",")[,-1]
+# synth_bg_all_sites<-read.csv2(file.path(base,"1_RAW_DATA/bilan_captures_tetras_all_sites_feb2024.csv"),sep=",")[,-1]
+synth_bg_all_sites<-read.csv2(file.path(base,"1_RAW_DATA/bilan_captures_tetras_all_sites_mar2024_x_y_coord.csv"),sep=",")[,-1]
 
 # Union of data_bg_3V and synth_bg_all_sites dataset
 data_bg_3V_synth_fusion<- dplyr::left_join(data_bg_3V ,synth_bg_all_sites %>% filter(zone_etude=="trois_vallees") %>% select(tag_id,marque_tag,energy,sexe,age), by="tag_id")
@@ -95,28 +96,47 @@ synth_bg_3V<-synth_bg_all_sites %>% filter(zone_etude=="trois_vallees")
 ### RASTERS
 
 # slope 3V
-slope_3V<-terra::rast(paste0(base,"/2_DATA/slope_3V_ign.tif"))
+slope_3V<-terra::rast(file.path(base,"2_DATA/slope_3V_ign.tif"))
+slope_3V_9<-terra::rast(file.path(base,"2_DATA/slope_3V_9_ign.tif"))
 
 # Analyse à 9m
-#carto_habitats_3V_brute <- paste0(base,"/1_RAW_DATA/landcover_T2L_1m_trois_vallees.tif") #carto Clara
-carto_habitats_3V <- terra::rast(paste0(base,"/1_RAW_DATA/landcover_T2L_1m_trois_vallees.tif")) #carto Clara
-carto_habitats_3V<-as.factor(carto_habitats_3V) #indicate discrete values for my map categories
+    # carto_habitats_3V <- terra::rast(file.path(base,"1_RAW_DATA/landcover_T2L_1m_trois_vallees.tif")) #carto Clara
+    # carto_habitats_3V<-as.factor(carto_habitats_3V) #indicate discrete values for my map categories
+    #raster high vegetation
+    # carto_habitats_3V <- terra::crop(carto_habitats_3V,e)
+    # carto_habitats_3V_9<- terra::aggregate(carto_habitats_3V,9,fun="modal") # fact = 9 =  number of cells (pixels) in each direction (horizontally and vertically)
+        # fun = "modal" for a categorial raster = retains the majoritary class 
+        # disagg = to disaggregate
+    # writeRaster(x=carto_habitats_3V, filename=file.path(output_folder_zone,"carto_habitats_clara_3V.tif"),overwrite=TRUE)
+
+carto_habitats_3V <- terra::rast(file.path(base,"2_DATA/carto_habitats_clara_3V.tif")) #carto Clara
+carto_habitats_3V_9 <- terra::rast(file.path(base,"2_DATA/carto_habitats_3V_9_clara.tif")) #carto Clara
 
 # strava
-strava <- terra::rast(paste0(base, "/2_DATA/strava/strava_Trois_Vallees_winter_single.tif"))
+strava <- terra::rast(file.path(base, "2_DATA/strava/strava_3V_winter_sports_rgb.tif_single.tif"))
+strava <- project(strava,y="+proj=longlat +datum=WGS84")
 
 # mnt
-mnt<-terra::rast(paste0(base, "/2_DATA/mnt_ign.tif"))
-# mnt_9<-terra::rast(paste0(base, "/2_DATA/mnt_9_mean_ign.tif"))
+mnt<-terra::rast(file.path(base, "2_DATA/mnt_ign.tif"))
+mnt_9<-terra::rast(file.path(base, "2_DATA/mnt_9_mean_ign.tif"))
 
 
 ### VECTORS
 
 # 3V borders 
 borders_3V_vect <- terra::vect(paste0(base,"/1_RAW_DATA/borders_3V.gpkg"))
+borders_3V_vect_WGS84<- project(borders_3V_vect,y="+proj=longlat +datum=WGS84")
+
+# 3V cables from Open street Map
+cables_3V <- terra::vect(file.path(base,"2_DATA/ski_lift_osm.gpkg"))
+cables_3V_WGS84<- project(cables_3V,y="+proj=longlat +datum=WGS84")
+
+# 3V cables from OGM (Marc Montadert), NO NAMES 
+cables_3V_no_id <- terra::vect(file.path(base,"1_RAW_DATA/human_traffic_in_ski_resorts/cables/cables.gpkg"))
+cables_3V_no_id_WGS84<- project(cables_3V_no_id,y="+proj=longlat +datum=WGS84")
 
 # lek sites 
-lek_locations_vect <- terra::vect(paste0(base,"/1_RAW_DATA/place_de_chant/places_de_chant.shp"))
+lek_locations_vect <- terra::vect(file.path(base,"1_RAW_DATA/place_de_chant/places_de_chant.shp"))
 lek_locations_vect <- project(lek_locations_vect,y="+proj=longlat +datum=WGS84")
 lek_locations_vect_lambert <- project(lek_locations_vect,y="+init=epsg:2154")
 # transform lek_locations_vect in spatial object with metadata
@@ -127,7 +147,7 @@ lek_sites_lambert<-as_sf(lek_locations_vect_lambert)
 
 
 
-### Settings
+### Settings ----
 #********************************************************************
 ## Shape the study area
 #e <- extent(971000,985000,6471000,6486000)
@@ -135,7 +155,7 @@ e1<-ext(borders_3V_vect)
 e2<-ext(as.polygons(ext(data_bg_3V), crs=crs(data_bg_3V)))
 
 e<-c(min(e1[1],e2[1])-1000,max(e1[2],e2[2])+1000,min(e1[3],e2[3])-1000,max(e1[4],e2[4])+1000) 
-# e_poly<-ext(as.polygons(ext(e), crs=crs(data_bg_3V)))
+e_poly<-(as.polygons(ext(e), crs=crs(data_bg_3V)))
 # ext(e_poly)
 
 # change the coordinate system of the SpatVector from (9..,9..,6..,6..) to (6..,6..,45..,45..)
@@ -146,77 +166,7 @@ e<-c(min(e1[1],e2[1])-1000,max(e1[2],e2[2])+1000,min(e1[3],e2[3])-1000,max(e1[4]
 
 
 
-#### 1_Visulising GPS locations of multiple birds ####
-
-
-### Loading maps of the study site
-#********************************************************************
-
-# visualyze the raster of the slope for the study area
-slope_3V<-terra::crop(slope_3V,e)
-
-# here the resolution of the raster slope = 1m 
-# to save time for the next analyses --> create raster slope with resolution at 9m
-slope_3V_9<-terra::aggregate(slope_3V,fact=9,fun="mean")
-mnt_9 <- terra::aggregate(mnt,9,fun="mean")
-
-#raster::readAll(slope_3V) # to save a raster in the RAM (intern memory of the computer), to save time
-
-#raster high vegetation
-carto_habitats_3V <- terra::crop(carto_habitats_3V,e)
-carto_habitats_3V_9<- terra::aggregate(carto_habitats_3V,9,fun="modal") # fact = 9 =  number of cells (pixels) in each direction (horizontally and vertically)
-# fun = "modal" for a categorial raster = retains the majoritary class 
-# disagg = to disaggregate
-
-# carte d'occupation des sols OSO (produite par le Centre d'Expertise Scientifique sur l'occupation des sols (CES OSO))
-# oso <- terra::rast("M:/CESBIO/OSO_20220101_RASTER_V1-0/DATA/OCS_2022.tif") 
-# oso <- terra::crop(oso,e)
-
-
-#### 1.1_Viewing imported maps ####
-par(mfrow=c(2,4))
-
-plot(slope_3V,main="Slope(°)\nresolution=1m",col=c("#CCFFCC","#FFFFCC" ,"#FFCC99","#FF9966","#FF6600"))
-plot(borders_3V_vect,add=T) # add 3V borders
-plot(slope_3V_9,main="Slope(°)\nresolution=9m",col=c("#CCFFCC","#FFFFCC" ,"#FFCC99","#FF9966","#FF6600"))
-plot(borders_3V_vect,add=T) # add 3V borders
-plot(carto_habitats_3V,main="Habitat cartography\nresolution=1m")
-plot(borders_3V_vect,add=T) # add 3V borders
-plot(oso,main="OSO\nresolution=10m")
-plot(borders_3V_vect,add=T) # add 3V borders
-plot(strava,main="Strava, 4 attendance levels\nresolution=1m")
-plot(borders_3V_vect,add=T) # add 3V borders
-plot(mnt,main="MNT\nresolution=1m",col=c("#CCFFCC","#FFFFCC" ,"#FFCC99","#FF9966","#FF6600"))
-plot(borders_3V_vect,add=T)
-plot(mnt_9,main="MNT\nresolution=9m",col=c("#CCFFCC","#FFFFCC" ,"#FFCC99","#FF9966","#FF6600"))
-plot(borders_3V_vect,add=T)
-plot(mnt,main="MNT\nresolution=1m",col=c("#CCFFCC","#FFFFCC" ,"#FFCC99","#FF9966","#FF6600"))
-plot(lek_locations_vect,main="Leks",add=T)
-plot(borders_3V_vect,add=T)
-
-# plot mnt with a mask around 3V
-plot(mnt_9,mask=T)
-
-par(mfrow=c(1,1))
-
-#View habitat cartography realised by Clara Leblanc
-ggplot()+
-  geom_spatraster(data=carto_habitats_3V)+
-  geom_sf(data = borders_3V_vect,fill=NA,color="black",lwd =2)+
-  scale_fill_manual(
-    values = c("#CC9966","#CCCCCC","#666666","#333333","#99CC99","#FFFF66","#FFCCCC","#FF99CC","#99FF99","#99FF00","#339966","#993300","#99CCFF","#99FFFF","#0066FF","white","white"),
-    breaks = c("20","21","22","23","30","31","32","40","50","51","52","60","92","93","94","100"),
-    # labels = c("sol non classé",sol mineral fin","sol mineral grossier","falaise", "pelouse seche ou rocheuse","herbacées,"ligneux bas","arbustes","arbres non classés,"arbres feuillus","arbres resineux","bati","plan d'eau naturel","plan d'eau artificiel","cours d'eau",  "non classe" ))+
-    labels = c("Unclassified soil","Fine mineral soil","Coarse mineral soil","Cliff","Dry or rocky grassland","Herbaceous", "Low ligneous","Shrubs","Unclassified trees","Deciduous trees","Resinous trees","Buildings","Natural pond","Artificial pond","Waterway",  "Unclassified" ))+
-  labs( title="Habitat cartography",
-        x = "Longitude",
-        y = "Latitude",
-        fill = "Legend")
-#********************************************************************
-
-
-
-### Loading birds locations 
+#### 1_Loading birds locations and formatting telemetry data ----
 #********************************************************************
 
 #focus on bird locations in winter season
@@ -266,13 +216,70 @@ vect_nicknames<-as.vector(vect_nicknames)
 # renamed each data frame from the list of data frames by the name of each bird 
 names(grouse_winter_pretelemetry)<-vect_nicknames
 
+#********************************************************************
 
+
+
+#### 2_Visulising GPS locations of multiple birds ####
+
+
+#### 2.1_Viewing imported maps ----
+#********************************************************************
+
+#raster::readAll(slope_3V) # to save a raster in the RAM (intern memory of the computer), to save time
+
+# carte d'occupation des sols OSO (produite par le Centre d'Expertise Scientifique sur l'occupation des sols (CES OSO))
+# oso <- terra::rast("M:/CESBIO/OSO_20220101_RASTER_V1-0/DATA/OCS_2022.tif") 
+# oso <- terra::crop(oso,e)
+
+par(mfrow=c(2,4))
+
+plot(slope_3V,main="Slope(°)\nresolution=1m",col=c("#CCFFCC","#FFFFCC" ,"#FFCC99","#FF9966","#FF6600"))
+plot(borders_3V_vect,add=T) # add 3V borders
+plot(slope_3V_9,main="Slope(°)\nresolution=9m",col=c("#CCFFCC","#FFFFCC" ,"#FFCC99","#FF9966","#FF6600"))
+plot(borders_3V_vect,add=T) # add 3V borders
+plot(carto_habitats_3V,main="Habitat cartography\nresolution=1m")
+plot(borders_3V_vect,add=T) # add 3V borders
+# plot(oso,main="OSO\nresolution=10m")
+# plot(borders_3V_vect,add=T) # add 3V borders
+plot(strava,main="Strava, 4 attendance levels\nresolution=1m")
+plot(borders_3V_vect,add=T) # add 3V borders
+plot(mnt,main="MNT\nresolution=1m",col=c("#CCFFCC","#FFFFCC" ,"#FFCC99","#FF9966","#FF6600"))
+plot(borders_3V_vect,add=T)
+plot(mnt_9,main="MNT\nresolution=9m",col=c("#CCFFCC","#FFFFCC" ,"#FFCC99","#FF9966","#FF6600"))
+plot(borders_3V_vect,add=T)
+plot(mnt,main="MNT\nresolution=1m",col=c("#CCFFCC","#FFFFCC" ,"#FFCC99","#FF9966","#FF6600"))
+plot(lek_locations_vect,main="Leks",add=T)
+plot(borders_3V_vect,add=T)
+plot(borders_3V_vect_WGS84,border=as.factor(borders_3V_vect_WGS84$NOM),lwd=2)
+
+# plot mnt with a mask around 3V
+# plot(mnt_9,borders_3V_vect,mask=T)
+
+par(mfrow=c(1,1))
+
+#View habitat cartography realised by Clara Leblanc
+ggplot()+
+  geom_spatraster(data=carto_habitats_3V)+
+  geom_sf(data = borders_3V_vect,fill=NA,color="black",lwd =2)+
+  scale_fill_manual(
+    values = c("#CC9966","#CCCCCC","#666666","#333333","#99CC99","#FFFF66","#FFCCCC","#FF99CC","#99FF99","#99FF00","#339966","#993300","#99CCFF","#99FFFF","#0066FF","white","white"),
+    breaks = c("20","21","22","23","30","31","32","40","50","51","52","60","92","93","94","100"),
+    # labels = c("sol non classé",sol mineral fin","sol mineral grossier","falaise", "pelouse seche ou rocheuse","herbacées,"ligneux bas","arbustes","arbres non classés,"arbres feuillus","arbres resineux","bati","plan d'eau naturel","plan d'eau artificiel","cours d'eau",  "non classe" ))+
+    labels = c("Unclassified soil","Fine mineral soil","Coarse mineral soil","Cliff","Dry or rocky grassland","Herbaceous", "Low ligneous","Shrubs","Unclassified trees","Deciduous trees","Resinous trees","Buildings","Natural pond","Artificial pond","Waterway",  "Unclassified" ))+
+  labs( title="Habitat cartography",
+        x = "Longitude",
+        y = "Latitude",
+        fill = "Legend")
 #********************************************************************
 
 
 
 
-#### 1.2_Visulising GPS winter locations of 3V birds ####
+
+
+
+#### 2.2_Visulising GPS winter locations of 3V birds ####
 #********************************************************************
 
 
@@ -370,10 +377,11 @@ g_positions_capture_sites
 
 
 
-#### 2_Describing the spatial correlations between observation data ####
+
+#### 3_Describing the spatial correlations between observation data ####
 #********************************************************************
 
-#### 2.1_Sampling schedule ####
+#### 3.1_Sampling schedule ####
 
 # Pooling Variograms : If multiple individuals exhibit similar movement behaviors
 
@@ -418,7 +426,7 @@ ggplot(data=bind_rows(grouse_winter_pretelemetry, .id="df"),aes(x=fct_reorder(in
         legend.title = element_text(size=16))
 
 
-#### 2.2_Positions autocorrelation ####
+#### 3.2_Positions autocorrelation ####
 
 par(mfrow=c(1,2))
 # population variogram assuming homogenous sampling schedule (which is not the case)
@@ -456,12 +464,12 @@ plot(SVF,fraction=0.005,level=c(0.5,0.95),main="Population variogram \n(consider
 
 
 
-#### 3_Fitting a RSF ####
+#### 4_Fitting a RSF ####
 
 
 
 
-#### 3.1_Fitting a RSF on each bird of the Trois Vallées ski resort ####
+#### 4.1_Fitting a RSF on each bird of the Trois Vallées ski resort ####
 
 #' Fit ctmm model : Continuous-Time Movement Modeling
 
@@ -489,7 +497,7 @@ for (i in 1:length(grouse_winter_guess))
   best_model[[i]]<-fitted_models_grouse_winter[[i]][1]
 }
 
-
+saveRDS(best_model, file="best_model_saved.RData")
 
 
 # Visualizing the SVF of the guess model and comparison of the 2 best fitted models on variogram
@@ -522,6 +530,8 @@ for (i in 1:length(grouse_winter_guess))
 {
 grouse_winter_akde[[i]]<-akde(grouse_winter_telemetry[[i]],CTMM=best_model[[i]])
 }
+
+saveRDS(grouse_winter_akde, file="grouse_winter_akde_saved.RData")
 
 # and save
 
@@ -629,7 +639,7 @@ dev.off()
 
 
 
-#### 3.2_Fitting a RSF on all the population as a single indiv ####
+#### 4.2_Fitting a RSF on all the population as a single indiv ####
 
 
 #' Fit ctmm model : Continuous-Time Movement Modeling
@@ -695,6 +705,11 @@ plot(grouse_winter_telemetry_all,UD=grouse_winter_akde_all,
 
 
 
+
+
+
+
+
 #' # Minimal example of rsf.fit
 #********************************************************************
 
@@ -751,6 +766,7 @@ for (i in 1: length(grouse_winter_telemetry))
 # R = must be a list of rasters to fit Poisson regression coefficients to (under a log link)
 
 grouse_winter_rsf_riemann2_summary<-lapply(grouse_winter_rsf_riemann2,summary)
+
 
 
 

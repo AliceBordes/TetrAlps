@@ -17,11 +17,35 @@ library(ggplot2)
 library(here)
 #********************************************************************
 
+
+### Loading data 
+#********************************************************************
+### DATASETS
+
+# GPS locations of black grouses
+data_bg_3V<-readRDS(paste0(base,"/1_RAW_DATA/tot.ind.trois_vallees2.rds"))
+#********************************************************************
+
+
 ### Settings 
 #********************************************************************
 base<-here()
 #********************************************************************
 
+### Shape the study area ----
+#********************************************************************
+#e <- extent(971000,985000,6471000,6486000)
+e1<-ext(borders_3V_vect)
+e2<-ext(as.polygons(ext(data_bg_3V), crs=crs(data_bg_3V)))
+
+e<-c(min(e1[1],e2[1])-1000,max(e1[2],e2[2])+1000,min(e1[3],e2[3])-1000,max(e1[4],e2[4])+1000) 
+e_poly<-(as.polygons(ext(e), crs=crs(data_bg_3V)))
+# ext(e_poly)
+
+# change the coordinate system of the SpatVector from (9..,9..,6..,6..) to (6..,6..,45..,45..)
+# borders_3V_vect_lat_long<-project(borders_3V_vect, y="+proj=longlat +datum=WGS84")
+# e<-ext(borders_3V_vect_lat_long)
+#********************************************************************
 
 
 # Creation of the vrt with all the tiles of the study site
@@ -51,7 +75,17 @@ mnt<-terra::vrt(l_mtn_files, paste0(base, "/2_DATA/mnt_ign.vrt"), overwrite=T)
 
 # save the vrt as a new raster
 mnt <- terra::rast(paste0(base, "/2_DATA/mnt_ign.vrt"))
-writeRaster(mnt, filename=paste0(base, "/2_DATA/mnt_ign.tif"), overwrite=TRUE)
+# cut the raster of the slope for the study area
+mnt<-terra::crop(mnt,e)
+crs(mnt)<-"+init=epsg:2154"
+
+writeRaster(mnt, filename=file.path(base, "2_DATA/mnt_ign.tif"), overwrite=TRUE)
+
+mnt_9 <- terra::aggregate(mnt,9,fun="mean")
+# fun = "modal" for a categorial raster = retains the majoritary class 
+# disagg = to disaggregate
+
+writeRaster(mnt_9, filename=paste0(base, "/2_DATA/mnt_9_mean_ign.tif"), overwrite=TRUE)
 #********************************************************************
 
 
@@ -62,9 +96,15 @@ mnt<-terra::rast(paste0(base, "/2_DATA/mnt_ign.tif"))
 
 # slope from the mnt
 slope_3V<-terra::terrain(mnt, v="slope")
+
+# cut the raster of the slope for the study area
+slope_3V<-terra::crop(slope_3V,e)
+# here the resolution of the raster slope = 1m 
 writeRaster(slope_3V, filename=paste0(base, "/2_DATA/slope_3V_ign.tif"), overwrite=TRUE)
 
-
+# to save time for the next analyses --> create raster slope with resolution at 9m
+slope_3V_9<-terra::aggregate(slope_3V,fact=9,fun="mean")
+writeRaster(slope_3V_9, filename=paste0(base, "/2_DATA/slope_3V_9_ign.tif"), overwrite=TRUE)
 
 
 
