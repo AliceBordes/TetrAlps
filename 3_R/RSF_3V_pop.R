@@ -53,6 +53,14 @@ source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/my_telemetry_transf
 source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/multiple_dt_indiv.R")
 #********************************************************************
 
+### Loading heavy saved models ----
+#********************************************************************
+load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/best_model_saved.RData")
+load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/grouse_winter_akde_saved.RData")
+#********************************************************************
+
+
+
 
 ### Loading data ----
 #********************************************************************
@@ -91,7 +99,9 @@ for(i in 1: nrow(synth_bg_all_sites))
 # select all the points equal to POINT (1 1)
 # st_bbox(points$geometry[1])==1
 synth_bg_3V<-synth_bg_all_sites %>% filter(zone_etude=="trois_vallees")
-
+synth_bg_3V<-st_as_sf(synth_bg_3V)
+synth_bg_3V$geometry_lambert<-st_transform(synth_bg_3V$geometry,crs="+init=epsg:2154")
+synth_bg_3V<-synth_bg_3V %>% mutate(x_capture_lambert = st_coordinates(geometry_lambert)[,1],y_capture_lambert = st_coordinates(geometry_lambert)[,2])
 
 ### RASTERS
 
@@ -115,6 +125,7 @@ carto_habitats_3V_9 <- terra::rast(file.path(base,"2_DATA/carto_habitats_3V_9_cl
 # strava
 strava <- terra::rast(file.path(base, "2_DATA/strava/strava_3V_winter_sports_rgb.tif_single.tif"))
 strava <- project(strava,y="+proj=longlat +datum=WGS84")
+strava_lambert <- project(strava,y="+init=epsg:2154")
 
 # mnt
 mnt<-terra::rast(file.path(base, "2_DATA/mnt_ign.tif"))
@@ -142,6 +153,9 @@ lek_locations_vect_lambert <- project(lek_locations_vect,y="+init=epsg:2154")
 # transform lek_locations_vect in spatial object with metadata
 lek_sites<-as_sf(lek_locations_vect)
 lek_sites_lambert<-as_sf(lek_locations_vect_lambert)
+# to apply a buffer around the lek sites
+lek_sites$larger_lek<-st_buffer(lek_sites$geometry, 100) # 100m
+lek_sites_lambert$larger_lek<-st_buffer(lek_sites_lambert$geometry, 100) # 100m
 #********************************************************************
 
 
@@ -336,9 +350,6 @@ windows()
 g_positions_birds
 
 
-# to apply a buffer around the lek sites
-lek_sites$larger_lek<-st_buffer(lek_sites$geometry, 100) # 100m
-lek_sites_lambert$larger_lek<-st_buffer(lek_sites_lambert$geometry, 100) # 100m
 
 # plot capture sites
 g_positions_capture_sites<-ggplot()+
@@ -469,8 +480,8 @@ plot(SVF,fraction=0.005,level=c(0.5,0.95),main="Population variogram \n(consider
 
 
 
-#### 4.1_Fitting a RSF on each bird of the Trois Vallées ski resort ####
-
+#### 4.1.1_Fitting a RSF on each bird of the Trois Vallées ski resort ####
+#********************************************************************
 #' Fit ctmm model : Continuous-Time Movement Modeling
 
 # Model fitting and selection first requires a prototype model with guesstimated parameters 
@@ -497,9 +508,26 @@ for (i in 1:length(grouse_winter_guess))
   best_model[[i]]<-fitted_models_grouse_winter[[i]][1]
 }
 
-saveRDS(best_model, file="best_model_saved.RData")
+save(best_model, file="heavy_saved_models/best_model_saved.RData")
 
 
+# Home range calculation                                                                                                                                       
+
+grouse_winter_akde<-list()
+#' Fit akde (take into account the autocorrelation of the positions in the dataset)
+for (i in 1:length(grouse_winter_guess)) 
+{
+  grouse_winter_akde[[i]]<-akde(grouse_winter_telemetry[[i]],CTMM=best_model[[i]])
+}
+
+save(grouse_winter_akde, file="heavy_saved_models/grouse_winter_akde_saved.RData")
+#********************************************************************
+
+
+
+
+#### 4.1.2_Home range vizualization on each bird of the Trois Vallées ski resort ####
+#********************************************************************
 # Visualizing the SVF of the guess model and comparison of the 2 best fitted models on variogram
 # and save
 for (i in 1:length(grouse_winter_guess)) {
@@ -522,16 +550,6 @@ for (i in 1:length(grouse_winter_guess)) {
 }
 
 
-#visualizing the home range density estimates against the position data                                                                                                                                         
-
-grouse_winter_akde<-list()
-#' Fit akde (take into account the autocorrelation of the positions in the dataset)
-for (i in 1:length(grouse_winter_guess)) 
-{
-grouse_winter_akde[[i]]<-akde(grouse_winter_telemetry[[i]],CTMM=best_model[[i]])
-}
-
-saveRDS(grouse_winter_akde, file="grouse_winter_akde_saved.RData")
 
 # and save
 
@@ -591,10 +609,47 @@ for (i in 1:length(grouse_winter_telemetry))
 }
 
 plot(lek_sites_lambert$larger_lek,col="green",border="black",add=TRUE)
-par(xpd=TRUE)
+# par(xpd=TRUE)
 add_legend("bottom", legend=c("lek site"), fill=c("green"), bty="n",border=c("black"),inset = c(-2, 1.2))
 
 dev.off()
+
+
+
+# visualizing the home range density estimates and the capture site for each bird of the Trois Vallées
+
+# Create a color dataframe to associate a specific color with each home range and capture location for a given bird.
+color_dt<-data.frame("ani_name"=vect_nicknames,"colour"= rainbow(length(grouse_winter_akde)))
+color_dt<-left_join(cr,synth_bg_3V%>%select(ani_nom,x_capture_lambert,y_capture_lambert,geometry_lambert),by=c("ani_name"="ani_nom"))
+
+par(oma = c(1,1,1,1))
+plot(borders_3V_vect,ext=e,border="black",lwd=2,
+     main="Winter home-ranges at 95% for all resident black grouse\n in the Trois Vallées ski resort",
+     xlab="Longitude",
+     ylab="Latitude",
+     cex.main=2,
+     cex.lab = 1.5,
+     plg = list(title = "DEM (m)",title.cex = 1.5,cex=1.2))
+
+for (i in 1:length(grouse_winter_akde)) {
+  if (i %% 6 == 1) { # Start a new page for every 5 plots
+    jpeg(filename = paste0(here(), "/5_OUTPUTS/RSF/home_range_akde/home_range_akde_capture_site", i, "_", i + 5, ".png"), units="in", width=15, height = 10, res =300) # Naming files correctly
+    par(mfcol = c(2,3))
+  }
+  
+  
+  plot(grouse_winter_akde[[i]],
+       units=F,xlim=c(e[1],e[2]),ylim=c(e[3],e[4]),col.grid=NA,bty="n",col.UD=color_dt$colour[i],col.level=color_dt$colour[i],level=NA,
+       main=paste("bird:",grouse_winter_akde[[i]]@info$identity),cex.main=1.2,col.sub="blue") 
+  
+  points(color_dt$x_capture_lambert[color_dt$ani_name==grouse_winter_akde[[i]]@info$identity],color_dt$y_capture_lambert[color_dt$ani_name==grouse_winter_akde[[i]]@info$identity],col="black",cex=1,type="p",pch=20)
+  plot(borders_3V_vect,ext=e,border="black",lwd=2,add=TRUE)
+ 
+   if (i %% 6 == 0 || i == length(grouse_winter_akde)) {
+    dev.off() # Close the device after every 5 plots or at the end
+  }
+}
+
 
 
 
@@ -602,7 +657,7 @@ dev.off()
 
 png(filename = paste0(here(), "/5_OUTPUTS/RSF/home_range_akde/all_winter_home_ranges_ski_trails.png"),height = 4000,width = 4600,res=300) # Naming files correctly
 par(oma = c(1,1,1,1))
-plot(strava,ext=e,
+plot(strava_lambert,ext=e,
      # col=colorRampPalette(c("#333333","#FF6633","#CCCCCC11"),alpha=T)(25),
      col=colorRampPalette(c("#CCCCCC11","#FF6600","#FF3333"),alpha=T)(25),
      main="Winter home-ranges at 95% for all resident black grouse\n in the Trois Vallées ski resort",
@@ -772,3 +827,32 @@ grouse_winter_rsf_riemann2_summary<-lapply(grouse_winter_rsf_riemann2,summary)
 
 
 
+
+
+
+
+############### brouillon area
+
+COL<-lapply(grouse_winter_akde,color,by='individual')
+
+COL <- rainbow(length(grouse_winter_akde))
+  
+COL<-color(vect_nicknames,by="vect_nicknames")
+
+COL <- color(grouse_winter_akde[[1]],by='individual')
+color(grouse_winter_akde[[2]],by='individual')
+col[1]
+
+windows()
+plot(grouse_winter_akde[[1]],
+     units=F,col.grid=NA,bty="n",col.level="green") 
+
+col.DF=array("green",length(grouse_winter_telemetry))
+
+
+
+color_dt$colour[color_dt$ani_name=="Alpha"]
+grouse_winter_akde[[1]]@info$identity
+
+
+color_dt$colour[color_dt$ani_name==grouse_winter_akde[[1]]@info$identity]
