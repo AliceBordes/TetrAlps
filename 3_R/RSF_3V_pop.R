@@ -44,19 +44,72 @@ library(ggplot2)
 library(sjmisc)
 library(here)
 library(ggspatial)
+library(ggbreak)
+library(raster)
 #********************************************************************
+
+### Settings ----
+#********************************************************************
+base<-"C:/Users/albordes/Documents/PhD/TetrAlps"
+season="hiver"
+# sex="male"
+sex=c("male","femelle")
+#********************************************************************
+
+
 
 
 ### Loading functions ----
 #********************************************************************
 source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/my_telemetry_transfo_data.R")
 source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/multiple_dt_indiv.R")
+source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/mean_size_area.R")
+source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/visu_home_range.R")
 #********************************************************************
 
 ### Loading heavy saved models ----
 #********************************************************************
-load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/best_model_saved.RData")
-load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/grouse_winter_akde_saved.RData")
+load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/best_model_saved_hiver_malefemelle.RData")
+assign("best_model_saved_hiver_malefemelle",best_model)
+load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/grouse_winter_akde_saved_hiver_malefemelle.RData")
+assign("grouse_winter_akde_saved_hiver_malefemelle",grouse_winter_akde)
+load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/grouse_winter_telemetry_hiver_malefemelle.RData")
+assign("grouse_winter_telemetry_hiver_malefemelle",grouse_winter_telemetry)
+
+load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/best_model_saved_ete_malefemelle.RData")
+assign("best_model_saved_ete_malefemelle",best_model)
+load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/grouse_winter_akde_saved_ete_malefemelle.RData")
+assign("grouse_winter_akde_saved_ete_malefemelle",grouse_winter_akde)
+load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/grouse_winter_telemetry_ete_malefemelle.RData")
+assign("grouse_winter_telemetry_ete_malefemelle",grouse_winter_telemetry)
+
+load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/best_model_saved_automne_malefemelle.RData")
+assign("best_model_saved_automne_malefemelle",best_model)
+load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/grouse_winter_akde_saved_automne_malefemelle.RData")
+assign("grouse_winter_akde_saved_automne_malefemelle",grouse_winter_akde)
+load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/grouse_winter_telemetry_automne_malefemelle.RData")
+assign("grouse_winter_telemetry_automne_malefemelle",grouse_winter_telemetry)
+
+load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/best_model_saved_printemps_malefemelle.RData")
+assign("best_model_saved_printemps_malefemelle",best_model)
+load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/grouse_winter_akde_saved_printemps_malefemelle.RData")
+assign("grouse_winter_akde_saved_printemps_malefemelle",grouse_winter_akde)
+load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/grouse_winter_telemetry_printemps_malefemelle.RData")
+assign("grouse_winter_telemetry_printemps_malefemelle",grouse_winter_telemetry)
+
+load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/best_model_saved_hiver_male.RData")
+assign("best_model_saved_hiver_male",best_model)
+load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/grouse_winter_akde_saved_hiver_male.RData")
+assign("grouse_winter_akde_saved_hiver_male",grouse_winter_akde)
+load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/grouse_winter_telemetry_hiver_male.RData")
+assign("grouse_winter_telemetry_hiver_male",grouse_winter_telemetry)
+
+load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/best_model_saved_hiver_femelle.RData")
+assign("best_model_saved_hiver_femelle",best_model)
+load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/grouse_winter_akde_saved_hiver_femelle.RData")
+assign("grouse_winter_akde_saved_hiver_femelle",grouse_winter_akde)
+load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/grouse_winter_telemetry_hiver_femelle.RData")
+assign("grouse_winter_telemetry_hiver_femelle",grouse_winter_telemetry)
 #********************************************************************
 
 
@@ -64,7 +117,6 @@ load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/grouse_win
 
 ### Loading data ----
 #********************************************************************
-base<-here()
 
 ### DATASETS
 
@@ -75,8 +127,8 @@ data_bg_3V<-readRDS(file.path(base,"1_RAW_DATA/tot.ind.trois_vallees2.rds"))
 # synth_bg_all_sites<-read.csv2(file.path(base,"1_RAW_DATA/bilan_captures_tetras_all_sites_feb2024.csv"),sep=",")[,-1]
 synth_bg_all_sites<-read.csv2(file.path(base,"1_RAW_DATA/bilan_captures_tetras_all_sites_mar2024_x_y_coord.csv"),sep=",")[,-1]
 
-# Union of data_bg_3V and synth_bg_all_sites dataset
-data_bg_3V_synth_fusion<- dplyr::left_join(data_bg_3V ,synth_bg_all_sites %>% filter(zone_etude=="trois_vallees") %>% select(tag_id,marque_tag,energy,sexe,age), by="tag_id")
+# Union of data_bg_3V and synth_bg_all_sites dataset ATTENTION : join by the couple tag_id, ani_name otherwise, wrong match!
+data_bg_3V_synth_fusion<- dplyr::left_join(data_bg_3V ,synth_bg_all_sites %>% filter(zone_etude=="trois_vallees") %>% select(ani_nom,tag_id,marque_tag,energy,sexe,age), by=c("tag_id"="tag_id","ani_nom"="ani_nom"))
 
 # formatting synth_bg_all_sites to retrieve capture positions coordinates
 synth_bg_all_sites$x_capture_coord<-as.numeric(synth_bg_all_sites$x_capture_coord)
@@ -107,7 +159,9 @@ synth_bg_3V<-synth_bg_3V %>% mutate(x_capture_lambert = st_coordinates(geometry_
 
 # slope 3V
 slope_3V<-terra::rast(file.path(base,"2_DATA/slope_3V_ign.tif"))
+crs(slope_3V)<-"+init=epsg:2154"
 slope_3V_9<-terra::rast(file.path(base,"2_DATA/slope_3V_9_ign.tif"))
+crs(slope_3V_9)<-"+init=epsg:2154"
 
 # Analyse à 9m
     # carto_habitats_3V <- terra::rast(file.path(base,"1_RAW_DATA/landcover_T2L_1m_trois_vallees.tif")) #carto Clara
@@ -121,6 +175,7 @@ slope_3V_9<-terra::rast(file.path(base,"2_DATA/slope_3V_9_ign.tif"))
 
 carto_habitats_3V <- terra::rast(file.path(base,"2_DATA/carto_habitats_clara_3V.tif")) #carto Clara
 carto_habitats_3V_9 <- terra::rast(file.path(base,"2_DATA/carto_habitats_3V_9_clara.tif")) #carto Clara
+carto_habitats_3V_9_WGS84<- project(carto_habitats_3V_9,y="+proj=longlat +datum=WGS84")
 
 # strava
 strava <- terra::rast(file.path(base, "2_DATA/strava/strava_3V_winter_sports_rgb.tif_single.tif"))
@@ -130,7 +185,7 @@ strava_lambert <- project(strava,y="+init=epsg:2154")
 # mnt
 mnt<-terra::rast(file.path(base, "2_DATA/mnt_ign.tif"))
 mnt_9<-terra::rast(file.path(base, "2_DATA/mnt_9_mean_ign.tif"))
-
+mnt_9_WGS84<- project(mnt_9,y="+proj=longlat +datum=WGS84")
 
 ### VECTORS
 
@@ -159,11 +214,8 @@ lek_sites_lambert$larger_lek<-st_buffer(lek_sites_lambert$geometry, 100) # 100m
 #********************************************************************
 
 
-
-
-### Settings ----
+### Shape the study area ----
 #********************************************************************
-## Shape the study area
 #e <- extent(971000,985000,6471000,6486000)
 e1<-ext(borders_3V_vect)
 e2<-ext(as.polygons(ext(data_bg_3V), crs=crs(data_bg_3V)))
@@ -179,12 +231,11 @@ e_poly<-(as.polygons(ext(e), crs=crs(data_bg_3V)))
 
 
 
-
 #### 1_Loading birds locations and formatting telemetry data ----
 #********************************************************************
 
 #focus on bird locations in winter season
-grouse_winter_raw<-as.data.frame(data_bg_3V_synth_fusion%>%filter(saison=="hiver"))
+grouse_winter_raw<-as.data.frame(data_bg_3V_synth_fusion%>%filter(saison==season)%>%filter(sexe %in% sex))
 
 #create a list of data.frames for each animal
 grouse_winter<-multiple_dt_indiv(grouse_winter_raw,"nom")
@@ -200,22 +251,18 @@ for(i in 1:length(grouse_winter_pretelemetry))
   grouse_winter_pretelemetry[[i]] <- grouse_winter_pretelemetry[[i]] %>% filter (study.local.timestamp >= (first(grouse_winter_pretelemetry[[i]]["study.local.timestamp"]) + ddays(1) ))
 }
 
-# Removing the bird with no location data after removing the first day of movements
-grouse_winter_pretelemetry<- grouse_winter_pretelemetry[sapply(grouse_winter_pretelemetry, function(x) dim(x)[1]) > 0]
+# Removing the bird with less than 50 GPS positions data after removing the first day of movements
+grouse_winter_pretelemetry<- grouse_winter_pretelemetry[sapply(grouse_winter_pretelemetry, function(x) dim(x)[1]) > 50]
 
 
 grouse_winter_telemetry<-grouse_winter_pretelemetry
 for(i in 1:length(grouse_winter_telemetry))
 {
+  # grouse_winter_telemetry[[i]]<- as.telemetry(grouse_winter_telemetry[[i]],datum="WGS84",keep=c("saison","period_jour","sexe","age"))
   grouse_winter_telemetry[[i]]<- as.telemetry(grouse_winter_telemetry[[i]],datum="WGS84")
   grouse_winter_telemetry[[i]]["x"] <- grouse_winter_pretelemetry[[i]]["X_GPS_lambert93"]
   grouse_winter_telemetry[[i]]["y"] <- grouse_winter_pretelemetry[[i]]["Y_GPS_lambert93"]
 }
-
-grouse_winter_pretelemetry_all<-pre_telemetry(data_bg_3V)
-
-
-grouse_winter_telemetry_all<-as.telemetry(as.data.frame(grouse_winter_pretelemetry_all[,-c(1,2,3)]))
 
 
 # create a list with bird's names to plot the correct legend
@@ -229,7 +276,13 @@ vect_nicknames<-as.vector(vect_nicknames)
 
 # renamed each data frame from the list of data frames by the name of each bird 
 names(grouse_winter_pretelemetry)<-vect_nicknames
+names(grouse_winter_telemetry)<-vect_nicknames
 
+# save(grouse_winter_telemetry, file=paste0(base,"/3_R/heavy_saved_models/grouse_winter_telemetry_",season,"_",paste0(sex,collapse=""),".RData"))
+
+
+grouse_winter_pretelemetry_all<-pre_telemetry(data_bg_3V)
+grouse_winter_telemetry_all<-as.telemetry(as.data.frame(grouse_winter_pretelemetry_all[,-c(1,2,3)]))
 #********************************************************************
 
 
@@ -480,7 +533,7 @@ plot(SVF,fraction=0.005,level=c(0.5,0.95),main="Population variogram \n(consider
 
 
 
-#### 4.1.1_Fitting a RSF on each bird of the Trois Vallées ski resort ####
+#### 4.1_Data preparation, for home-range and RSF estimations on each bird of the Trois Vallées ski resort ####
 #********************************************************************
 #' Fit ctmm model : Continuous-Time Movement Modeling
 
@@ -500,7 +553,7 @@ grouse_winter_guess_summary<-lapply(grouse_winter_guess,summary)
 # selection of the 5 best model structures
 fitted_models_grouse_winter<-lapply(grouse_winter_telemetry,ctmm.select,CTMM=grouse_winter_guess, verbose=TRUE)
 #CTMM = GUESS marche pas toujours, CTMM = A ctmm movement-model object containing the initial parameter guesses
-fitted_models_grouse_winter_summary<-lapply(fitted_models_grouse_winter,summary)
+fitted_models_grouse_winter_summary<-lapply(fitted_models_grouse_winter,summary,unit=F)
 # "OUF anisotropic" is the "best" model, IID is the conventional model 
 best_model<-list()
 for (i in 1:length(grouse_winter_guess))
@@ -508,7 +561,9 @@ for (i in 1:length(grouse_winter_guess))
   best_model[[i]]<-fitted_models_grouse_winter[[i]][1]
 }
 
-save(best_model, file="heavy_saved_models/best_model_saved.RData")
+names(best_model)<-vect_nicknames
+
+save(best_model, file=paste0(base,"/3_R/heavy_saved_models/best_model_saved_",season,"_",paste0(sex,collapse=""),".RData"))
 
 
 # Home range calculation                                                                                                                                       
@@ -520,25 +575,27 @@ for (i in 1:length(grouse_winter_guess))
   grouse_winter_akde[[i]]<-akde(grouse_winter_telemetry[[i]],CTMM=best_model[[i]])
 }
 
-save(grouse_winter_akde, file="heavy_saved_models/grouse_winter_akde_saved.RData")
+names(grouse_winter_akde)<-vect_nicknames
+
+save(grouse_winter_akde, file=paste0(base,"/3_R/heavy_saved_models/grouse_winter_akde_saved_",season,"_",paste0(sex,collapse=""),".RData"))
 #********************************************************************
 
 
 
 
-#### 4.1.2_Home range vizualization on each bird of the Trois Vallées ski resort ####
+#### 4.2_Home range vizualization on each bird of the Trois Vallées ski resort ####
 #********************************************************************
 # Visualizing the SVF of the guess model and comparison of the 2 best fitted models on variogram
 # and save
 for (i in 1:length(grouse_winter_guess)) {
   if (i %% 5 == 1) { # Start a new page for every 5 plots
-    png(filename = paste0(here(), "/5_OUTPUTS/RSF/variograms/indiv_variogram", i, "_", i + 4, ".png"),height = 1000,width = 2400) # Naming files correctly
+    png(filename = paste0(base, "/5_OUTPUTS/RSF/variograms/indiv_variogram", i, "_", i + 4, ".png"),height = 1000,width = 2400) # Naming files correctly
     par(mfcol = c(2,5))
   }
   
   plot(SVF, CTMM = grouse_winter_guess[[i]], col.CTMM = i, new = FALSE, fraction = 0.2, level = c(0.5, 0.95),
        main = paste0(vect_nicknames[i], "\n", grouse_winter_guess_summary[[i]]$name),
-       sub = paste("\narea estimated =", round(grouse_winter_guess_summary[[i]]$CI[1, 2], 3)," km^2"),
+       sub = paste("\narea estimated =", round((grouse_winter_guess_summary[[i]]$CI[1, 2])/1000000, 3)," km^2"),
        cex.sub = 1.2, font.sub = 2, cex.lab = 1.5, cex.main = 1.5)
   
   plot(SVF, CTMM = grouse_winter_guess[[i]], col.CTMM = i, new = FALSE, fraction = 0.0005, level = c(0.5, 0.95),
@@ -555,18 +612,18 @@ for (i in 1:length(grouse_winter_guess)) {
 
 for (i in 1:length(grouse_winter_guess)) {
   if (i %% 9 == 1) { # Start a new page for every 5 plots
-    jpeg(filename = paste0(here(), "/5_OUTPUTS/RSF/home_range_akde/home_range_akde", i, "_", i + 8, ".png"), units="in", width=15, height = 10, res =300) # Naming files correctly
+    jpeg(filename = paste0(base, "/5_OUTPUTS/RSF/home_range_akde/home_range_akde", i, "_", i + 8, ".png"), units="in", width=15, height = 10, res =300) # Naming files correctly
     par(mfcol = c(3,3))
   }
   
   plot(grouse_winter_telemetry[[i]],UD=grouse_winter_akde[[i]],main=vect_nicknames[[i]],
        units=F,
        sub = paste("\narea estimated =", 
-                   round(summary(grouse_winter_akde[[i]])$CI[,"est"], 3)," km^2",
+                   round((summary(grouse_winter_akde[[i]])$CI[,"est"])/1000000, 3)," km^2",
                    "             CI=[",
-                   round(summary(grouse_winter_akde[[i]])$CI[,"low"], 3),
+                   round((summary(grouse_winter_akde[[i]])$CI[,"low"])/1000000, 3),
                    ",",
-                   round(summary(grouse_winter_akde[[i]])$CI[,"high"], 3),
+                   round((summary(grouse_winter_akde[[i]])$CI[,"high"])/1000000, 3),
                    "]"),
        cex.sub=1.2,col.sub="blue")
   
@@ -580,48 +637,52 @@ ci<-c()
 for (i in 1:length(grouse_winter_akde))
 {
   # print(summary(grouse_winter_akde[[i]])$CI)
-  ci[[i]]<-summary(grouse_winter_akde[[i]])$CI[,"est"]
+  ci[[i]]<-(summary(grouse_winter_akde[[i]],unit=F)$CI[,"est"])/1000000
 }
 
 round(mean(unlist(ci)),3)
 
+
+
+
+
 # visualizing the home range density estimates against the position data of each bird of the Trois Vallées
 
-png(filename = paste0(here(), "/5_OUTPUTS/RSF/home_range_akde/all_winter_home_ranges.png"),height = 5000,width = 4600,res=300) # Naming files correctly
+source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/visu_home_range.R")
+visu_HR(colorby="4seasons")
 
-par(oma = c(1,1,1,1))
-plot(mnt,ext=e,col=c("#CCFFCC","#FFFFCC" ,"#FFCC99","#FF9966","#FF6600"),
-     main="Winter home-ranges at 95% for all resident black grouse\n in the Trois Vallées ski resort",
-     xlab="Longitude",
-     ylab="Latitude",
-     cex.main=2,
-     cex.lab = 1.5,
-     plg = list(title = "DEM (m)",title.cex = 1.5,cex=1.2))
-plot(borders_3V_vect,ext=e,add=T,border="black",lwd=2)
+# visualizing the home range density estimates per sex in the Trois Vallées
+visu_HR("mnt","hiver",colorby="sex",showpoints=TRUE,writeplot = TRUE) 
+visu_HR("strava","hiver",colorby="sex",showpoints=TRUE,writeplot = TRUE) 
+visu_HR("strava","hiver",showpoints=TRUE,writeplot = TRUE) 
 
-for (i in 1:length(grouse_winter_telemetry))
-{
-  plot(grouse_winter_telemetry[[i]],UD=grouse_winter_akde[[i]],
-       units=F,xlim=c(e[1],e[2]),ylim=c(e[3],e[4]),add=T,col.grid=NA,bty="n") 
-  
-  #col.grid=NA --> to removed the white grid in background
-  # plot(grouse_winter_akde[[i]],units=F,xlim=c(e[1],e[2]),ylim=c(e[3],e[4]),add=T,col.grid=NA,bty="n") #col.grid=NA --> to removed the white grid in background
-}
-
-plot(lek_sites_lambert$larger_lek,col="green",border="black",add=TRUE)
-# par(xpd=TRUE)
-add_legend("bottom", legend=c("lek site"), fill=c("green"), bty="n",border=c("black"),inset = c(-2, 1.2))
-
-dev.off()
-
-
+visu_HR("mnt","hiver",showleks=TRUE,showpoints=TRUE,writeplot = TRUE) 
+visu_HR("mnt","automne",showleks=TRUE,showpoints=TRUE,writeplot = TRUE)
+visu_HR("mnt","ete",showleks=TRUE,showpoints=TRUE,writeplot = TRUE)
+visu_HR("mnt","printemps",showleks=TRUE,showpoints=TRUE,writeplot = TRUE)
 
 # visualizing the home range density estimates and the capture site for each bird of the Trois Vallées
+color_birds_hiver<-read.table("C:/Users/albordes/Documents/PhD/TetrAlps/5_OUTPUTS/RSF/home_range_akde/mean_size_HR_season/color_birds_hiver.txt", sep = "", header = TRUE) # Color dataframe from plot_mean_area_HR("hiver") to associate a specific color with each home range and capture location for a given bird.
+visu_HR(season="hiver",colorby="indiv",color_palette=color_birds_hiver,writeplot = TRUE)
 
-# Create a color dataframe to associate a specific color with each home range and capture location for a given bird.
-color_dt<-data.frame("ani_name"=vect_nicknames,"colour"= rainbow(length(grouse_winter_akde)))
-color_dt<-left_join(cr,synth_bg_3V%>%select(ani_nom,x_capture_lambert,y_capture_lambert,geometry_lambert),by=c("ani_name"="ani_nom"))
 
+# Summary of mean size home-range for a given season
+
+plot_mean_area_HR(season="hiver",colorby="sex",synth_bg_3V,writeplot = TRUE)
+plot_mean_area_HR(season="hiver",data_sex=synth_bg_3V,writeplot = TRUE)
+
+plot_mean_area_HR(season="automne",data_sex=synth_bg_3V,writeplot = TRUE)
+
+plot_mean_area_HR(season="ete",data_sex=synth_bg_3V,writeplot = TRUE)
+
+plot_mean_area_HR(season="printemps",data_sex=synth_bg_3V,writeplot = TRUE)
+
+
+# funnel(x=grouse_winter_akde_saved_hiver_malefemelle,y=grouse_winter_telemetry_hiver_malefemelle,sort=TRUE,col=c($colour,"black"),main="Home-range size estimations at 95% in winter")
+# cluster(grouse_winter_akde_saved_automne_malefemelle,sort=TRUE,main="Home-range size estimations at 95% in Automne n\Membership test for subpopulation")
+
+
+# Home range VS capture sites 
 par(oma = c(1,1,1,1))
 plot(borders_3V_vect,ext=e,border="black",lwd=2,
      main="Winter home-ranges at 95% for all resident black grouse\n in the Trois Vallées ski resort",
@@ -631,56 +692,107 @@ plot(borders_3V_vect,ext=e,border="black",lwd=2,
      cex.lab = 1.5,
      plg = list(title = "DEM (m)",title.cex = 1.5,cex=1.2))
 
-for (i in 1:length(grouse_winter_akde)) {
-  if (i %% 6 == 1) { # Start a new page for every 5 plots
-    jpeg(filename = paste0(here(), "/5_OUTPUTS/RSF/home_range_akde/home_range_akde_capture_site", i, "_", i + 5, ".png"), units="in", width=15, height = 10, res =300) # Naming files correctly
-    par(mfcol = c(2,3))
-  }
+if (i %% 6 == 1 || i == length(grouse_winter_akde_saved_hiver_malefemelle)) {
+    
+  jpeg(filename = paste0(base, "/5_OUTPUTS/RSF/home_range_akde/distance_to_capture_site/HR_distance_to_capture_site_",season,"_", i, "_", i + 5, ".png"), units="in", width=15, height = 10, res =300) # Naming files correctly
   
+  par(mfcol = c(2,3))
   
-  plot(grouse_winter_akde[[i]],
+  plot(grouse_winter_akde_saved_hiver_malefemelle[[i]],
        units=F,xlim=c(e[1],e[2]),ylim=c(e[3],e[4]),col.grid=NA,bty="n",col.UD=color_dt$colour[i],col.level=color_dt$colour[i],level=NA,
-       main=paste("bird:",grouse_winter_akde[[i]]@info$identity),cex.main=1.2,col.sub="blue") 
+       main=paste("bird:",grouse_winter_akde_saved_hiver_malefemelle[[i]]@info$identity),cex.main=1.2,col.sub="blue") 
   
-  points(color_dt$x_capture_lambert[color_dt$ani_name==grouse_winter_akde[[i]]@info$identity],color_dt$y_capture_lambert[color_dt$ani_name==grouse_winter_akde[[i]]@info$identity],col="black",cex=1,type="p",pch=20)
+  points(color_dt$x_capture_lambert[color_dt$ani_name==grouse_winter_akde_saved_hiver_malefemelle[[i]]@info$identity],color_dt$y_capture_lambert[color_dt$ani_name==grouse_winter_akde_saved_hiver_malefemelle[[i]]@info$identity],col="black",cex=1,type="p",pch=20)
   plot(borders_3V_vect,ext=e,border="black",lwd=2,add=TRUE)
- 
-   if (i %% 6 == 0 || i == length(grouse_winter_akde)) {
+  
+  if (i %% 6 == 0 || i == length(grouse_winter_akde_saved_hiver_malefemelle)) {
     dev.off() # Close the device after every 5 plots or at the end
   }
 }
-
-
-
-
-# visualizing the home range density estimates against the position data of each bird of the Trois Vallées
-
-png(filename = paste0(here(), "/5_OUTPUTS/RSF/home_range_akde/all_winter_home_ranges_ski_trails.png"),height = 4000,width = 4600,res=300) # Naming files correctly
-par(oma = c(1,1,1,1))
-plot(strava_lambert,ext=e,
-     # col=colorRampPalette(c("#333333","#FF6633","#CCCCCC11"),alpha=T)(25),
-     col=colorRampPalette(c("#CCCCCC11","#FF6600","#FF3333"),alpha=T)(25),
-     main="Winter home-ranges at 95% for all resident black grouse\n in the Trois Vallées ski resort",
-     xlab="Longitude",
-     ylab="Latitude",
-     cex.main=2,
-     cex.lab = 1.5,
-     plg = list(title = "Strava users \ntrafic \n(intensity)",title.cex = 1.5,cex=1.2))
-plot(borders_3V_vect,ext=e,add=T,border="black",lwd=2)
-
-for (i in 1:length(grouse_winter_telemetry))
-{
-  plot(grouse_winter_telemetry[[i]],UD=grouse_winter_akde[[i]],
-       units=F,xlim=c(e[1],e[2]),ylim=c(e[3],e[4]),add=T,col.grid=NA,bty="n") 
-  
-  #col.grid=NA --> to removed the white grid in background
-  # plot(grouse_winter_akde[[i]],units=F,xlim=c(e[1],e[2]),ylim=c(e[3],e[4]),add=T,col.grid=NA,bty="n") #col.grid=NA --> to removed the white grid in background
-}
-dev.off()
-
-# plot(grouse_winter_akde[[1]],units=F,xlim=c(e[1],e[2]),ylim=c(e[3],e[4]),add=T,col.grid=NA,bty="n") #col.grid=NA --> to removed the white grid in background
-# plot(grouse_winter_telemetry[[2]],UD=grouse_winter_akde[[2]],units=F,xlim=c(e[1],e[2]),ylim=c(e[3],e[4]),add=T,col.grid=NA,bty="n") #col.grid=NA --> to removed the white grid in background
 #********************************************************************
+
+
+
+
+
+#### 4.3_Fitting an RSF
+#********************************************************************
+
+# raster3V_slope_brute<-paste0("C:/Users/albordes/Documents/PhD/TetrAlps_old/1_RAW_DATA/raster.3V.slope.tif")
+# raster_slope_3V<-raster(raster3V_slope_brute)  # nothing --> RasterLayer object
+# raster_slope_3V_Abel <- raster::crop(raster_slope_3V,e) # Cut out a geographic subset and save the raster with the new extents --> reduce the limits of the raster
+# raster_slope_3V_Abel_10<-aggregate(raster_slope_3V_Abel,10)
+# 
+# plot(raster_slope_3V_Abel_10) 
+# be <- list("slope" = raster_slope_3V_Abel_10)
+
+#pb : my raster is not in background so the function extract()[--> extracting values of the raster under my telemetry points] inside rsf.fit() can not work.
+plot(grouse_winter_telemetry_hiver_malefemelle[[1]],raster_list[[1]])
+plot(raster_list[[1]])
+
+#' Create named list of rasters in the WGS84 format
+r_mnt_9<-raster(mnt_9)
+raster_list <- list("mnt" = r_mnt_9)
+# raster_list <- list("carto_hab" = raster(carto_habitats_3V_9))
+
+grouse_winter_rsf_riemann<-rsf.fit(grouse_winter_telemetry_hiver_malefemelle[[1]], grouse_winter_akde_saved_hiver_malefemelle[[1]], R=raster_list,  integrator = "Riemann")
+
+
+raster::readAll(r_slope_3V_9) # to save the raster (not Spatraster) in the RAM and save time 
+
+rsf_list <- lapply(1:length(grouse_winter_telemetry_hiver_malefemelle), function(i){
+  ctmm::rsf.fit(grouse_winter_telemetry_hiver_malefemelle[[i]], grouse_winter_akde_saved_hiver_malefemelle[[i]],  integrator = "Riemann")
+})
+
+#' The integrator = "Riemann" option is still experimental, we use it here because it is much faster
+grouse_winter_rsf_riemann<-list()
+for (i in 1: length(grouse_winter_telemetry_hiver_malefemelle))
+{
+  grouse_winter_rsf_riemann[[i]]<-rsf.fit(grouse_winter_telemetry_hiver_malefemelle[[i]], grouse_winter_akde_saved_hiver_malefemelle[[i]],  integrator = "Riemann")
+}
+
+# R = must be a list of rasters to fit Poisson regression coefficients to (under a log link)
+
+grouse_winter_rsf_riemann_summary<-lapply(grouse_winter_rsf_riemann,summary)
+
+
+#' Range distribution (includes the ranging behaviour) (étendue de la distribution)
+agde_grouse_winter<-list()
+for (i in 1: length(grouse_winter_telemetry))
+{
+  agde_grouse_winter[[i]]<-agde(CTMM = grouse_winter_rsf_riemann[[i]],raster_list)
+}
+
+
+windows()
+par(mfrow=c(1,5))
+for ( i in (1:length(grouse_winter_telemetry)))
+{
+  plot(agde_grouse_winter[[i]],main=vect_nicknames[[i]])
+}
+
+
+
+mean_rsf<-ctmm:mean(grouse_winter_rsf_riemann)
+mean_akde<-ctmm:mean(grouse_winter_akde)
+
+#********************************************************************
+
+#rsf with more raster than the slope
+
+#' Create named list of rasters
+be2 <- list("slope1" = slope_3V_9,"high_vegetation"=raster_high_vege_classif_9m_9)
+
+#' The integrator = "Riemann" option is still experimental, we use it here because it is much faster
+grouse_winter_rsf_riemann2<-list()
+for (i in 1: length(grouse_winter_telemetry))
+{
+  grouse_winter_rsf_riemann2[[i]]<-rsf.fit(grouse_winter_telemetry[[i]], grouse_winter_akde[[i]], R = be2, integrator = "Riemann")
+}
+
+# R = must be a list of rasters to fit Poisson regression coefficients to (under a log link)
+
+grouse_winter_rsf_riemann2_summary<-lapply(grouse_winter_rsf_riemann2,summary)
 
 
 
@@ -731,11 +843,11 @@ windows()
 plot(grouse_winter_telemetry_all,UD=grouse_winter_akde_all,
      units=F,
      sub = paste("\narea estimated =", 
-                 round(summary(grouse_winter_akde_all)$CI[,"est"], 3),
+                 round(summary(grouse_winter_akde_all,unit=F)$CI[,"est"], 3),
                  "             CI=[",
-                 round(summary(grouse_winter_akde_all)$CI[,"low"], 3),
+                 round(summary(grouse_winter_akde_all,unit=F)$CI[,"low"], 3),
                  ",",
-                 round(summary(grouse_winter_akde_all)$CI[,"high"], 3),
+                 round(summary(grouse_winter_akde_all,unit=F)$CI[,"high"], 3),
                  "]"),
      cex.sub=1.2,col.sub="blue")
 
@@ -765,63 +877,6 @@ plot(grouse_winter_telemetry_all,UD=grouse_winter_akde_all,
 
 
 
-#' # Minimal example of rsf.fit
-#********************************************************************
-
-#' Create named list of rasters
-# raster::readAll(slope_3V_9) # to save the raster (not Spatraster) in the RAM and save time 
-be <- list("slope1" = slope_3V_9)
-
-#' The integrator = "Riemann" option is still experimental, we use it here because it is much faster
-grouse_winter_rsf_riemann<-list()
-for (i in 1: length(grouse_winter_telemetry))
-{
-  grouse_winter_rsf_riemann[[i]]<-rsf.fit(grouse_winter_telemetry[[i]], grouse_winter_akde[[i]], R = be, integrator = "Riemann")
-}
-
-# R = must be a list of rasters to fit Poisson regression coefficients to (under a log link)
-
-grouse_winter_rsf_riemann_summary<-lapply(grouse_winter_rsf_riemann,summary)
-
-
-#' Range distribution (includes the ranging behaviour) (étendue de la distribution)
-agde_grouse_winter<-list()
-for (i in 1: length(grouse_winter_telemetry))
-{
-  agde_grouse_winter[[i]]<-agde(CTMM = grouse_winter_rsf_riemann[[i]],be)
-}
-
-
-windows()
-par(mfrow=c(1,5))
-for ( i in (1:length(grouse_winter_telemetry)))
-{
-  plot(agde_grouse_winter[[i]],main=vect_nicknames[[i]])
-}
-
-
-
-mean_rsf<-ctmm:mean(grouse_winter_rsf_riemann)
-mean_akde<-ctmm:mean(grouse_winter_akde)
-
-#********************************************************************
-
-#rsf with more raster than the slope
-
-#' Create named list of rasters
-be2 <- list("slope1" = slope_3V_9,"high_vegetation"=raster_high_vege_classif_9m_9)
-
-#' The integrator = "Riemann" option is still experimental, we use it here because it is much faster
-grouse_winter_rsf_riemann2<-list()
-for (i in 1: length(grouse_winter_telemetry))
-{
-  grouse_winter_rsf_riemann2[[i]]<-rsf.fit(grouse_winter_telemetry[[i]], grouse_winter_akde[[i]], R = be2, integrator = "Riemann")
-}
-
-# R = must be a list of rasters to fit Poisson regression coefficients to (under a log link)
-
-grouse_winter_rsf_riemann2_summary<-lapply(grouse_winter_rsf_riemann2,summary)
-
 
 
 
@@ -833,26 +888,3 @@ grouse_winter_rsf_riemann2_summary<-lapply(grouse_winter_rsf_riemann2,summary)
 
 ############### brouillon area
 
-COL<-lapply(grouse_winter_akde,color,by='individual')
-
-COL <- rainbow(length(grouse_winter_akde))
-  
-COL<-color(vect_nicknames,by="vect_nicknames")
-
-COL <- color(grouse_winter_akde[[1]],by='individual')
-color(grouse_winter_akde[[2]],by='individual')
-col[1]
-
-windows()
-plot(grouse_winter_akde[[1]],
-     units=F,col.grid=NA,bty="n",col.level="green") 
-
-col.DF=array("green",length(grouse_winter_telemetry))
-
-
-
-color_dt$colour[color_dt$ani_name=="Alpha"]
-grouse_winter_akde[[1]]@info$identity
-
-
-color_dt$colour[color_dt$ani_name==grouse_winter_akde[[1]]@info$identity]

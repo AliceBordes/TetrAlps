@@ -33,12 +33,15 @@ pre_telemetry<-function(dt)
       #separate geometry in x and y coordinates
       #col_name <- deparse(substitute(names(dt)[i]))
        #     dt <- dt%>% mutate("utm.easting"=st_coordinates(st_cast(dt[["geometry"]],"POINT"))[,"X"],"utm.northing"=st_coordinates(st_cast(dt[["geometry"]],"POINT"))[,"Y"])
+           
+           
+           
            dt$X_GPS_lambert93 <- st_coordinates(st_cast(dt[["geometry"]],"POINT"))[,"X"]
            dt$Y_GPS_lambert93 = st_coordinates(st_cast(dt[["geometry"]],"POINT"))[,"Y"]
-        dt$WGS84 <- st_transform(dt$geometry,crs=4326)
+           dt$WGS84 <- st_transform(dt$geometry,crs=4326)
            dt$location.long <- st_coordinates(st_cast(dt[["WGS84"]],"POINT"))[,"X"]
            dt$location.lat =st_coordinates(st_cast(dt[["WGS84"]],"POINT"))[,"Y"]
-      
+
     }
     
     if(names(dt)[i]=="temperature"){
