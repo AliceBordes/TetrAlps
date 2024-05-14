@@ -13,7 +13,7 @@
 
 ######################################################################
 
-pre_telemetry<-function(dt)
+pre_telemetry<-function(dt,coordsyst="WGS84")
 {
   
   for(i in 1:ncol(dt)){
@@ -37,10 +37,22 @@ pre_telemetry<-function(dt)
            
            
            dt$X_GPS_lambert93 <- st_coordinates(st_cast(dt[["geometry"]],"POINT"))[,"X"]
-           dt$Y_GPS_lambert93 = st_coordinates(st_cast(dt[["geometry"]],"POINT"))[,"Y"]
+           dt$Y_GPS_lambert93 <- st_coordinates(st_cast(dt[["geometry"]],"POINT"))[,"Y"]
            dt$WGS84 <- st_transform(dt$geometry,crs=4326)
-           dt$location.long <- st_coordinates(st_cast(dt[["WGS84"]],"POINT"))[,"X"]
-           dt$location.lat =st_coordinates(st_cast(dt[["WGS84"]],"POINT"))[,"Y"]
+           
+           if(coordsyst=="WGS84")
+            {
+              dt$location.long <- st_coordinates(st_cast(dt[["WGS84"]],"POINT"))[,"X"]
+              dt$location.lat <- st_coordinates(st_cast(dt[["WGS84"]],"POINT"))[,"Y"]
+            }
+           
+           if(coordsyst=="Lambert93")
+           {
+             dt$location.long <- dt$X_GPS_lambert93
+             dt$location.lat <- dt$Y_GPS_lambert93
+           }
+  
+
 
     }
     

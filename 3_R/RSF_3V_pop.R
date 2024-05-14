@@ -888,3 +888,49 @@ plot(grouse_winter_telemetry_all,UD=grouse_winter_akde_all,
 
 ############### brouillon area
 
+par(oma = c(1,1,1,1))
+plot(mnt_9,ext=e,col=c("#CCFFCC","#FFFFCC" ,"#FFCC99","#FF9966","#FF6600"),
+     main="title_graph",
+     xlab="Longitude",
+     ylab="Latitude",
+     cex.main=2,
+     cex.lab = 1.5,
+     plg = list(title = "DEM (m)",title.cex = 1.5,cex=1.2))
+plot(borders_3V_vect,ext=e,add=TRUE,border="black",lwd=2)
+
+
+for (i in 1:length(grouse_winter_telemetry_hiver_malefemelle))
+{
+  plot(grouse_winter_telemetry_hiver_malefemelle[[i]],UD=grouse_winter_akde_saved_hiver_malefemelle[[i]],
+       units=F,xlim=c(e[1],e[2]),ylim=c(e[3],e[4]),add=TRUE,col.grid=NA,bty="n",col.UD="green")
+  
+  #col.grid=NA --> to removed the white grid in background
+  # plot(grouse_winter_akde[[i]],units=F,xlim=c(e[1],e[2]),ylim=c(e[3],e[4]),add=TRUE,col.grid=NA,bty="n") #col.grid=NA --> to removed the white grid in background
+}
+
+plot(grouse_winter_telemetry[[1]],UD=grouse_winter_akde_saved_hiver_malefemelle[[1]])
+
+plot(grouse_winter_telemetry[[1]])
+plot(grouse_winter_akde_saved_hiver_malefemelle[[1]])
+grouse_winter_telemetry[[1]]@info$projection<-"+proj=longlat +datum=WGS84"
+
+View(grouse_winter_telemetry_hiver_malefemelle[[1]])
+View(grouse_winter_akde_saved_hiver_malefemelle[[1]])
+
+grouse_winter_telemetry_hiver_malefemelle[[1]]$x<-grouse_winter_telemetry_hiver_malefemelle[[1]]$longitude
+grouse_winter_telemetry_hiver_malefemelle[[1]]$y<-grouse_winter_telemetry_hiver_malefemelle[[1]]$latitude
+
+View(grouse_winter_telemetry_automne_malefemelle[[1]])
+
+
+load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/old/best_model_saved_hiver_femelle.RData")
+assign("best_model_saved_hiver_femelle",best_model)
+load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/old/grouse_winter_akde_saved_hiver_femelle.RData")
+assign("grouse_winter_akde_saved_hiver_femelle",grouse_winter_akde)
+load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/old/grouse_winter_telemetry_hiver_femelle.RData")
+assign("grouse_winter_telemetry_hiver_femelle",grouse_winter_telemetry)
+
+View(grouse_winter_telemetry_hiver_femelle[[1]])
+View(grouse_winter_akde_saved_hiver_femelle[[1]])
+
+plot(grouse_winter_telemetry_hiver_femelle[[1]],UD=grouse_winter_akde_saved_hiver_femelle[[1]])
