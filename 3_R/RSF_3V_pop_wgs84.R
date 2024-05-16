@@ -1160,3 +1160,80 @@ plot(grouse_winter_telemetry[[3]][[2]],UD=grouse_winter_akde[[3]][[2]])
   
   
   
+  
+  
+  
+  
+  
+  
+  
+#######################brouillon area
+  
+  color_birds_hiver<-read.table("C:/Users/albordes/Documents/PhD/TetrAlps/5_OUTPUTS/RSF/home_range_akde/mean_size_HR_season/color_birds_hiver.txt", sep = "", header = TRUE) # Color dataframe from plot_mean_area_HR("hiver") to associate a specific color with each home range and capture location for a given bird.
+  
+  lek_sites_lambert
+  
+  par(oma = c(1,1,1,1))
+  plot(borders_3V_vect,ext=e,border="black",lwd=2,
+       main="Winter home-ranges at 95% for all resident black grouse\n in the Trois Vallées ski resort",
+       xlab="Longitude",
+       ylab="Latitude",
+       cex.main=2,
+       cex.lab = 1.5,
+       plg = list(title = "DEM (m)",title.cex = 1.5,cex=1.2))
+  
+  plot(grouse_winter_akde_saved_hiver_malefemelle[[1]],
+       units=F,xlim=c(e[1],e[2]),ylim=c(e[3],e[4]),col.grid=NA,bty="n",col.UD="blue",
+       main=paste("bird:",grouse_winter_akde_saved_hiver_malefemelle[[1]]@info$identity),cex.main=1.2,col.sub="blue",add=T) 
+  
+  points(color_birds_hiver$x_capture_lambert[color_birds_hiver$ani_nom==grouse_winter_akde_saved_hiver_malefemelle[[1]]@info$identity],color_birds_hiver$y_capture_lambert[color_birds_hiver$ani_nom==grouse_winter_akde_saved_hiver_malefemelle[[1]]@info$identity],col="black",cex=1,type="p",pch=20)
+  plot(borders_3V_vect,ext=e,border="black",lwd=2,add=TRUE)
+  
+  
+  # transform UD object in a raster
+  r_akde<-ctmm::raster(grouse_winter_akde_saved_hiver_malefemelle[[1]])
+  # display it 
+  plot(r_akde)
+  
+  plot(grouse_winter_akde_saved_hiver_malefemelle[[2]], level.UD=c(0.95))
+
+  
+  #extract the polygon shape of the akde (https://groups.google.com/g/ctmm-user/c/wtBXI4P7-7k)
+  poly_95<-SpatialPolygonsDataFrame.UD(grouse_winter_akde_saved_hiver_malefemelle[[22]],level.UD=0.95,level=0.95)
+  
+  #subset the CI's and extract shape of middle contour
+  poly_95_2 <- subset(poly_95, name == paste(grouse_winter_akde_saved_hiver_malefemelle[[22]]@info$identity, "95% est"))
+  # extract polygon coordinates
+  poly_95_3<-(poly_95_2@polygons[[paste(grouse_winter_akde_saved_hiver_malefemelle[[22]]@info$identity, "95% est")]])
+  
+  plot(poly_95_2)
+  crs(poly_95_2)
+  
+  
+  # nb of polygons
+  length(poly_95_3@Polygons)
+  # coords of each polygon
+  poly_95_3@Polygons[[1]]@coords
+  poly_95_3@Polygons[[2]]@coords
+  
+  
+  poly_95_4<-st_polygon(list(cbind(poly_95_3@Polygons[[1]]@coords[,1],poly_95_3@Polygons[[1]]@coords[,2])))
+  poly_95_4<-st_polygon(list(cbind(poly_95_3@Polygons[[2]]@coords[,1],poly_95_3@Polygons[[2]]@coords[,2])))
+  
+  poly_95_4_1<-st_polygon(list(poly_95_3@Polygons[[1]]@coords))
+  poly_95_4_2<-st_polygon(list(poly_95_3@Polygons[[2]]@coords))
+  
+  multi<-st_multipolygon(list(list(poly_95_3@Polygons[[1]]@coords),list(poly_95_3@Polygons[[2]]@coords)))
+  
+  
+  plot(multi)
+  # sf_centroid : For [MULTI]POLYGONs, the centroid is computed in terms of area.
+  plot(st_centroid(multi),add=T,col="red") # VS st_centroid(poly_95_4_2) is a bit different
+  plot(st_centroid(poly_95_4_2),add=T,col="green") 
+  plot(synth_bg_3V$geometry_lambert[synth_bg_3V$ani_nom==grouse_winter_akde_saved_hiver_malefemelle[[22]]@info$identity],add=T,col="blue")
+  
+  crs(st_centroid(multi))<-"+init=epsg:2154"
+  st_distance(st_centroid(multi),synth_bg_3V$geometry_lambert[synth_bg_3V$ani_nom==grouse_winter_akde_saved_hiver_malefemelle[[22]]@info$identity])
+
+
+  
