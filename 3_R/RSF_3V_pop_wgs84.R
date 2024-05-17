@@ -1197,7 +1197,6 @@ plot(grouse_winter_telemetry[[3]][[2]],UD=grouse_winter_akde[[3]][[2]])
   
   plot(grouse_winter_akde_saved_hiver_malefemelle[[2]], level.UD=c(0.95))
 
-  
   #extract the polygon shape of the akde (https://groups.google.com/g/ctmm-user/c/wtBXI4P7-7k)
   poly_95<-SpatialPolygonsDataFrame.UD(grouse_winter_akde_saved_hiver_malefemelle[[22]],level.UD=0.95,level=0.95)
   
@@ -1210,30 +1209,166 @@ plot(grouse_winter_telemetry[[3]][[2]],UD=grouse_winter_akde[[3]][[2]])
   crs(poly_95_2)
   
   
-  # nb of polygons
-  length(poly_95_3@Polygons)
-  # coords of each polygon
-  poly_95_3@Polygons[[1]]@coords
-  poly_95_3@Polygons[[2]]@coords
-  
-  
-  poly_95_4<-st_polygon(list(cbind(poly_95_3@Polygons[[1]]@coords[,1],poly_95_3@Polygons[[1]]@coords[,2])))
-  poly_95_4<-st_polygon(list(cbind(poly_95_3@Polygons[[2]]@coords[,1],poly_95_3@Polygons[[2]]@coords[,2])))
-  
-  poly_95_4_1<-st_polygon(list(poly_95_3@Polygons[[1]]@coords))
-  poly_95_4_2<-st_polygon(list(poly_95_3@Polygons[[2]]@coords))
-  
+  # # nb of polygons
+  # length(poly_95_3@Polygons)
+  # # coords of each polygon
+  # poly_95_3@Polygons[[1]]@coords
+  # poly_95_3@Polygons[[2]]@coords
+  # 
+  # 
+  # poly_95_4<-st_polygon(list(cbind(poly_95_3@Polygons[[1]]@coords[,1],poly_95_3@Polygons[[1]]@coords[,2])))
+  # poly_95_4<-st_polygon(list(cbind(poly_95_3@Polygons[[2]]@coords[,1],poly_95_3@Polygons[[2]]@coords[,2])))
+  # 
+  # poly_95_4_1<-st_polygon(list(poly_95_3@Polygons[[1]]@coords))
+  # poly_95_4_2<-st_polygon(list(poly_95_3@Polygons[[2]]@coords))
+  # 
   multi<-st_multipolygon(list(list(poly_95_3@Polygons[[1]]@coords),list(poly_95_3@Polygons[[2]]@coords)))
+  #Convert multi to an sfc object (A simple feature geometry list-column) in order to make the polygon a geometry object with CRS:
+  multi_sfc <- st_sfc(multi)
+  st_crs(multi_sfc) <- st_crs(synth_bg_3V$geometry_lambert) # inform the crs of the polygon object
   
-  
+  # plot the polygon, the centroid and the capture point
   plot(multi)
   # sf_centroid : For [MULTI]POLYGONs, the centroid is computed in terms of area.
-  plot(st_centroid(multi),add=T,col="red") # VS st_centroid(poly_95_4_2) is a bit different
+  plot(st_centroid(multi_sfc),add=T,col="red") # VS st_centroid(poly_95_4_2) is a bit different
   plot(st_centroid(poly_95_4_2),add=T,col="green") 
   plot(synth_bg_3V$geometry_lambert[synth_bg_3V$ani_nom==grouse_winter_akde_saved_hiver_malefemelle[[22]]@info$identity],add=T,col="blue")
   
-  crs(st_centroid(multi))<-"+init=epsg:2154"
-  st_distance(st_centroid(multi),synth_bg_3V$geometry_lambert[synth_bg_3V$ani_nom==grouse_winter_akde_saved_hiver_malefemelle[[22]]@info$identity])
+  # calculate the distance home-range centroid to capture site
+  st_distance(st_centroid(multi_sfc),synth_bg_3V$geometry_lambert[synth_bg_3V$ani_nom==grouse_winter_akde_saved_hiver_malefemelle[[22]]@info$identity])
+  
+  
+  
+  
+  coords <- st_coordinates(multi_sfc)
+  
+  dist<-c()
+  for (i in 1:dim(coords)[1]){   #dim(coords)[1]
+    
+    point_sfc <- st_sfc(st_point(coords[i,1:2]), crs = 2154)
+    
+    dist[i]<-st_distance(point_sfc,synth_bg_3V$geometry_lambert[synth_bg_3V$ani_nom==grouse_winter_akde_saved_hiver_malefemelle[[22]]@info$identity])
+    
+  }
+  
+  print(min(as.vector(dist)))
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  ################oprational code
+  
+  dist_from_centroid<-c()
+  dist_from_clothest<-c()
+  for(i in 1:6)
+  {
+    #extract the polygon shape of the akde (https://groups.google.com/g/ctmm-user/c/wtBXI4P7-7k)
+    poly_95<-SpatialPolygonsDataFrame.UD(grouse_winter_akde_saved_hiver_malefemelle[[i]],level.UD=0.95,level=0.95)
+    
+    #subset the CI's and extract shape of middle contour
+    poly_95_2 <- subset(poly_95, name == paste(grouse_winter_akde_saved_hiver_malefemelle[[i]]@info$identity, "95% est"))
+    # extract polygon coordinates
+    poly_95_3<-(poly_95_2@polygons[[paste(grouse_winter_akde_saved_hiver_malefemelle[[i]]@info$identity, "95% est")]])
+    
+    
+    
+    polygon_coords<-list()
+    # Loop through each polygon
+    for (j in 1:length(poly_95_3@Polygons)) {
+      # Extract polygon coordinates
+      polygon_coords[[j]] <- poly_95_3@Polygons[[j]]@coords
+
+    }
 
 
+    # Create the MULTIPOLYGON geometry using the list of coordinates
+    multi <- st_multipolygon(list(polygon_coords))
+
+    #Convert multi to an sfc object (A simple feature geometry list-column) in order to make the polygon a geometry object with CRS:
+    multi_sfc <- st_sfc(multi)
+    st_crs(multi_sfc) <- st_crs(synth_bg_3V$geometry_lambert) # inform the crs of the polygon object
+
+    # plot the polygon, the centroid and the capture point
+    # plot(multi)
+    # # sf_centroid : For [MULTI]POLYGONs, the centroid is computed in terms of area.
+    # plot(st_centroid(multi_sfc),add=T,col="red") 
+    # plot(synth_bg_3V$geometry_lambert[synth_bg_3V$ani_nom==grouse_winter_akde_saved_hiver_malefemelle[[i]]@info$identity],add=T,col="blue")
+
+    # calculate the distance home-range centroid to capture site
+    dist_from_centroid[i]<-st_distance(st_centroid(multi_sfc),synth_bg_3V$geometry_lambert[synth_bg_3V$ani_nom==grouse_winter_akde_saved_hiver_malefemelle[[i]]@info$identity])
+
+
+
+
+    coords <- st_coordinates(multi_sfc)
+
+    dist_from_clothest<-c()
+    for (k in 1:dim(coords)[1]){   #dim(coords)[1]
+
+      point_sfc <- st_sfc(st_point(coords[k,1:2]), crs = 2154)
+
+      dist_from_clothest[k]<-st_distance(point_sfc,synth_bg_3V$geometry_lambert[synth_bg_3V$ani_nom==grouse_winter_akde_saved_hiver_malefemelle[[i]]@info$identity])
+
+    }
+  
+    dist_from_clothest[i]<-min(as.vector(dist_from_clothest))
+    
+    
+    
+    
+    
+    # GRAPH
+    # Home range VS capture sites 
+    # par(oma = c(1,1,1,1))
+    plot(borders_3V_vect,ext=e,border="black",lwd=2,
+         main="Winter home-ranges at 95% for all resident black grouse\n in the Trois Vallées ski resort",
+         xlab="Longitude",
+         ylab="Latitude",
+         cex.main=2,
+         cex.lab = 1.5,
+         plg = list(title = "DEM (m)",title.cex = 1.5,cex=1.2))
+    
+    if (i %% 6 == 1 || i == length(grouse_winter_akde_saved_hiver_malefemelle)) {
+      
+      png(filename = paste0(base, "/5_OUTPUTS/RSF/home_range_akde/Lambert93/distance_to_capture_site/HR_distance_to_capture_site_",season,"_", i, "_", i + 5, ".png"), units="in", width=15, height = 10, res =300) # Naming files correctly
+      
+      par(mfcol = c(2,3))
+      
+      plot(grouse_winter_akde_saved_hiver_malefemelle[[i]],
+           units=F,xlim=c(e[1],e[2]),ylim=c(e[3],e[4]),col.grid=NA,bty="n",col.UD="blue",
+           main=paste("bird:",grouse_winter_akde_saved_hiver_malefemelle[[i]]@info$identity),cex.main=1.2,col.sub="blue",
+           sub=paste("distance from centroid =",dist_from_centroid[i],"\ndistance from clothest =",min(as.vector(dist_from_clothest[i]))))
+      
+      points(color_birds_hiver$x_capture_lambert[color_birds_hiver$ani_nom==grouse_winter_akde_saved_hiver_malefemelle[[1]]@info$identity],color_birds_hiver$y_capture_lambert[color_birds_hiver$ani_nom==grouse_winter_akde_saved_hiver_malefemelle[[1]]@info$identity],col="black",cex=1,type="p",pch=20)
+      
+      plot(borders_3V_vect,ext=e,border="black",lwd=2,add=TRUE)
+      
+      if (i %% 6 == 0 || i == length(grouse_winter_akde_saved_hiver_malefemelle)) {
+        dev.off() # Close the device after every 5 plots or at the end
+      }
+    }
+    
+    
+    # print(paste("For element", i))
+    # print(paste("distance from centroid =",dist_from_centroid[i]))
+    # print(paste("distance from clothest =",min(as.vector(dist_from_clothest[i]))))
+
+
+  }
+  
+  
+  
+  
+
+  
+  
+  
+  
   
