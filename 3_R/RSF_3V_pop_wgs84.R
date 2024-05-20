@@ -875,13 +875,7 @@ ggplot()+
   HR_dist_capture(season="ete",sex="malefemelle",writeplot = TRUE)
   #********************************************************************
   
-  
-  
-  
-  
-  
-  dev.off()
-  
+
   
   
 
