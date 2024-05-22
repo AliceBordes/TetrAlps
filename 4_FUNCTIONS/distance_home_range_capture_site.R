@@ -67,7 +67,7 @@ color_birds_hiver <- read.table("C:/Users/albordes/Documents/PhD/TetrAlps/5_OUTP
 HR_dist_from_centroid_list <- list()
 HR_dist_from_clothest_list <- list()
 
-for (i in seq_along(data_akde)) {
+for (i in seq_along(data_akde)) { 
   # Extract the polygon shape of the akde
   poly_95 <- SpatialPolygonsDataFrame.UD(data_akde[[i]], level.UD = 0.95, level = 0.95)
   
@@ -84,6 +84,7 @@ for (i in seq_along(data_akde)) {
   # Create the MULTIPOLYGON geometry to calculate the centroid
   multi <- st_multipolygon(list(polygon_coords))
   multi_sfc <- st_sfc(multi)
+  multi_coords <- st_coordinates(multi_sfc)
   
   # Ensure the CRS is consistent
   st_crs(multi_sfc) <- st_crs(synth_bg_3V$geometry_lambert)
@@ -123,9 +124,9 @@ for (i in seq_along(data_akde)) {
       HR_dist_from_clothest[c] <- 0
     } else {
       # Calculate the distance from each polygon point to the capture site
-      dist_from_clothest <- numeric(nrow(coords))
-      for (k in 1:nrow(coords)) {
-        point_sfc <- st_sfc(st_point(coords[k, 1:2]), crs = st_crs(multi_sfc))
+      dist_from_clothest <- numeric(nrow(multi_coords))
+      for (k in 1:nrow(multi_coords)) {
+        point_sfc <- st_sfc(st_point(multi_coords[k, 1:2]), crs = st_crs(multi_sfc))
         dist_from_clothest[k] <- as.numeric(st_distance(point_sfc, capture_site))
       }
       HR_dist_from_clothest[c] <- min(dist_from_clothest, na.rm = TRUE)
