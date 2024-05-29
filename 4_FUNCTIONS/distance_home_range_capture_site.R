@@ -12,7 +12,7 @@
 
 ######################################################################
 
-HR_dist_capture<-function(season,sex,color=FALSE,proj="+init=epsg:2154",writeplot=FALSE)
+HR_dist_capture<-function(background=FALSE,season,sex,color=FALSE,proj="+init=epsg:2154",writeplot=FALSE)
 {
   #data
   if(proj=="+proj=longlat +datum=WGS84")
@@ -57,13 +57,33 @@ HR_dist_capture<-function(season,sex,color=FALSE,proj="+init=epsg:2154",writeplo
     season_col=color_birds$colour[color_birds$ani_nom==data_akde[[i]]@info$identity]
   }
 
-
+  
+  #background options
+  mnt_9_graph<-project(mnt_9,y=proj)
+  borders_3V_vect_graph<-project(borders_3V_vect,y=proj)
+  strava_graph<-project(strava_lambert,y=proj)
+  
+  lek_locations_vect_graph <- project(lek_locations_vect,y=proj)
+  # transform lek_locations_vect in spatial object with metadata
+  lek_sites_graph<-as_sf(lek_locations_vect_graph)
+  # to apply a buffer around the lek sites
+  lek_sites_graph$larger_lek<-st_buffer(lek_sites_graph$geometry, 100) # 100m
+  
+  #extent
+  e_lambert93<-c(min(e1[1],e2[1])-1000,max(e1[2],e2[2])+1000,min(e1[3],e2[3])-1000,max(e1[4],e2[4])+1000)
+  e_poly_lambert93<-(as.polygons(ext(e_lambert93), crs=crs(data_bg_3V)))
+  # change the coordinate system of the SpatVector from (9..,9..,6..,6..) to (6..,6..,45..,45..)
+  e_poly_lambert93<-project(e_poly_lambert93, y=proj)
+  e<- as.numeric(as.vector(ext(e_poly_lambert93)))
+  
+  
   #########################
 
   #function
 
 color_birds_hiver <- read.table("C:/Users/albordes/Documents/PhD/TetrAlps/5_OUTPUTS/RSF/home_range_akde/mean_size_HR_season/color_birds_hiver.txt", sep = "", header = TRUE)
 
+ani_name_list<-c()
 HR_dist_from_centroid_list <- list()
 HR_dist_from_clothest_list <- list()
 
@@ -134,6 +154,7 @@ for (i in seq_along(data_akde)) {
   }
   
   # Store the distances in lists
+  ani_name_list[i] <- data_akde[[i]]@info$identity
   HR_dist_from_centroid_list[[i]] <- HR_dist_from_centroid
   HR_dist_from_clothest_list[[i]] <- HR_dist_from_clothest
   
@@ -160,14 +181,50 @@ if(writeplot==TRUE)
      par(mfrow = c(2,3),mgp=c(2,1,0),mar = c(3, 3, 2, 1))
      # par(mar = c(7, 5, 4, 5))  # oma = Outer margins # mar = Inner margins (bottom, left, top, right)
    }
-      
-      plot(data_akde[[i]], units = FALSE, xlim = c(e[1], e[2]), ylim = c(e[3], e[4]), col.grid = NA, bty = "n", col.UD = season_col, col.level = season_col, level = NA, cex.lab = 1.2, cex.main = 1.5)
+ 
+  
+  if(background=="mnt")
+  {
+    plot(mnt_9_graph,ext=e,col=c("#CCFFCC","#FFFFCC" ,"#FFCC99","#FF9966","#FF6600"),
+         xlab="Longitude",
+         ylab="Latitude",
+         cex.main=2,
+         cex.lab = 1.5,
+         plg = list(title = "DEM (m)",title.cex = 1.5,cex=1.2))
+    plot(borders_3V_vect_graph,ext=e,add=TRUE,border="black",lwd=2)
+    
+  }
+  
+  if(background==FALSE)
+  {
+    plot(borders_3V_vect_graph,ext=e,border="black",lwd=2,
+         xlab="Longitude",
+         ylab="Latitude",
+         cex.main=2,
+         cex.lab = 1.5,
+         plg = list(title = "DEM (m)",title.cex = 1.5,cex=1.2))
+  }
+  
+  if(background=="strava")
+  {
+    plot(strava_graph,ext=e,
+         # col=colorRampPalette(c("#333333","#FF6633","#CCCCCC11"),alpha=TRUE)(25),
+         col=colorRampPalette(c("#CCCCCC11","#FF6600","#FF3333"),alpha=TRUE)(25),
+         xlab="Longitude",
+         ylab="Latitude",
+         cex.main=2,
+         cex.lab = 1.5,
+         plg = list(title = "Strava users \ntrafic \n(intensity)",title.cex = 1.5,cex=1.2))
+    plot(borders_3V_vect_graph,ext=e,add=TRUE,border="black",lwd=2)
+  }
+  
+      plot(data_akde[[i]],add=TRUE, units = FALSE, xlim = c(e[1], e[2]), ylim = c(e[3], e[4]), col.grid = NA, bty = "n", col.UD = season_col, col.level = season_col, level = NA, cex.lab = 1.2, cex.main = 1.5)
       title(paste0("bird: ",data_akde[[i]]@info$identity," (",sexe_ani,")"),line=0.5,cex.main=2,col.main=sex_color)
       plot(borders_3V_vect, ext = e, border = "black", lwd = 2, add = TRUE)
       plot(capture_sites, col = "black", cex = 1, type = "p", pch = 20, add = TRUE)
       
       for (c in 1:length(capture_sites)) {
-        mtext(side = 3, line = -0.8 - (c+(c/4)), adj = 0.1, cex = 1, paste("\nCapture site",c,"   Distance from centroid =", round(HR_dist_from_centroid[c], 0), "m ;", "from clothest =", round(HR_dist_from_clothest[c], 0), "m"))
+        mtext(side = 3, line = -0.5 - (c+(c/4)), adj = 0.1, cex = 1, paste("\nCapture site",c," Distance from centroid =", round(HR_dist_from_centroid[c], 0), "m ;", "from clothest =", round(HR_dist_from_clothest[c], 0), "m"))
       }
     
  if (i %% 6 == 0 || i == length(data_akde))
@@ -179,21 +236,30 @@ if(writeplot==TRUE)
 
 } # close for (i in length(data_akde))
 
+
+if (dev.cur() != 1) {dev.off()} # Ensure to close any open graphic devices
+
 # Calculate and print the mean distances of all capture sites (when the animal has been capture several times) for each bird 
 mean_dist_from_centroid <- sapply(HR_dist_from_centroid_list, function(x) mean(x, na.rm = TRUE))
 mean_dist_from_clothest <- sapply(HR_dist_from_clothest_list, function(x) mean(x, na.rm = TRUE))
 
+dt_stats<-data.frame("bird_name"=ani_name_list,"centroid"=mean_dist_from_centroid,"clothest"=mean_dist_from_clothest)
+dt_stats<-left_join(dt_stats,as.data.frame(synth_bg_3V) %>% select(ani_nom,sexe),by=c("bird_name"="ani_nom"))
 
+dt_stats_indiv<-dt_stats%>%group_by(bird_name,sexe)%>%summarise("centroid"=mean(centroid),"clothest"=mean(clothest))
+print(dt_stats_indiv)
+# print(dt_stats%>%group_by(sexe)%>%summarise("mean_centroid"=mean(centroid),"sd_centroid"=sd(centroid),"mean_clothest"=mean(clothest),"sd_clothest"=sd(clothest)))
+dt_stats_sex<-dt_stats_indiv%>%group_by(sexe)%>%summarise("mean_centroid"=mean(centroid),"sd_centroid"=sd(centroid),"mean_clothest"=mean(clothest),"sd_clothest"=sd(clothest))
 
-if (dev.cur() != 1) {dev.off()} # Ensure to close any open graphic devices
+dt_all_bind<-data.frame("sexe"="all","mean_centroid"=mean(mean_dist_from_centroid, na.rm = TRUE),"sd_centroid"=sd(mean_dist_from_centroid, na.rm = TRUE),"mean_clothest"=mean(mean_dist_from_clothest, na.rm = TRUE),"sd_clothest"=sd(mean_dist_from_clothest, na.rm = TRUE))
 
+dt_stats_sex_all<-rbind(as.data.frame(dt_stats_sex),dt_all_bind)
+dt_stats_sex_all[,2:ncol(dt_stats_sex_all)]<-round(dt_stats_sex_all[,2:ncol(dt_stats_sex_all)],0)
 
-# Calculate and print the mean distances inside the 3V population
-  print(paste("Descriptive statistics in",sex,"populations in",season_text,"season"))
-  print(paste("Average distance from capture site to centroid of home range:",round(mean(mean_dist_from_centroid, na.rm = TRUE), 0),"m"))
-  print(paste("Related sd:",round(sd(mean_dist_from_centroid, na.rm = TRUE),0),"m"))
-  print(paste("Average distance from capture site to closest point of home range:",round(mean(mean_dist_from_clothest, na.rm = TRUE), 0),"m"))
-  print(paste("Related sd:",round(sd(mean_dist_from_clothest, na.rm = TRUE),0),"m"))
+  # print(paste("Average distance from capture site to centroid of home range:",round(mean(mean_dist_from_centroid, na.rm = TRUE), 0),"m"))
+  # print(paste("Related sd:",round(sd(mean_dist_from_centroid, na.rm = TRUE),0),"m"))
+  # print(paste("Average distance from capture site to closest point of home range:",round(mean(mean_dist_from_clothest, na.rm = TRUE), 0),"m"))
+  # print(paste("Related sd:",round(sd(mean_dist_from_clothest, na.rm = TRUE),0),"m"))
 
 # print(round(mean(mean_dist_from_centroid, na.rm = TRUE), 0))
 # print(round(mean(mean_dist_from_clothest, na.rm = TRUE), 0))
@@ -202,6 +268,10 @@ if (dev.cur() != 1) {dev.off()} # Ensure to close any open graphic devices
 # print(HR_dist_from_centroid_list)
 # print(HR_dist_from_clothest_list)
 
-  return()
+######### Dislayed results : 
+print(paste("Descriptive statistics in",sex,"populations in",season_text,"season",
+            "Average distance (m) from capture site to centroid/to closest point of home range"))
+
+  return(dt_stats_sex_all)
 }
 

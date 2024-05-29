@@ -67,6 +67,7 @@ source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/multiple_dt_indiv.R
 source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/mean_size_area.R")
 source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/visu_home_range.R")
 source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/distance_home_range_capture_site.R")
+source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/SVF_indiv.R")
 #********************************************************************
 
 ### Loading heavy saved models ----
@@ -304,7 +305,11 @@ e_poly<-(as.polygons(ext(e), crs=crs(data_bg_3V)))
   }
   
   # Removing the bird with less than 50 GPS positions data after removing the first day of movements
-  grouse_winter_pretelemetryetry<- grouse_winter_pretelemetry[sapply(grouse_winter_pretelemetry, function(x) dim(x)[1]) > 50]
+  # The estimation of the temporal autocorrelation between points, using plot(variogram(SVF_object),CTMM=ctmm_object) in ctmm, cannot be estimated with Escartefigue (53 locations) but with Dameur (83 locations it is ok)
+  # often the programmation is 1 loc/h between 4:00 am and 8:00 pm UTC --> so at least 15 loc/day * 7 days = 105 loc ~ at least 100 loc are necessary to be able to do estimations
+  grouse_winter_pretelemetryetry<- grouse_winter_pretelemetry[sapply(grouse_winter_pretelemetry, function(x) dim(x)[1]) > 100]
+  
+
   
   
   for(i in 1:length(grouse_winter_pretelemetry))
@@ -536,14 +541,15 @@ e_poly<-(as.polygons(ext(e), crs=crs(data_bg_3V)))
 
 #' Create named list of rasters in the WGS84 format
 r_mnt_9_WGS84<-raster(mnt_9_WGS84)
-r_carto_habitats_3V_9_WGS84<-raster(carto_habitats_3V_9_WGS84)
+r_carto_habitats_3V_9_WGS84<-as.factor(raster(carto_habitats_3V_9_WGS84))
 raster_list <- list("mnt" = r_mnt_9_WGS84,"habitat"=r_carto_habitats_3V_9_WGS84)
-# raster_list <- list("carto_hab" = raster(carto_habitats_3V_9))
+raster_list <- list("mnt" = r_mnt_9_WGS84)
+raster_list <- list("habitat"=as.factor(r_carto_habitats_3V_9_WGS84))
 
 #pb : my raster is not in background so the function extract()[--> extracting values of the raster under my telemetry points] inside rsf.fit() can not work.
-plot(grouse_winter_telemetry[[1]],raster_list[[1]])
+plot(grouse_winter_telemetry_hiver_malefemelle_WGS84[[12]],raster_list[[1]])
 
-grouse_winter_rsf_riemann<-rsf.fit(grouse_winter_telemetry[[1]], grouse_winter_akde[[1]], R=raster_list,  integrator = "Riemann")
+grouse_winter_rsf_riemann<-rsf.fit(grouse_winter_telemetry_hiver_malefemelle_WGS84[[12]], grouse_winter_akde_saved_hiver_malefemelle_WGS84[[12]], R=raster_list,  integrator = "Riemann")
 summary(grouse_winter_rsf_riemann)
 
 grouse_winter_rsf_riemann<-rsf.fit(grouse_winter_telemetry[[1]], grouse_winter_akde[[1]], R=raster_list,  integrator = "Riemann")
@@ -566,6 +572,16 @@ for (i in 1: length(grouse_winter_telemetry_hiver_malefemelle))
 # R = must be a list of rasters to fit Poisson regression coefficients to (under a log link)
 
 grouse_winter_rsf_riemann_summary<-lapply(grouse_winter_rsf_riemann,summary)
+
+
+
+#### histogram mnt positions
+
+ggplot()+
+  geom_histogram(data=data_bg_3V_synth_fusion,aes(mnt_altitude),fill="red",alpha=0.4)+
+  xlab("Altitude (m) from DEM")+ #DEM = Digital Elevation Model 
+  ggtitle("Distribution of DEM values related to bird locations")
+
 
 
 #' Range distribution (includes the ranging behaviour) (étendue de la distribution)
@@ -768,66 +784,6 @@ ggplot()+
   
   #### 3.3_Home range vizualization on each bird of the Trois Vallées ski resort ----
   #********************************************************************
-  # Visualizing the SVF of the guess model and comparison of the 2 best fitted models on variogram
-  # and save
-  for (i in 1:length(grouse_winter_guess)) {
-    if (i %% 5 == 1) { # Start a new page for every 5 plots
-      png(filename = paste0(base, "/5_OUTPUTS/RSF/variograms/indiv_variogram", i, "_", i + 4, ".png"),height = 1000,width = 2400) # Naming files correctly
-      par(mfcol = c(2,5))
-    }
-    
-    plot(SVF, CTMM = grouse_winter_guess[[i]], col.CTMM = i, new = FALSE, fraction = 0.2, level = c(0.5, 0.95),
-         main = paste0(vect_nicknames[i], "\n", grouse_winter_guess_summary[[i]]$name),
-         sub = paste("\narea estimated =", round((grouse_winter_guess_summary[[i]]$CI[1, 2])/1000000, 3)," km^2"),
-         cex.sub = 1.2, font.sub = 2, cex.lab = 1.5, cex.main = 1.5)
-    
-    plot(SVF, CTMM = grouse_winter_guess[[i]], col.CTMM = i, new = FALSE, fraction = 0.0005, level = c(0.5, 0.95),
-         cex.sub = 2, cex.lab = 1.5)
-    
-    if (i %% 5 == 0 || i == length(grouse_winter_guess)) {
-      dev.off() # Close the device after every 5 plots or at the end
-    }
-  }
-  
-  
-  
-  # and save
-  
-  for (i in 1:length(grouse_winter_guess)) {
-    if (i %% 9 == 1) { # Start a new page for every 5 plots
-      jpeg(filename = paste0(base, "/5_OUTPUTS/RSF/home_range_akde/home_range_akde", i, "_", i + 8, ".png"), units="in", width=15, height = 10, res =300) # Naming files correctly
-      par(mfcol = c(3,3))
-    }
-    
-    plot(grouse_winter_telemetry[[i]],UD=grouse_winter_akde[[i]],main=vect_nicknames[[i]],
-         units=F,
-         sub = paste("\narea estimated =", 
-                     round((summary(grouse_winter_akde[[i]])$CI[,"est"])/1000000, 3)," km^2",
-                     "             CI=[",
-                     round((summary(grouse_winter_akde[[i]])$CI[,"low"])/1000000, 3),
-                     ",",
-                     round((summary(grouse_winter_akde[[i]])$CI[,"high"])/1000000, 3),
-                     "]"),
-         cex.sub=1.2,col.sub="blue")
-    
-    if (i %% 9 == 0 || i == length(grouse_winter_guess)) {
-      dev.off() # Close the device after every 5 plots or at the end
-    }
-  }
-  
-  
-  ci<-c()
-  for (i in 1:length(grouse_winter_akde))
-  {
-    # print(summary(grouse_winter_akde[[i]])$CI)
-    ci[[i]]<-(summary(grouse_winter_akde[[i]],unit=F)$CI[,"est"])/1000000
-  }
-  
-  round(mean(unlist(ci)),3)
-  
-
-  
-  
   
   # visualizing the home range density estimates against the position data of each bird of the Trois Vallées
   
@@ -873,9 +829,12 @@ ggplot()+
   HR_dist_capture(season="automne",sex="malefemelle",writeplot = TRUE)
   HR_dist_capture(season="printemps",sex="malefemelle",writeplot = TRUE)
   HR_dist_capture(season="ete",sex="malefemelle",writeplot = TRUE)
-  #********************************************************************
   
-
+  HR_dist_capture(season="hiver",sex="malefemelle",writeplot = FALSE)
+  HR_dist_capture(season="automne",sex="malefemelle",writeplot = FALSE)
+  HR_dist_capture(season="printemps",sex="malefemelle",writeplot = FALSE)
+  HR_dist_capture(season="ete",sex="malefemelle",writeplot = FALSE)
+  #********************************************************************
   
   
 
@@ -927,18 +886,37 @@ ggplot()+
   
   #### 4.2_Positions autocorrelation ----
   
-  par(mfrow=c(1,2))
-  # population variogram assuming homogenous sampling schedule (which is not the case)
-  SVF_0 <- lapply(grouse_winter_telemetry,variogram) # population variogram
-  SVF_0<- mean(SVF_0)
-  plot(SVF_0,fraction=0.005,level=c(0.5,0.95))
-  title("Population variogram\n(assuming homogenous sampling schedule)")
+  # Visualizing the SVF of the guess model and comparison of the 2 best fitted models on variogram
+  # and save
   
-  # population variogram considering the irregular sampling schedule
-  timelags <- c(1,2,4,8) %#% "hour" # the order has no importance
-  SVF <- lapply(grouse_winter_telemetry,variogram,dt=timelags) # population variogram considering the GPS were programmed to cycle between 1, 12, 24 hour sampling intervals
-  SVF<- mean(SVF)
-  plot(SVF,fraction=0.005,level=c(0.5,0.95),main="Population variogram \n(considering the irregular sampling schedule with the most common time intervals : 1h, 2h, 4h, 8h)")
+  # The variogram, or semivariogram, plots time lags on the x-axis for all pairs of observations
+  # against their semi-variance (half of the variance for the distance each observation pair) on the y-axis. (Animove 2022)
+
+  
+  # POPULATION VARIOGRAM
+  png(filename = paste0(base, "/5_OUTPUTS/RSF/variograms/population_variogram_timelags=",paste(timelags, collapse = "_"),".png"),height = 1000,width = 2400) # Naming files correctly
+    
+    par(mfrow=c(1,2))
+    # assuming homogenous sampling schedule (which is not the case)
+    SVF_0 <- lapply(grouse_winter_telemetry_hiver_malefemelle_WGS84,variogram) # population variogram
+    SVF_0<- mean(SVF_0)
+    plot(SVF_0,fraction=0.1,level=c(0.5,0.95))
+    title("Population variogram - winter\n(assuming homogenous sampling schedule)",cex.main=3,line = -2)
+    
+    # considering the irregular sampling schedule
+    timelags <- c(1,8)
+    timelags_sec <- timelags %#% "hour" # the order has no importance
+    SVF <- lapply(grouse_winter_telemetry_hiver_malefemelle_WGS84,variogram,dt=timelags_sec) # population variogram considering the GPS were programmed to cycle between 1, 12, 24 hour sampling intervals
+    SVF<- mean(SVF)
+    plot(SVF,fraction=0.1,level=c(0.5,0.95),main=paste0("Population variogram - winter\n(considering the irregular sampling schedule\n with the most common time intervals : ",paste(timelags, collapse = "h, "),"h)"),cex.main=3,line = -5)
+    
+  dev.off()
+  
+  
+  # INDIVIDUAL VARIOGRAM
+  source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/SVF_indiv.R")
+  SVF_indiv(season="hiver",timelags_vect=c(1,2,4,8),writeplot=FALSE,proj="+proj=longlat +datum=WGS84")
+  SVF_indiv(season="hiver",timelags_vect=c(1,8),writeplot=FALSE,proj="+proj=longlat +datum=WGS84")
   
   #************************************** not working anymore
   # #  HISTOGRAM of time between 2 locations 
@@ -1142,10 +1120,19 @@ plot(grouse_winter_telemetry[[3]][[2]],UD=grouse_winter_akde[[3]][[2]])
   
   
   
-##############################################################  
-####################### brouillon area #######################
-##############################################################
   
+  
+  
+  
+  
+  
+  
+  
+
+### Brouillon area ----
+  
+#*************************************************************
+
   bird=43
   color_birds_hiver<-read.table("C:/Users/albordes/Documents/PhD/TetrAlps/5_OUTPUTS/RSF/home_range_akde/mean_size_HR_season/color_birds_hiver.txt", sep = "", header = TRUE) # Color dataframe from plot_mean_area_HR("hiver") to associate a specific color with each home range and capture location for a given bird.
   
@@ -1381,7 +1368,49 @@ plot(grouse_winter_telemetry[[3]][[2]],UD=grouse_winter_akde[[3]][[2]])
   
   
   
+ ###########SVF 
+  
+  for (i in 1:length(grouse_winter_guess)) {
+    if (i %% 5 == 1) { # Start a new page for every 5 plots
+      png(filename = paste0(base, "/5_OUTPUTS/RSF/variograms/indiv_variogram", i, "_", i + 4, ".png"),height = 1000,width = 2400) # Naming files correctly
+      par(mfcol = c(2,5))
+    }
+    
+    plot(SVF, CTMM = grouse_winter_guess[[i]], col.CTMM = i, new = FALSE, fraction = 0.2, level = c(0.5, 0.95),
+         main = paste0(vect_nicknames[i], "\n", grouse_winter_guess_summary[[i]]$name),
+         sub = paste("\narea estimated =", round((grouse_winter_guess_summary[[i]]$CI[1, 2])/1000000, 3)," km^2"),
+         cex.sub = 1.2, font.sub = 2, cex.lab = 1.5, cex.main = 1.5)
+    
+    plot(SVF, CTMM = grouse_winter_guess[[i]], col.CTMM = i, new = FALSE, fraction = 0.0005, level = c(0.5, 0.95),
+         cex.sub = 2, cex.lab = 1.5)
+    
+    if (i %% 5 == 0 || i == length(grouse_winter_guess)) {
+      dev.off() # Close the device after every 5 plots or at the end
+    }
+  }
+  
+  
+  # population variogram considering the irregular sampling schedule
+  timelags <- c(1,2,4,8) %#% "hour" # the order has no importance
+  SVF_winter <- lapply(grouse_winter_telemetry_hiver_malefemelle_WGS84,variogram,dt=timelags) # population variogram considering the GPS were programmed to cycle between 1, 12, 24 hour sampling intervals
+  SVF_winter_mean<- mean(SVF_winter)
+  # plot(SVF_winter,fraction=0.005,level=c(0.5,0.95),main="Population variogram \n(considering the irregular sampling schedule with the most common time intervals : 1h, 2h, 4h, 8h)")
+  plot(SVF_winter_mean,fraction=0.005,level=c(0.5,0.95),main="Population variogram \n(considering the irregular sampling schedule with the most common time intervals : 1h, 2h, 4h, 8h)")
+  
+  
+  plot(SVF_winter[[1]], CTMM = grouse_winter_akde_saved_hiver_malefemelle_WGS84[[1]]@CTMM, col.CTMM = 1, new = FALSE, fraction = 0.2, level = c(0.5, 0.95),
+  main = paste0(grouse_winter_akde_saved_hiver_malefemelle_WGS84[[1]]@info$identity, "\n", summary(grouse_winter_akde_saved_hiver_malefemelle_WGS84[[1]]@CTMM)$name),
+  cex.lab = 1.5, cex.main = 1.5)
+  # position_independence_time = required time between two positions to consider them independent
+  mtext(side = 3, line = -1, adj = 0, cex = 1,font = 2, col="blue", paste(" Area estimated =", round((summary(grouse_winter_akde_saved_hiver_malefemelle_WGS84[[1]]@CTMM,unit=FALSE)$CI[1, 2])/1000000, 3)," km^2"))
+  mtext(side = 3, line = -2, adj = 0, cex = 1,font = 2, col="blue",paste(" Position independent time =",round((summary(grouse_winter_akde_saved_hiver_malefemelle_WGS84[[1]]@CTMM,unit=FALSE)$CI[2, 2])/3600, 3),"hours"))
+  
+  
+  plot(grouse_winter_akde_saved_hiver_malefemelle_WGS84[[1]]@CTMM)
   
   
   
+  
+  plot(SVF_winter, CTMM = grouse_winter_akde_saved_hiver_malefemelle_WGS84,fraction = 0.2, level = c(0.5, 0.95))
+
   
