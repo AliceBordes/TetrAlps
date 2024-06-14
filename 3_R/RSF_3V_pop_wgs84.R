@@ -46,6 +46,10 @@ library(here)
 library(ggspatial)
 library(ggbreak)
 library(raster)
+library(amt)
+library(sp)
+library(gridExtra)
+library(ggnewscale)
 #********************************************************************
 
 ### Settings ----
@@ -68,6 +72,7 @@ source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/mean_size_area.R")
 source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/visu_home_range.R")
 source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/distance_home_range_capture_site.R")
 source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/SVF_indiv.R")
+source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/multi_graph_home_range.R")
 #********************************************************************
 
 ### Loading heavy saved models ----
@@ -159,6 +164,15 @@ load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/Lambert93_
 assign("grouse_winter_akde_saved_hiver_femelle",grouse_winter_akde)
 load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/Lambert93_models/grouse_winter_telemetry_hiver_femelle.RData")
 assign("grouse_winter_telemetry_hiver_femelle",grouse_winter_telemetry)
+
+# no coordinate system files
+
+load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/season_default_coord_syst/best_model_fit_akde/grouse_best_model_fit_akde.RData")
+assign("grouse_best_model",best_model)
+load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/season_default_coord_syst/akde/grouse_akde.RData")
+assign("grouse_akde",grouse_winter_akde)
+load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/season_default_coord_syst/telemetry/grouse_telemetry.RData")
+assign("grouse_telemetry",grouse_winter_telemetry)
 #********************************************************************
 
 
@@ -170,7 +184,8 @@ assign("grouse_winter_telemetry_hiver_femelle",grouse_winter_telemetry)
 ### DATASETS
 
 # GPS locations of black grouses
-data_bg_3V<-readRDS(file.path(base,"1_RAW_DATA/tot.ind.trois_vallees2.rds"))
+data_bg_3V<-readRDS(file.path(base,"1_RAW_DATA/tot.ind.trois_vallees2_10_06_24.rds"))
+# data_bg_3V<-readRDS(file.path(base,"1_RAW_DATA/tot.ind.trois_vallees2.rds"))
 
 # Main characteristics of tegged-black grouse
 # synth_bg_all_sites<-read.csv2(file.path(base,"1_RAW_DATA/bilan_captures_tetras_all_sites_feb2024.csv"),sep=",")[,-1]
@@ -256,8 +271,8 @@ lek_locations_vect <- terra::vect(file.path(base,"1_RAW_DATA/place_de_chant/plac
 lek_locations_vect <- project(lek_locations_vect,y="+proj=longlat +datum=WGS84")
 lek_locations_vect_lambert <- project(lek_locations_vect,y="+init=epsg:2154")
 # transform lek_locations_vect in spatial object with metadata
-lek_sites<-as_sf(lek_locations_vect)
-lek_sites_lambert<-as_sf(lek_locations_vect_lambert)
+lek_sites<-st_as_sf(lek_locations_vect)
+lek_sites_lambert<-st_as_sf(lek_locations_vect_lambert)
 # to apply a buffer around the lek sites
 lek_sites$larger_lek<-st_buffer(lek_sites$geometry, 100) # 100m
 lek_sites_lambert$larger_lek<-st_buffer(lek_sites_lambert$geometry, 100) # 100m
@@ -287,8 +302,9 @@ e_poly<-(as.polygons(ext(e), crs=crs(data_bg_3V)))
   #********************************************************************
   
   #focus on bird locations in winter season
-  grouse_winter_raw<-as.data.frame(data_bg_3V_synth_fusion%>%filter(saison==season)%>%filter(sexe %in% sex))
-  
+  # grouse_winter_raw<-as.data.frame(data_bg_3V_synth_fusion%>%filter(saison==season)%>%filter(sexe %in% sex))
+  grouse_winter_raw<-as.data.frame(data_bg_3V_synth_fusion)
+
   #create a list of data.frames for each animal
   grouse_winter<-multiple_dt_indiv(grouse_winter_raw,"nom")
   
@@ -530,30 +546,176 @@ e_poly<-(as.polygons(ext(e), crs=crs(data_bg_3V)))
 #### 2_Fitting an RSF ----
 #********************************************************************
 
-# raster3V_slope_brute<-paste0("C:/Users/albordes/Documents/PhD/TetrAlps_old/1_RAW_DATA/raster.3V.slope.tif")
-# raster_slope_3V<-raster(raster3V_slope_brute)  # nothing --> RasterLayer object
-# raster_slope_3V_Abel <- raster::crop(raster_slope_3V,e) # Cut out a geographic subset and save the raster with the new extents --> reduce the limits of the raster
-# raster_slope_3V_Abel_10<-aggregate(raster_slope_3V_Abel,10)
-# 
-# plot(raster_slope_3V_Abel_10) 
-# be <- list("slope" = raster_slope_3V_Abel_10)
+# MNT 
 
-
-#' Create named list of rasters in the WGS84 format
+#' Create named list of rasters in the WGS84 format (do not accept the format RasterLayer)
 r_mnt_9_WGS84<-raster(mnt_9_WGS84)
-r_carto_habitats_3V_9_WGS84<-as.factor(raster(carto_habitats_3V_9_WGS84))
-raster_list <- list("mnt" = r_mnt_9_WGS84,"habitat"=r_carto_habitats_3V_9_WGS84)
-raster_list <- list("mnt" = r_mnt_9_WGS84)
-raster_list <- list("habitat"=as.factor(r_carto_habitats_3V_9_WGS84))
+# check NA values
+plot(is.na(r_mnt_9_WGS84))
+
+raster_list <- list("mnt" = r_mnt_9_WGS84,"mnt_squared" = r_mnt_9_WGS84^2)
+# raster_list <- list("habitat"=as.factor(r_carto_habitats_3V_9_WGS84))
 
 #pb : my raster is not in background so the function extract()[--> extracting values of the raster under my telemetry points] inside rsf.fit() can not work.
-plot(grouse_winter_telemetry_hiver_malefemelle_WGS84[[12]],raster_list[[1]])
+bird=1
 
-grouse_winter_rsf_riemann<-rsf.fit(grouse_winter_telemetry_hiver_malefemelle_WGS84[[12]], grouse_winter_akde_saved_hiver_malefemelle_WGS84[[12]], R=raster_list,  integrator = "Riemann")
+plot(raster_list[[1]])
+plot(grouse_winter_telemetry_hiver_malefemelle_WGS84[[bird]],raster_list[[1]])
+# poly_bird<-SpatialPolygonsDataFrame.UD(grouse_winter_akde_saved_hiver_malefemelle_WGS84[[bird]], level.UD = 0.95, level = 0.95)
+# plot(poly_bird,add=T)
+
+
+grouse_winter_rsf_riemann<-rsf.fit(grouse_winter_telemetry_hiver_malefemelle_WGS84[[bird]], 
+                                   grouse_winter_akde_saved_hiver_malefemelle_WGS84[[bird]], 
+                                   R=raster_list,  
+                                   integrator = "Riemann",
+                                   reference=c(1,1))
 summary(grouse_winter_rsf_riemann)
+grouse_winter_rsf_riemann$beta # coefs beta of the model
+
+# check if a selection should be detected
+ggplot()+
+  geom_histogram(data=as.data.frame(data_bg_3V) %>% filter(ani_nom==grouse_winter_telemetry_hiver_malefemelle_WGS84[[bird]]@info$identity),aes(mnt_altitude))+
+  ggtitle(grouse_winter_telemetry_hiver_malefemelle_WGS84[[bird]]@info$identity)+
+  xlab("Altitude DEM (m)")
+
+
+# HABITAT CARTOGRAPHY 2
+
+#' Create named list of rasters in the WGS84 format (do not accept the format RasterLayer)
+r_carto_habitats_3V_9_WGS84<-raster(carto_habitats_3V_9_WGS84) # convert the Spat Raster into a Raster Layer
+r_carto_habitats_3V_9_WGS84<-raster::ratify(r_carto_habitats_3V_9_WGS84) # Convert the values to factors (categorical data) : ratify() helps create the Raster Attribute Table
+
+# Set the levels explicitly (from 1 to 16)
+rat <- levels(r_carto_habitats_3V_9_WGS84)[[1]]
+hab_categories = data.frame(ID=c(20,21,22,23,30,31,32,40,50,51,52,60,92,93,94,100), categories = c("Unclassified soil","Fine mineral soil","Coarse mineral soil","Cliff","Dry or rocky grassland","Herbaceous", "Low ligneous","Shrubs","Unclassified trees","Deciduous trees","Resinous trees","Buildings","Natural pond","Artificial pond","Waterway",  "Unclassified"))
+r_hab_categories<-left_join(rat,hab_categories,by="ID")
+r_hab_categories$ID <- 1:nrow(rat)
+levels(r_carto_habitats_3V_9_WGS84) <- r_hab_categories
+
+dataType(r_carto_habitats_3V_9_WGS84) # "FLT4S" = 4-byte (32-bit) floating point numbers, for continuous numbers VS "INT4U" = 4-byte (32-bit) unsigned integer
+
+# check NA values
+plot(is.na(r_carto_habitats_3V_9_WGS84))
+
+raster_list <- list("habitat"=raster(masked_raster))
+
+
+bird=1
+
+plot(raster_list[[1]])
+plot(grouse_winter_telemetry_hiver_malefemelle_WGS84[[bird]],raster_list[[1]])
+
+
+
+grouse_winter_rsf_riemann<-rsf.fit(grouse_winter_telemetry_hiver_malefemelle_WGS84[[bird]], 
+                                   grouse_winter_akde_saved_hiver_malefemelle_WGS84[[bird]], 
+                                   R=raster_list,  
+                                   integrator = "Riemann",
+                                   reference=6) # 6 = Herbaceous
+
+summary(grouse_winter_rsf_riemann)
+grouse_winter_rsf_riemann$beta # coefs beta of the model
+
+ggplot()+
+  geom_histogram(data=as.data.frame(data_bg_3V) %>% filter(ani_nom==grouse_winter_telemetry_hiver_malefemelle_WGS84[[bird]]@info$identity),aes(mnt_altitude))+
+  ggtitle(grouse_winter_telemetry_hiver_malefemelle_WGS84[[bird]]@info$identity)+
+  xlab("Altitude DEM (m)")
+
+# HABITAT CARTOGRAPHY
+
+#' Create named list of rasters in the WGS84 format (do not accept the format RasterLayer)
+r_carto_habitats_3V_9_WGS84<-raster(carto_habitats_3V_9_WGS84) # convert the Spat Raster into a Raster Layer
+r_carto_habitats_3V_9_WGS84<-raster::ratify(r_carto_habitats_3V_9_WGS84) # Convert the values to factors (categorical data) : ratify() helps create the Raster Attribute Table
+
+# Set the levels explicitly (from 1 to 16)
+rat <- levels(r_carto_habitats_3V_9_WGS84)[[1]]
+hab_categories = data.frame(ID=c(20,21,22,23,30,31,32,40,50,51,52,60,92,93,94,100), categories = c("Unclassified soil","Fine mineral soil","Coarse mineral soil","Cliff","Dry or rocky grassland","Herbaceous", "Low ligneous","Shrubs","Unclassified trees","Deciduous trees","Resinous trees","Buildings","Natural pond","Artificial pond","Waterway",  "Unclassified"))
+r_hab_categories<-left_join(rat,hab_categories,by="ID")
+r_hab_categories$ID <- 1:nrow(rat)
+levels(r_carto_habitats_3V_9_WGS84) <- r_hab_categories
+
+dataType(r_carto_habitats_3V_9_WGS84) # "FLT4S" = 4-byte (32-bit) floating point numbers, for continuous numbers VS "INT4U" = 4-byte (32-bit) unsigned integer
+
+# check NA values
+plot(is.na(r_carto_habitats_3V_9_WGS84))
+
+raster_list <- list("habitat"=r_carto_habitats_3V_9_WGS84)
+
+
+bird=1
+
+plot(raster_list[[1]])
+plot(grouse_winter_telemetry_hiver_malefemelle_WGS84[[bird]],raster_list[[1]])
+
+
+
+grouse_winter_rsf_riemann<-rsf.fit(grouse_winter_telemetry_hiver_malefemelle_WGS84[[bird]], 
+                                   grouse_winter_akde_saved_hiver_malefemelle_WGS84[[bird]], 
+                                   R=raster_list,  
+                                   integrator = "Riemann",
+                                   reference=6) # 6 = Herbaceous
+
+summary(grouse_winter_rsf_riemann)
+grouse_winter_rsf_riemann$beta # coefs beta of the model
+
+ggplot()+
+  geom_histogram(data=as.data.frame(data_bg_3V) %>% filter(ani_nom==grouse_winter_telemetry_hiver_malefemelle_WGS84[[bird]]@info$identity),aes(mnt_altitude))+
+  ggtitle(grouse_winter_telemetry_hiver_malefemelle_WGS84[[bird]]@info$identity)+
+  xlab("Altitude DEM (m)")
+
+# STRAVA 
+
+#' Create named list of rasters in the WGS84 format (do not accept the format RasterLayer)
+r_strava<-raster(strava)
+# check NA values
+plot(is.na(r_strava))
+
+raster_list <- list("strava" = r_strava)
+# raster_list <- list("habitat"=as.factor(r_carto_habitats_3V_9_WGS84))
+
+#pb : my raster is not in background so the function extract()[--> extracting values of the raster under my telemetry points] inside rsf.fit() can not work.
+bird=1
+
+plot(raster_list[[1]])
+plot(grouse_winter_telemetry_hiver_malefemelle_WGS84[[bird]],raster_list[[1]])
+# poly_bird<-SpatialPolygonsDataFrame.UD(grouse_winter_akde_saved_hiver_malefemelle_WGS84[[bird]], level.UD = 0.95, level = 0.95)
+# plot(poly_bird,add=T)
+
+
+grouse_winter_rsf_riemann<-rsf.fit(grouse_winter_telemetry_hiver_malefemelle_WGS84[[bird]], 
+                                   grouse_winter_akde_saved_hiver_malefemelle_WGS84[[bird]], 
+                                   R=raster_list,  
+                                   integrator = "Riemann",
+                                   reference=c(1,1))
+summary(grouse_winter_rsf_riemann)
+grouse_winter_rsf_riemann$beta # coefs beta of the model
+
+# check if a selection should be detected
+ggplot()+
+  geom_histogram(data=as.data.frame(data_bg_3V) %>% filter(ani_nom==grouse_winter_telemetry_hiver_malefemelle_WGS84[[bird]]@info$identity),aes(mnt_altitude))+
+  ggtitle(grouse_winter_telemetry_hiver_malefemelle_WGS84[[bird]]@info$identity)+
+  xlab("Altitude DEM (m)")
+
+
+
+
+
+# MULTIPLE RASTER
+
+raster_list <- list("mnt" = r_mnt_9_WGS84,"habitat"=r_carto_habitats_3V_9_WGS84)
+
+grouse_winter_rsf_riemann<-rsf.fit(grouse_winter_telemetry_hiver_malefemelle_WGS84[[bird]], 
+                                   grouse_winter_akde_saved_hiver_malefemelle_WGS84[[bird]], 
+                                   R=raster_list,  
+                                   integrator = "Riemann",
+                                   reference=c(1,6)) # 6 = Herbaceous
+
+
+
 
 grouse_winter_rsf_riemann<-rsf.fit(grouse_winter_telemetry[[1]], grouse_winter_akde[[1]], R=raster_list,  integrator = "Riemann")
-summary(grouse_winter_rsf_riemann)
+summary(grouse_winter_rsf_riemann) 
 
 
 raster::readAll(r_slope_3V_9) # to save the raster (not Spatraster) in the RAM and save time 
@@ -572,6 +734,16 @@ for (i in 1: length(grouse_winter_telemetry_hiver_malefemelle))
 # R = must be a list of rasters to fit Poisson regression coefficients to (under a log link)
 
 grouse_winter_rsf_riemann_summary<-lapply(grouse_winter_rsf_riemann,summary)
+
+
+
+
+# RSF at population-level
+
+# RSF.list <- list( RSF.1,  RSF.2) # with RSF.1 = RSF for Abel, RSF.2 = RSF for Alpha...
+# RSF.population <- mean(RSF.list)
+# summary(RSF.population)
+
 
 
 
@@ -787,6 +959,20 @@ ggplot()+
   
   # visualizing the home range density estimates against the position data of each bird of the Trois Vallées
   
+  source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/multi_graph_home_range.R")
+  HR_statistics<-multi_graph_HR(writeplot = FALSE, proj = "+init=epsg:2154")
+  
+      HR_statistics_MF <- HR_statistics %>% group_by(Sex) %>% summarise(Mean_Area=mean(Mean_Area,na.rm=TRUE),CI_Low=mean(CI_Low,na.rm=TRUE),CI_High=mean(CI_High,na.rm=TRUE))
+      HR_statistics_T <- HR_statistics %>% summarise(Mean_Area=mean(Mean_Area,na.rm=TRUE),CI_Low=mean(CI_Low,na.rm=TRUE),CI_High=mean(CI_High,na.rm=TRUE))
+      HR_statistics_T$Sex<-"All"
+  HR_statistics_sex<-rbind(as.data.frame(HR_statistics_MF),HR_statistics_T)
+  HR_statistics_sex[,c("Mean_Area","CI_Low","CI_High")]<-round( HR_statistics_sex[,c("Mean_Area","CI_Low","CI_High")],3)
+      HR_statistics_MF_season <- HR_statistics %>% group_by(Season,Sex) %>% summarise(Mean_Area=mean(Mean_Area,na.rm=TRUE),CI_Low=mean(CI_Low,na.rm=TRUE),CI_High=mean(CI_High,na.rm=TRUE))
+      HR_statistics_T_season <-HR_statistics %>% group_by(Season) %>% summarise(Mean_Area=mean(Mean_Area,na.rm=TRUE),CI_Low=mean(CI_Low,na.rm=TRUE),CI_High=mean(CI_High,na.rm=TRUE))
+      HR_statistics_T_season$Sex<-"All"
+  HR_statistics_sex_season<-rbind(as.data.frame(HR_statistics_MF_season),HR_statistics_T_season) %>% arrange(Season)
+  HR_statistics_sex_season[,c("Mean_Area","CI_Low","CI_High")]<-round( HR_statistics_sex_season[,c("Mean_Area","CI_Low","CI_High")],3)
+      
   source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/visu_home_range.R")
   visu_HR(colorby="4seasons",writeplot=TRUE)
   
@@ -1133,284 +1319,253 @@ plot(grouse_winter_telemetry[[3]][[2]],UD=grouse_winter_akde[[3]][[2]])
   
 #*************************************************************
 
-  bird=43
-  color_birds_hiver<-read.table("C:/Users/albordes/Documents/PhD/TetrAlps/5_OUTPUTS/RSF/home_range_akde/mean_size_HR_season/color_birds_hiver.txt", sep = "", header = TRUE) # Color dataframe from plot_mean_area_HR("hiver") to associate a specific color with each home range and capture location for a given bird.
-  
-  lek_sites_lambert
-  
-  par(oma = c(1,1,1,1))
-  plot(borders_3V_vect,ext=e,border="black",lwd=2,
-       main="Winter home-ranges at 95% for all resident black grouse\n in the Trois Vallées ski resort",
-       xlab="Longitude",
-       ylab="Latitude",
-       cex.main=2,
-       cex.lab = 1.5,
-       plg = list(title = "DEM (m)",title.cex = 1.5,cex=1.2))
-  
-  plot(grouse_winter_akde_saved_hiver_malefemelle[[1]],
-       units=F,xlim=c(e[1],e[2]),ylim=c(e[3],e[4]),col.grid=NA,bty="n",col.UD="blue",
-       main=paste("bird:",grouse_winter_akde_saved_hiver_malefemelle[[1]]@info$identity),cex.main=1.2,col.sub="blue",add=T) 
-  
-  points(color_birds_hiver$x_capture_lambert[color_birds_hiver$ani_nom==grouse_winter_akde_saved_hiver_malefemelle[[1]]@info$identity],color_birds_hiver$y_capture_lambert[color_birds_hiver$ani_nom==grouse_winter_akde_saved_hiver_malefemelle[[1]]@info$identity],col="black",cex=1,type="p",pch=20)
-  plot(borders_3V_vect,ext=e,border="black",lwd=2,add=TRUE)
+# data exploration 
   
   
-  # transform UD object in a raster
-  r_akde<-ctmm::raster(grouse_winter_akde_saved_hiver_malefemelle[[1]])
-  # display it 
-  plot(r_akde)
+bird=1
   
-  plot(grouse_winter_akde_saved_hiver_malefemelle[[2]], level.UD=c(0.95))
+#extract the polygon shape of the akde (https://groups.google.com/g/ctmm-user/c/wtBXI4P7-7k)
+poly_95_bird<-SpatialPolygonsDataFrame.UD(grouse_winter_akde_saved_hiver_malefemelle[[bird]],level.UD=0.95,level=0.95)
+crs(poly_95_bird)<-"+init=epsg:2154"
+poly_95_bird<-st_as_sf(poly_95_bird)
 
-  #extract the polygon shape of the akde (https://groups.google.com/g/ctmm-user/c/wtBXI4P7-7k)
-  poly_95<-SpatialPolygonsDataFrame.UD(grouse_winter_akde_saved_hiver_malefemelle[[bird]],level.UD=0.95,level=0.95)
-  
-  #subset the CI's and extract shape of middle contour
-  poly_95_2 <- subset(poly_95, name == paste(grouse_winter_akde_saved_hiver_malefemelle[[bird]]@info$identity, "95% est"))
-  # extract polygon coordinates
-  poly_95_3<-(poly_95_2@polygons[[paste(grouse_winter_akde_saved_hiver_malefemelle[[bird]]@info$identity, "95% est")]])
-  
-  plot(poly_95_2)
-  crs(poly_95_2)
-  
-  
-  # # nb of polygons
-  # length(poly_95_3@Polygons)
-  # # coords of each polygon
-  # poly_95_3@Polygons[[1]]@coords
-  # poly_95_3@Polygons[[2]]@coords
-  # 
-  # 
-  # poly_95_4<-st_polygon(list(cbind(poly_95_3@Polygons[[1]]@coords[,1],poly_95_3@Polygons[[1]]@coords[,2])))
-  # poly_95_4<-st_polygon(list(cbind(poly_95_3@Polygons[[2]]@coords[,1],poly_95_3@Polygons[[2]]@coords[,2])))
-  # 
-  # poly_95_4_1<-st_polygon(list(poly_95_3@Polygons[[1]]@coords))
-  # poly_95_4_2<-st_polygon(list(poly_95_3@Polygons[[2]]@coords))
-  # 
-  multi<-st_multipolygon(list(list(poly_95_3@Polygons[[1]]@coords),list(poly_95_3@Polygons[[2]]@coords)))
-  #Convert multi to an sfc object (A simple feature geometry list-column) in order to make the polygon a geometry object with CRS:
-  multi_sfc <- st_sfc(multi)
-  st_crs(multi_sfc) <- st_crs(synth_bg_3V$geometry_lambert) # inform the crs of the polygon object
-  
-  # plot the polygon, the centroid and the capture point
-  plot(multi_sfc)
-  # sf_centroid : For [MULTI]POLYGONs, the centroid is computed in terms of area.
-  plot(st_centroid(multi_sfc),add=T,col="red") # VS st_centroid(poly_95_4_2) is a bit different
-  
-  # plot(st_centroid(poly_95_4_2),add=T,col="green") 
-  plot(synth_bg_3V$geometry_lambert[synth_bg_3V$ani_nom==grouse_winter_akde_saved_hiver_malefemelle[[2]]@info$identity],add=T,col="blue")
-  
-  # calculate the distance home-range centroid to capture site
-  st_distance(st_centroid(multi_sfc),synth_bg_3V$geometry_lambert[synth_bg_3V$ani_nom==grouse_winter_akde_saved_hiver_malefemelle[[bird]]@info$identity])
-  
-  sf::st_intersects(multi_sfc,st_centroid(multi_sfc))
-  st_intersects(multi_sfc,(synth_bg_3V$geometry_lambert[synth_bg_3V$ani_nom==grouse_winter_akde_saved_hiver_malefemelle[[bird]]@info$identity]))
 
-  sf::st_intersects(st_centroid(multi_sfc),multi_sfc)
-  st_intersects(multi_sfc,(synth_bg_3V$geometry_lambert[synth_bg_3V$ani_nom==grouse_winter_akde_saved_hiver_malefemelle[[bird]]@info$identity]))
-  st_intersects((synth_bg_3V$geometry_lambert[synth_bg_3V$ani_nom==grouse_winter_akde_saved_hiver_malefemelle[[bird]]@info$identity]),multi_sfc)
-  plot(add=T,synth_bg_3V$geometry_lambert[synth_bg_3V$ani_nom==grouse_winter_akde_saved_hiver_malefemelle[[24]]@info$identity],col="green")
-  
-  # st_intersects Identifies if x and y geometry share any space (so x and y can be switched)
-  
-  coords <- st_coordinates(multi_sfc)
-  
-  dist<-c()
-  for (i in 1:dim(coords)[1]){   #dim(coords)[1]
-    
-    point_sfc <- st_sfc(st_point(coords[i,1:2]), crs = 2154)
-    
-    dist[i]<-st_distance(point_sfc,synth_bg_3V$geometry_lambert[synth_bg_3V$ani_nom==grouse_winter_akde_saved_hiver_malefemelle[[22]]@info$identity])
-    
-  }
-  
-  print(min(as.vector(dist)))
-  
-  if(st_intersects(synth_bg_3V$geometry_lambert[synth_bg_3V$ani_nom==grouse_winter_akde_saved_hiver_malefemelle[[bird]]@info$identity],multi_sfc)[[1]]==1)
-  {
-    HR_dist_from_clothest[i]<-0
-  }else{
-    HR_dist_from_clothest[i]<-min(as.vector(dist_from_clothest))
-  }
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  ################oprational code
 
-  color_birds_hiver <- read.table("C:/Users/albordes/Documents/PhD/TetrAlps/5_OUTPUTS/RSF/home_range_akde/mean_size_HR_season/color_birds_hiver.txt", sep = "", header = TRUE)
-  
-  HR_dist_from_centroid_list <- list()
-  HR_dist_from_clothest_list <- list()
-  
-  for (i in 43:44) {
-    # Extract the polygon shape of the akde
-    poly_95 <- SpatialPolygonsDataFrame.UD(grouse_winter_akde_saved_hiver_malefemelle[[i]], level.UD = 0.95, level = 0.95)
-    
-    # Subset the CI's and extract shape of middle contour
-    poly_95_2 <- subset(poly_95, name == paste(grouse_winter_akde_saved_hiver_malefemelle[[i]]@info$identity, "95% est"))
-    poly_95_3 <- poly_95_2@polygons[[1]]
-    
-    # Extract polygon coordinates ATTENTION : multipolygon do not work properly with st_intersects
-    polygon_coords <- list()
-    for (j in 1:length(poly_95_3@Polygons)) {
-      polygon_coords[[j]] <- poly_95_3@Polygons[[j]]@coords
-    }
-    
-    # Create the MULTIPOLYGON geometry to calculate the centroid
-    multi <- st_multipolygon(list(polygon_coords))
-    multi_sfc <- st_sfc(multi)
-    
-    # Ensure the CRS is consistent
-    st_crs(multi_sfc) <- st_crs(synth_bg_3V$geometry_lambert)
-    
-    # Retrieve the coordinates of the centroid of the multipolygon
-    centroid <- st_centroid(multi_sfc)
-    
-    # Retrieve the capture site coordinates
-    capture_sites <- synth_bg_3V$geometry_lambert[synth_bg_3V$ani_nom == grouse_winter_akde_saved_hiver_malefemelle[[i]]@info$identity]
-    
-    # Print capture sites for debugging
-    print(capture_sites)
-    
-    # Initialize vectors to store distances for the current bird
-    HR_dist_from_centroid <- numeric(length(capture_sites))
-    HR_dist_from_clothest <- numeric(length(capture_sites))
-    intersection <- logical(length(capture_sites))
-    
-    # Calculate the distances for each capture site
-    for (c in 1:length(capture_sites)) {
-      capture_site <- capture_sites[c]
-      
-      # Check if the capture site intersects any part of the multipolygon
-      for (part in 1:length(polygon_coords)) {
-        poly_part <- st_polygon(list(polygon_coords[[part]]))
-        poly_part_sfc <- st_sfc(poly_part)
-        st_crs(poly_part_sfc) <- st_crs(synth_bg_3V$geometry_lambert)
-        
-        # If it intersects, set the intersection for this capture site to TRUE and exit the loop
-        if (st_intersects(capture_site, poly_part_sfc, sparse = FALSE)[1, 1]==TRUE) {
-          intersection[c] <- TRUE
-          break #exit the loop if an intersection is found
-        }
-      }
-      
-      # Debugging: Print the intersection result
-      print(paste("inter:", intersection[c]))
-      
-      # Calculate the distance from the centroid to the capture site
-      HR_dist_from_centroid[c] <- as.numeric(st_distance(centroid, capture_site))
-      
-      if (intersection[c]) {
-        HR_dist_from_clothest[c] <- 0
-      } else {
-        # Calculate the distance from each polygon point to the capture site
-        dist_from_clothest <- numeric(nrow(coords))
-        for (k in 1:nrow(coords)) {
-          point_sfc <- st_sfc(st_point(coords[k, 1:2]), crs = st_crs(multi_sfc))
-          dist_from_clothest[k] <- as.numeric(st_distance(point_sfc, capture_site))
-        }
-        HR_dist_from_clothest[c] <- min(dist_from_clothest, na.rm = TRUE)
-      }
-      
-      # Debugging: Print the distances calculated
-      print(paste("Capture site:", c, "Distance from centroid:", HR_dist_from_centroid[c], "Distance from clothest:", HR_dist_from_clothest[c]))
-    }
-    
-    # Store the distances in lists
-    HR_dist_from_centroid_list[[i]] <- HR_dist_from_centroid
-    HR_dist_from_clothest_list[[i]] <- HR_dist_from_clothest
-    
-    # Plotting
-    if (i %% 6 == 1) {
-      png(filename = paste0(base, "/5_OUTPUTS/RSF/home_range_akde/Lambert93/distance_to_capture_site/HR_distance_to_capture_site_", season, "_", i, "_", ifelse((i + 5) < length(grouse_winter_akde_saved_hiver_malefemelle), i + 5, length(grouse_winter_akde_saved_hiver_malefemelle)), ".png"), units = "in", width = 18, height = 10, res = 300)
-      par(mfrow = c(2, 3), mgp = c(2, 1, 0), mar = c(3, 3, 2, 1))
-    }
-    
-    plot(grouse_winter_akde_saved_hiver_malefemelle[[i]], units = FALSE, xlim = c(e[1], e[2]), ylim = c(e[3], e[4]), col.grid = NA, bty = "n", col.UD = color_birds_hiver$colour[color_birds_hiver$ani_nom == grouse_winter_akde_saved_hiver_malefemelle[[i]]@info$identity], col.level = color_birds_hiver$colour[color_birds_hiver$ani_nom == grouse_winter_akde_saved_hiver_malefemelle[[i]]@info$identity], level = NA, cex.lab = 1.2, cex.main = 1.5)
-    title(paste("bird:", grouse_winter_akde_saved_hiver_malefemelle[[i]]@info$identity), line = 0.5, cex.main = 2)
-    plot(borders_3V_vect, ext = e, border = "black", lwd = 2, add = TRUE)
-    plot(capture_sites, col = "black", cex = 1, type = "p", pch = 20, add = TRUE)
-    
-    for (c in 1:length(capture_sites)) {
-      mtext(side = 3, line = -1.8 - c*1.2, adj = 0.1, cex = 1, paste("\nDistance from centroid =", round(HR_dist_from_centroid[c], 0), "m", "\nDistance from clothest =", round(HR_dist_from_clothest[c], 0), "m"))
-    }
-    
-    if (i %% 6 == 0 || i == length(grouse_winter_akde_saved_hiver_malefemelle)) {
-      dev.off() # Close the device after every 6 plots or at the end
-    }
-  }
-  
-  # Ensure to close any open graphic devices
-  if (dev.cur() != 1) {
-    dev.off()
-  }
-  
+#plot the home range polygon object for the bird
+ggplot()+
+  geom_sf(data=poly_95_bird$geometry$`Abel 95% est`,fill="red")+
+  geom_sf(data=poly_95_bird$geometry$`Abel 95% low`,color="black",fill=NA)+
+  geom_sf(data=poly_95_bird$geometry$`Abel 95% high`,color="black",fill=NA)
 
-  # Calculate and print the mean distances of all capture sites (when the animal has been capture several times) for each bird 
-  mean_dist_from_centroid <- sapply(HR_dist_from_centroid_list, function(x) mean(x, na.rm = TRUE))
-  mean_dist_from_clothest <- sapply(HR_dist_from_clothest_list, function(x) mean(x, na.rm = TRUE))
-  
-  # Calculate and print the mean distances inside the 3V population
-  print(round(mean(mean_dist_from_centroid, na.rm = TRUE), 0))
-  print(round(mean(mean_dist_from_clothest, na.rm = TRUE), 0))
-  
-  # Optional: Print all distances for detailed inspection
-  # print(HR_dist_from_centroid_list)
-  # print(HR_dist_from_clothest_list)
-  
-  
-  
- ###########SVF 
-  
-  for (i in 1:length(grouse_winter_guess)) {
-    if (i %% 5 == 1) { # Start a new page for every 5 plots
-      png(filename = paste0(base, "/5_OUTPUTS/RSF/variograms/indiv_variogram", i, "_", i + 4, ".png"),height = 1000,width = 2400) # Naming files correctly
-      par(mfcol = c(2,5))
-    }
-    
-    plot(SVF, CTMM = grouse_winter_guess[[i]], col.CTMM = i, new = FALSE, fraction = 0.2, level = c(0.5, 0.95),
-         main = paste0(vect_nicknames[i], "\n", grouse_winter_guess_summary[[i]]$name),
-         sub = paste("\narea estimated =", round((grouse_winter_guess_summary[[i]]$CI[1, 2])/1000000, 3)," km^2"),
-         cex.sub = 1.2, font.sub = 2, cex.lab = 1.5, cex.main = 1.5)
-    
-    plot(SVF, CTMM = grouse_winter_guess[[i]], col.CTMM = i, new = FALSE, fraction = 0.0005, level = c(0.5, 0.95),
-         cex.sub = 2, cex.lab = 1.5)
-    
-    if (i %% 5 == 0 || i == length(grouse_winter_guess)) {
-      dev.off() # Close the device after every 5 plots or at the end
-    }
-  }
-  
-  
-  # population variogram considering the irregular sampling schedule
-  timelags <- c(1,2,4,8) %#% "hour" # the order has no importance
-  SVF_winter <- lapply(grouse_winter_telemetry_hiver_malefemelle_WGS84,variogram,dt=timelags) # population variogram considering the GPS were programmed to cycle between 1, 12, 24 hour sampling intervals
-  SVF_winter_mean<- mean(SVF_winter)
-  # plot(SVF_winter,fraction=0.005,level=c(0.5,0.95),main="Population variogram \n(considering the irregular sampling schedule with the most common time intervals : 1h, 2h, 4h, 8h)")
-  plot(SVF_winter_mean,fraction=0.005,level=c(0.5,0.95),main="Population variogram \n(considering the irregular sampling schedule with the most common time intervals : 1h, 2h, 4h, 8h)")
-  
-  
-  plot(SVF_winter[[1]], CTMM = grouse_winter_akde_saved_hiver_malefemelle_WGS84[[1]]@CTMM, col.CTMM = 1, new = FALSE, fraction = 0.2, level = c(0.5, 0.95),
-  main = paste0(grouse_winter_akde_saved_hiver_malefemelle_WGS84[[1]]@info$identity, "\n", summary(grouse_winter_akde_saved_hiver_malefemelle_WGS84[[1]]@CTMM)$name),
-  cex.lab = 1.5, cex.main = 1.5)
-  # position_independence_time = required time between two positions to consider them independent
-  mtext(side = 3, line = -1, adj = 0, cex = 1,font = 2, col="blue", paste(" Area estimated =", round((summary(grouse_winter_akde_saved_hiver_malefemelle_WGS84[[1]]@CTMM,unit=FALSE)$CI[1, 2])/1000000, 3)," km^2"))
-  mtext(side = 3, line = -2, adj = 0, cex = 1,font = 2, col="blue",paste(" Position independent time =",round((summary(grouse_winter_akde_saved_hiver_malefemelle_WGS84[[1]]@CTMM,unit=FALSE)$CI[2, 2])/3600, 3),"hours"))
-  
-  
-  plot(grouse_winter_akde_saved_hiver_malefemelle_WGS84[[1]]@CTMM)
-  
-  
-  
-  
-  plot(SVF_winter, CTMM = grouse_winter_akde_saved_hiver_malefemelle_WGS84,fraction = 0.2, level = c(0.5, 0.95))
+#plot the 95% estimated home range polygon object for the bird overlapping the habitat map
+ggplot()+
+  geom_spatraster(data=carto_habitats_3V)+
+  geom_sf(data = borders_3V_vect,fill=NA,color="black",lwd =2)+
+  scale_fill_manual(
+    values = c("#CC9966","#CCCCCC","#666666","#333333","#99CC99","#FFFF66","#FFCCCC","#FF99CC","#99FF99","#99FF00","#339966","#993300","#99CCFF","#99FFFF","#0066FF","white","white"),
+    breaks = c("20","21","22","23","30","31","32","40","50","51","52","60","92","93","94","100"),
+    # labels = c("sol non classé",sol mineral fin","sol mineral grossier","falaise", "pelouse seche ou rocheuse","herbacées,"ligneux bas","arbustes","arbres non classés,"arbres feuillus","arbres resineux","bati","plan d'eau naturel","plan d'eau artificiel","cours d'eau",  "non classe" ))+
+    labels = c("Unclassified soil","Fine mineral soil","Coarse mineral soil","Cliff","Dry or rocky grassland","Herbaceous", "Low ligneous","Shrubs","Unclassified trees","Deciduous trees","Resinous trees","Buildings","Natural pond","Artificial pond","Waterway",  "Unclassified" ))+
+  geom_sf(data=poly_95_bird,fill="red")+
+  coord_sf(xlim = c(st_bbox(poly_95_bird)["xmin"], st_bbox(poly_95_bird)["xmax"]),
+           ylim = c(st_bbox(poly_95_bird)["ymin"], st_bbox(poly_95_bird)["ymax"]))+
+  labs( title="Habitat cartography",
+        x = "Longitude",
+        y = "Latitude",
+        fill = "Legend")
 
+
+# crop the raster to the polygon extents
+cropped_r_habitat <- crop(carto_habitats_3V, extent(poly_95_bird))
+
+# Mask the raster using the polygon to get the values within the polygon only
+masked_raster <- mask(cropped_r_habitat, poly_95_bird)
+
+# Plot the mask
+ggplot()+
+  geom_spatraster(data=masked_raster)+
+  scale_fill_manual(
+    values = c("20"="#CC9966","21"="#CCCCCC","22"="#666666","23"="#333333","30"="#99CC99","31"="#FFFF66","40"="#FFCCCC","50"="#FF99CC","51"="#99FF99","52"="#99FF00","60"="#339966","92"="#993300","93"="#99CCFF","94"="#99FFFF","100"="#0066FF"),na.value ="transparent",
+    labels = c("20"="Unclassified soil","21"="Fine mineral soil","22"="Coarse mineral soil","23"="Cliff","30"="Dry or rocky grassland","31"="Herbaceous", "40"="Low ligneous","50"="Shrubs","51"="Unclassified trees","52"="Deciduous trees","60"="Resinous trees","92"="Buildings","93"="Natural pond","94"="Artificial pond","100"="Waterway"))+
+  labs( title="Habitat cartography",
+        x = "Longitude",
+        y = "Latitude",
+        fill = "Legend")
   
+# Extract the values from the masked raster:
+values_r_habitat <- getValues(raster(masked_raster))
+
+# Remove NA values 
+values_r_habitat <- values_r_habitat[!is.na(values_r_habitat)]
+
+# Count the occurrence of each class
+class_counts <- table(values_r_habitat)
+
+# Calculate the proportion of each class:
+total_pixels <- sum(class_counts)
+class_proportions <- round((class_counts / total_pixels),3)
+# Define class names
+class_names <- c(
+  "20" = "Unclassified soil",
+  "21" = "Fine mineral soil",
+  "22" = "Coarse mineral soil",
+  "23" = "Cliff",
+  "30" = "Dry or rocky grassland",
+  "31" = "Herbaceous",
+  "32" = "Low ligneous",
+  "40" = "Shrubs",
+  "50" = "Unclassified trees",
+  "51" = "Deciduous trees",
+  "52" = "Resinous trees",
+  "60" = "Buildings",
+  "92" = "Natural pond",
+  "93" = "Artificial pond",
+  "94" = "Waterway",
+  "100" = NA
+)
+
+# Match the class names to the proportions
+class_proportions_named <- as.data.frame(setNames(class_proportions, class_names[names(class_proportions)]))
+colnames(class_proportions_named)<-c("Class","Proportion")
+# Display the results
+print(class_proportions_named)
+# sum(class_proportions) # to check the sum = 1 = 100%
+
+# Convert the class proportions to a data frame
+
+
+# Create a pie chart using ggplot2
+ggplot(class_proportions_named, aes(x="", y=Proportion, fill=Class)) +
+  geom_bar(stat="identity", width=1, color="black") +
+  scale_fill_manual(
+    values = c("Unclassified soil"="#CC9966","Fine mineral soil"="#CCCCCC","Coarse mineral soil"="#666666","Cliff"="#333333","Dry or rocky grassland"="#99CC99","Herbaceous"="#FFFF66","Low ligneous"="#FFCCCC","Shrubs"="#FF99CC","Unclassified trees"="#99FF99","Deciduous trees"="#99FF00","Resinous trees"="#339966","Buildings"="#993300","Natural pond"="#99CCFF","Artificial pond"="#99FFFF","Waterway"="#0066FF"),na.value ="transparent")+
+  coord_polar(theta="y") +
+  theme_void() +
+  labs(title="Proportion of Habitat Classes") 
+
+
+### Brouillon area ----
+
+#*************************************************************
+
+# data exploration 
+
+
+bird=1
+
+#extract the polygon shape of the akde (https://groups.google.com/g/ctmm-user/c/wtBXI4P7-7k)
+poly_95_bird<-SpatialPolygonsDataFrame.UD(grouse_winter_akde_saved_hiver_malefemelle[[bird]],level.UD=0.95,level=0.95)
+crs(poly_95_bird)<-"+init=epsg:2154"
+poly_95_bird<-st_as_sf(poly_95_bird)
+
+
+
+#plot the home range polygon object for the bird
+ggplot()+
+  geom_sf(data=poly_95_bird$geometry$`Abel 95% est`,fill="blue",alpha=0.2)+
+  geom_sf(data=poly_95_bird$geometry$`Abel 95% low`,color="blue",fill=NA)+
+  geom_sf(data=poly_95_bird$geometry$`Abel 95% high`,color="blue",fill=NA)
+
+#plot the 95% estimated home range polygon object for the bird overlapping the habitat map
+ggplot()+
+  geom_spatraster(data=mnt)+
+  geom_sf(data = borders_3V_vect,fill=NA,color="black",lwd =1)+
+  scale_fill_gradientn(colors = c("#CCFFCC", "#FFFFCC", "#FFCC99", "#FF9966", "#FF6600"))+
+  geom_sf(data=poly_95_bird,fill="blue",alpha=0.2)+
+  geom_point(data=synth_bg_3V%>%filter(ani_nom==grouse_winter_akde_saved_hiver_malefemelle[[bird]]@info$identity),aes(x=x_capture_lambert,y=y_capture_lambert),color="red")+
+  coord_sf(xlim = c(e[2], e[1]),
+           ylim = c(e[3], e[4]))+
+  labs( title="Habitat cartography",
+        x = "Longitude",
+        y = "Latitude",
+        fill = "Altitude (m)")
+  # ggplot2::annotate(geom = "text",
+  #                   x = mean(c(e[2], e[1])),  # Positioning the annotation in the middle of the plot
+  #                   y = e[3] + (e[4] - e[3]) * 0.95,  # Positioning near the top of the plot
+  #                   label = paste("Area estimated =",
+  #                                 round((summary(grouse_winter_akde_saved_hiver_malefemelle[[bird]], unit = F)$CI[, "est"]) / 1000000, 3), " km^2",
+  #                                 " CI=[",
+  #                                 round((summary(grouse_winter_akde_saved_hiver_malefemelle[[bird]], unit = F)$CI[, "low"]) / 1000000, 3),
+  #                                 ",",
+  #                                 round((summary(grouse_winter_akde_saved_hiver_malefemelle[[bird]], unit = F)$CI[, "high"]) / 1000000, 3),
+  #                                 "]"),
+  #                   size = 4,  # You can adjust the size of the text
+  #                   hjust = 0.5,  # Center horizontally
+  #                   vjust = 1)  # Align to the top
+
+
+ggplot()+
+  geom_spatraster(data=carto_habitats_3V_9,alpha=0.6)+
+  geom_sf(data = borders_3V_vect,fill=NA,color="black",lwd =2)+
+  scale_fill_manual(
+    values = c("#CC9966","#CCCCCC","#666666","#333333","#99CC99","#FFFF66","#FFCCCC","#FF99CC","#99FF99","#99FF00","#339966","#993300","#99CCFF","#99FFFF","#0066FF","white","white"),
+    breaks = c("20","21","22","23","30","31","32","40","50","51","52","60","92","93","94","100"),
+    # labels = c("sol non classé",sol mineral fin","sol mineral grossier","falaise", "pelouse seche ou rocheuse","herbacées,"ligneux bas","arbustes","arbres non classés,"arbres feuillus","arbres resineux","bati","plan d'eau naturel","plan d'eau artificiel","cours d'eau",  "non classe" ))+
+    labels = c("Unclassified soil","Fine mineral soil","Coarse mineral soil","Cliff","Dry or rocky grassland","Herbaceous", "Low ligneous","Shrubs","Unclassified trees","Deciduous trees","Resinous trees","Buildings","Natural pond","Artificial pond","Waterway",  "Unclassified" ))+
+  geom_sf(data=poly_95_bird,fill="blue",alpha=0.2)+
+  geom_point(data=grouse_winter_telemetry_hiver_malefemelle[[bird]],aes(x=grouse_winter_telemetry_hiver_malefemelle[[bird]]@.Data[[2]],y=grouse_winter_telemetry_hiver_malefemelle[[bird]]@.Data[[3]]),color="black",alpha=0.4)+
+  coord_sf(xlim = c(st_bbox(poly_95_bird)["xmin"], st_bbox(poly_95_bird)["xmax"]),
+           ylim = c(st_bbox(poly_95_bird)["ymin"], st_bbox(poly_95_bird)["ymax"]))+
+  labs( title="Habitat cartography",
+        x = "Longitude",
+        y = "Latitude",
+        fill = "Altitude (m)",
+        subtitle =paste("Area estimated =",
+                        round((summary(grouse_winter_akde_saved_hiver_malefemelle[[bird]], unit = F)$CI[, "est"]) / 1000000, 3), " km^2",
+                        " CI=[",
+                        round((summary(grouse_winter_akde_saved_hiver_malefemelle[[bird]], unit = F)$CI[, "low"]) / 1000000, 3),
+                        ",",
+                        round((summary(grouse_winter_akde_saved_hiver_malefemelle[[bird]], unit = F)$CI[, "high"]) / 1000000, 3),
+                        "]") )
+
+
+
+
+# crop the raster to the polygon extents
+cropped_r_habitat <- crop(carto_habitats_3V, extent(poly_95_bird))
+
+# Mask the raster using the polygon to get the values within the polygon only
+masked_raster <- mask(cropped_r_habitat, poly_95_bird)
+
+
+# Plot the mask
+ggplot()+
+  geom_spatraster(data=masked_raster)+
+  scale_fill_manual(
+    values = c("20"="#CC9966","21"="#CCCCCC","22"="#666666","23"="#333333","30"="#99CC99","31"="#FFFF66","40"="#FFCCCC","50"="#FF99CC","51"="#99FF99","52"="#99FF00","60"="#339966","92"="#993300","93"="#99CCFF","94"="#99FFFF","100"="#0066FF"),na.value ="transparent",
+    labels = c("20"="Unclassified soil","21"="Fine mineral soil","22"="Coarse mineral soil","23"="Cliff","30"="Dry or rocky grassland","31"="Herbaceous", "40"="Low ligneous","50"="Shrubs","51"="Unclassified trees","52"="Deciduous trees","60"="Resinous trees","92"="Buildings","93"="Natural pond","94"="Artificial pond","100"="Waterway"))+
+  labs( title="Habitat cartography",
+        x = "Longitude",
+        y = "Latitude",
+        fill = "Legend")
+
+# Extract the values from the masked raster:
+values_r_habitat <- getValues(raster(masked_raster))
+
+# Remove NA values 
+values_r_habitat <- values_r_habitat[!is.na(values_r_habitat)]
+
+# Count the occurrence of each class
+class_counts <- table(values_r_habitat)
+
+# Calculate the proportion of each class:
+total_pixels <- sum(class_counts)
+class_proportions <- round((class_counts / total_pixels),3)
+# Define class names
+class_names <- c(
+  "20" = "Unclassified soil",
+  "21" = "Fine mineral soil",
+  "22" = "Coarse mineral soil",
+  "23" = "Cliff",
+  "30" = "Dry or rocky grassland",
+  "31" = "Herbaceous",
+  "32" = "Low ligneous",
+  "40" = "Shrubs",
+  "50" = "Unclassified trees",
+  "51" = "Deciduous trees",
+  "52" = "Resinous trees",
+  "60" = "Buildings",
+  "92" = "Natural pond",
+  "93" = "Artificial pond",
+  "94" = "Waterway",
+  "100" = NA
+)
+
+# Match the class names to the proportions
+class_proportions_named <- as.data.frame(setNames(class_proportions, class_names[names(class_proportions)]))
+colnames(class_proportions_named)<-c("Class","Proportion")
+# Display the results
+print(class_proportions_named)
+# sum(class_proportions) # to check the sum = 1 = 100%
+
+# Convert the class proportions to a data frame
+
+
+# Create a pie chart using ggplot2
+ggplot(class_proportions_named, aes(x="", y=Proportion, fill=Class)) +
+  geom_bar(stat="identity", width=1, color="black") +
+  scale_fill_manual(
+    values = c("Unclassified soil"="#CC9966","Fine mineral soil"="#CCCCCC","Coarse mineral soil"="#666666","Cliff"="#333333","Dry or rocky grassland"="#99CC99","Herbaceous"="#FFFF66","Low ligneous"="#FFCCCC","Shrubs"="#FF99CC","Unclassified trees"="#99FF99","Deciduous trees"="#99FF00","Resinous trees"="#339966","Buildings"="#993300","Natural pond"="#99CCFF","Artificial pond"="#99FFFF","Waterway"="#0066FF"),na.value ="transparent")+
+  coord_polar(theta="y") +
+  theme_void() +
+  labs(title="Proportion of Habitat Classes") 
