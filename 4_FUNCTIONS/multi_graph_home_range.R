@@ -15,7 +15,7 @@
 
 ######################################################################
 
-multi_graph_HR <- function(writeplot = FALSE, proj = "+init=epsg:2154") {
+multi_graph_HR <- function(telemetry_object,akde_object,outputfile=getwd(),writeplot = FALSE, proj = "+init=epsg:2154") {
   
   if (writeplot == TRUE) {
     
@@ -24,11 +24,11 @@ multi_graph_HR <- function(writeplot = FALSE, proj = "+init=epsg:2154") {
   # Background options
   mnt_9_graph <- project(mnt_9, y = proj)
   borders_3V_vect_graph <- project(borders_3V_vect, y = proj)
-  strava_graph <- project(strava_lambert, y = proj)
+  strava_graph <- project(strava, y = proj)
   
   # Extent
-  e_lambert93 <- c(min(e1[1], e2[1]) - 1000, max(e1[2], e2[2]) + 1000, min(e1[3], e2[3]) - 1000, max(e1[4], e2[4]) + 1000)
-  e_poly_lambert93 <- as.polygons(ext(e_lambert93), crs = crs(data_bg_3V))
+  e_lambert93 <- e
+  e_poly_lambert93 <- as.polygons(ext(e_lambert93), crs = "EPSG:2154")
   e_poly_lambert93 <- project(e_poly_lambert93, y = proj)
   e <- as.numeric(as.vector(ext(e_poly_lambert93)))
   
@@ -62,8 +62,8 @@ multi_graph_HR <- function(writeplot = FALSE, proj = "+init=epsg:2154") {
     coordsyst_d <- ""
   }
   
-  data_telemetry <- get(paste0("grouse_winter_telemetry"))
-  data_akde <- get(paste0("grouse_winter_akde", coordsyst_d))
+  data_telemetry <- telemetry_object
+  data_akde <- akde_object
   
   main_seasons <- c("hiver", "automne", "printemps", "ete")
   
@@ -182,6 +182,7 @@ multi_graph_HR <- function(writeplot = FALSE, proj = "+init=epsg:2154") {
   confidence_intervals_high <- calculate_confidence_intervals_high(data_akde, main_seasons)
   
   
+
   
   
   
@@ -200,6 +201,20 @@ multi_graph_HR <- function(writeplot = FALSE, proj = "+init=epsg:2154") {
   
   # Iterate over birds
   for (bird in seq_along(data_akde)) {
+    
+    # Graph title options
+    if (any(data_telemetry[[bird]][[1]]$animal.sex == "male")) {
+      sexe_ani <- "male"
+      sex_color <- "turquoise3"
+    } else if (any(data_telemetry[[bird]][[1]]$animal.sex == "femelle")) {
+      sexe_ani <- "female"
+      sex_color <- "deeppink"
+    } else {
+      sexe_ani <- "unknown"
+      sex_color <- "gray"
+    }
+    
+    
     # Iterate over main seasons
     for (main_season in main_seasons) {
       # Get mean area, low CI, and high CI
@@ -213,19 +228,13 @@ multi_graph_HR <- function(writeplot = FALSE, proj = "+init=epsg:2154") {
         high_CI <- confidence_intervals_high[[bird]][[main_season]]$high_CI
       }
       
-      # Get sex
-      sex <- "Unknown"
-      if (any(synth_bg_3V$sexe[synth_bg_3V$ani_nom == data_akde[[bird]][[1]]@info$identity] == "male")) {
-        sex <- "Male"
-      } else if (any(synth_bg_3V$sexe[synth_bg_3V$ani_nom == data_akde[[bird]][[1]]@info$identity] == "femelle")) {
-        sex <- "Female"
-      }
+
       
       # Add row to summary data frame
       summary_df <- rbind(summary_df, data.frame(
         Bird.ID = data_akde[[bird]][[1]]@info$identity,
         Season = main_season,
-        Sex = sex,
+        Sex = sexe_ani,
         Mean_Area = mean_area,
         CI_Low = low_CI,
         CI_High = high_CI
@@ -249,7 +258,21 @@ if (writeplot == TRUE) {
   poly_95_bird_list <- list()
   
   for (bird in seq_along(data_akde)) {
-    seasons <- unique(data_bg_3V$saison2)
+    
+    # Graph title options
+    if (any(data_telemetry[[bird]][[1]]$animal.sex == "male")) {
+      sexe_ani <- "male"
+      sex_color <- "turquoise3"
+    } else if (any(data_telemetry[[bird]][[1]]$animal.sex == "femelle")) {
+      sexe_ani <- "female"
+      sex_color <- "deeppink"
+    } else {
+      sexe_ani <- "unknown"
+      sex_color <- "gray"
+    }
+    
+    
+    seasons <- unique(birds_bg_dt$saison2)
     
     # create a nested list
     poly_95_bird_list[[bird]] <- list()
@@ -266,17 +289,7 @@ if (writeplot == TRUE) {
     # Debugging output
     # print(paste0("Bird ", bird, ": ", length(poly_95_bird_list[[bird]]), " polygons created"))
 
-      # Graph title options
-      if (any(synth_bg_3V$sexe[synth_bg_3V$ani_nom == data_akde[[bird]][[1]]@info$identity] == "male")) {
-        sexe_ani <- "male"
-        sex_color <- "turquoise3"
-      } else if (any(synth_bg_3V$sexe[synth_bg_3V$ani_nom == data_akde[[bird]][[1]]@info$identity] == "femelle")) {
-        sexe_ani <- "female"
-        sex_color <- "deeppink"
-      } else {
-        sexe_ani <- "unknown"
-        sex_color <- "gray"
-      }
+
       
       # Plot creation
       print(paste("Creating graphs for bird", bird))
@@ -355,9 +368,9 @@ if (writeplot == TRUE) {
       } # end main_seasons
       
       combined_plot <- grid.arrange(grobs = plots_mnt_capture, ncol = 2)
-      ggsave(paste0("C:/Users/albordes/Documents/PhD/TetrAlps/5_OUTPUTS/RSF/home_range_akde/akde_multiple_seasons/",data_akde[[bird]][[1]]@info$identity,"_home_range_season.png"), plot = combined_plot, width = 15, height = 10)
+      ggsave(paste0(outputfile,data_akde[[bird]][[1]]@info$identity,"_home_range_season.png"), plot = combined_plot, width = 15, height = 10)
 
-    } # end loop on i
+    } # end loop on bird
 
   } #end (if writeplot==TRUE)  
   

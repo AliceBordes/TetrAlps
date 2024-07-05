@@ -78,92 +78,92 @@ source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/multi_graph_home_ra
 ### Loading heavy saved models ----
 #********************************************************************
 # WGS84 files
-
-load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/WGS84_models/best_model_saved_hiver_malefemelle_WGS84.RData")
-assign("best_model_saved_hiver_malefemelle_WGS84",best_model)
-load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/WGS84_models/grouse_winter_akde_saved_hiver_malefemelle_WGS84.RData")
-assign("grouse_winter_akde_saved_hiver_malefemelle_WGS84",grouse_winter_akde)
-load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/WGS84_models/grouse_winter_telemetry_hiver_malefemelle_WGS84.RData")
-assign("grouse_winter_telemetry_hiver_malefemelle_WGS84",grouse_winter_telemetry)
-
-load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/WGS84_models/best_model_saved_ete_malefemelle_WGS84.RData")
-assign("best_model_saved_ete_malefemelle_WGS84",best_model)
-load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/WGS84_models/grouse_winter_akde_saved_ete_malefemelle_WGS84.RData")
-assign("grouse_winter_akde_saved_ete_malefemelle_WGS84",grouse_winter_akde)
-load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/WGS84_models/grouse_winter_telemetry_ete_malefemelle_WGS84.RData")
-assign("grouse_winter_telemetry_ete_malefemelle_WGS84",grouse_winter_telemetry)
-
-load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/WGS84_models/best_model_saved_automne_malefemelle_WGS84.RData")
-assign("best_model_saved_automne_malefemelle_WGS84",best_model)
-load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/WGS84_models/grouse_winter_akde_saved_automne_malefemelle_WGS84.RData")
-assign("grouse_winter_akde_saved_automne_malefemelle_WGS84",grouse_winter_akde)
-load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/WGS84_models/grouse_winter_telemetry_automne_malefemelle_WGS84.RData")
-assign("grouse_winter_telemetry_automne_malefemelle_WGS84",grouse_winter_telemetry)
-
-load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/WGS84_models/best_model_saved_printemps_malefemelle_WGS84.RData")
-assign("best_model_saved_printemps_malefemelle_WGS84",best_model)
-load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/WGS84_models/grouse_winter_akde_saved_printemps_malefemelle_WGS84.RData")
-assign("grouse_winter_akde_saved_printemps_malefemelle_WGS84",grouse_winter_akde)
-load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/WGS84_models/grouse_winter_telemetry_printemps_malefemelle_WGS84.RData")
-assign("grouse_winter_telemetry_printemps_malefemelle_WGS84",grouse_winter_telemetry)
-
-load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/WGS84_models/best_model_saved_hiver_male_WGS84.RData")
-assign("best_model_saved_hiver_male_WGS84",best_model)
-load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/WGS84_models/grouse_winter_akde_saved_hiver_male_WGS84.RData")
-assign("grouse_winter_akde_saved_hiver_male_WGS84",grouse_winter_akde)
-load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/WGS84_models/grouse_winter_telemetry_hiver_male_WGS84.RData")
-assign("grouse_winter_telemetry_hiver_male_WGS84",grouse_winter_telemetry)
-
-load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/WGS84_models/best_model_saved_hiver_femelle_WGS84.RData")
-assign("best_model_saved_hiver_femelle_WGS84",best_model)
-load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/WGS84_models/grouse_winter_akde_saved_hiver_femelle_WGS84.RData")
-assign("grouse_winter_akde_saved_hiver_femelle_WGS84",grouse_winter_akde)
-load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/WGS84_models/grouse_winter_telemetry_hiver_femelle_WGS84.RData")
-assign("grouse_winter_telemetry_hiver_femelle_WGS84",grouse_winter_telemetry)
+# 
+# load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/WGS84_models/best_model_saved_hiver_malefemelle_WGS84.RData")
+# assign("best_model_saved_hiver_malefemelle_WGS84",best_model)
+# load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/WGS84_models/grouse_winter_akde_saved_hiver_malefemelle_WGS84.RData")
+# assign("grouse_winter_akde_saved_hiver_malefemelle_WGS84",grouse_winter_akde)
+# load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/WGS84_models/grouse_winter_telemetry_hiver_malefemelle_WGS84.RData")
+# assign("grouse_winter_telemetry_hiver_malefemelle_WGS84",grouse_winter_telemetry)
+# 
+# load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/WGS84_models/best_model_saved_ete_malefemelle_WGS84.RData")
+# assign("best_model_saved_ete_malefemelle_WGS84",best_model)
+# load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/WGS84_models/grouse_winter_akde_saved_ete_malefemelle_WGS84.RData")
+# assign("grouse_winter_akde_saved_ete_malefemelle_WGS84",grouse_winter_akde)
+# load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/WGS84_models/grouse_winter_telemetry_ete_malefemelle_WGS84.RData")
+# assign("grouse_winter_telemetry_ete_malefemelle_WGS84",grouse_winter_telemetry)
+# 
+# load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/WGS84_models/best_model_saved_automne_malefemelle_WGS84.RData")
+# assign("best_model_saved_automne_malefemelle_WGS84",best_model)
+# load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/WGS84_models/grouse_winter_akde_saved_automne_malefemelle_WGS84.RData")
+# assign("grouse_winter_akde_saved_automne_malefemelle_WGS84",grouse_winter_akde)
+# load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/WGS84_models/grouse_winter_telemetry_automne_malefemelle_WGS84.RData")
+# assign("grouse_winter_telemetry_automne_malefemelle_WGS84",grouse_winter_telemetry)
+# 
+# load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/WGS84_models/best_model_saved_printemps_malefemelle_WGS84.RData")
+# assign("best_model_saved_printemps_malefemelle_WGS84",best_model)
+# load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/WGS84_models/grouse_winter_akde_saved_printemps_malefemelle_WGS84.RData")
+# assign("grouse_winter_akde_saved_printemps_malefemelle_WGS84",grouse_winter_akde)
+# load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/WGS84_models/grouse_winter_telemetry_printemps_malefemelle_WGS84.RData")
+# assign("grouse_winter_telemetry_printemps_malefemelle_WGS84",grouse_winter_telemetry)
+# 
+# load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/WGS84_models/best_model_saved_hiver_male_WGS84.RData")
+# assign("best_model_saved_hiver_male_WGS84",best_model)
+# load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/WGS84_models/grouse_winter_akde_saved_hiver_male_WGS84.RData")
+# assign("grouse_winter_akde_saved_hiver_male_WGS84",grouse_winter_akde)
+# load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/WGS84_models/grouse_winter_telemetry_hiver_male_WGS84.RData")
+# assign("grouse_winter_telemetry_hiver_male_WGS84",grouse_winter_telemetry)
+# 
+# load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/WGS84_models/best_model_saved_hiver_femelle_WGS84.RData")
+# assign("best_model_saved_hiver_femelle_WGS84",best_model)
+# load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/WGS84_models/grouse_winter_akde_saved_hiver_femelle_WGS84.RData")
+# assign("grouse_winter_akde_saved_hiver_femelle_WGS84",grouse_winter_akde)
+# load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/WGS84_models/grouse_winter_telemetry_hiver_femelle_WGS84.RData")
+# assign("grouse_winter_telemetry_hiver_femelle_WGS84",grouse_winter_telemetry)
 
 # Lambert93 files
-
-load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/Lambert93_models/best_model_saved_hiver_malefemelle.RData")
-assign("best_model_saved_hiver_malefemelle",best_model)
-load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/Lambert93_models/grouse_winter_akde_saved_hiver_malefemelle.RData")
-assign("grouse_winter_akde_saved_hiver_malefemelle",grouse_winter_akde)
-load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/Lambert93_models/grouse_winter_telemetry_hiver_malefemelle.RData")
-assign("grouse_winter_telemetry_hiver_malefemelle",grouse_winter_telemetry)
-
-load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/Lambert93_models/best_model_saved_ete_malefemelle.RData")
-assign("best_model_saved_ete_malefemelle",best_model)
-load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/Lambert93_models/grouse_winter_akde_saved_ete_malefemelle.RData")
-assign("grouse_winter_akde_saved_ete_malefemelle",grouse_winter_akde)
-load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/Lambert93_models/grouse_winter_telemetry_ete_malefemelle.RData")
-assign("grouse_winter_telemetry_ete_malefemelle",grouse_winter_telemetry)
-
-load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/Lambert93_models/best_model_saved_automne_malefemelle.RData")
-assign("best_model_saved_automne_malefemelle",best_model)
-load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/Lambert93_models/grouse_winter_akde_saved_automne_malefemelle.RData")
-assign("grouse_winter_akde_saved_automne_malefemelle",grouse_winter_akde)
-load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/Lambert93_models/grouse_winter_telemetry_automne_malefemelle.RData")
-assign("grouse_winter_telemetry_automne_malefemelle",grouse_winter_telemetry)
-
-load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/Lambert93_models/best_model_saved_printemps_malefemelle.RData")
-assign("best_model_saved_printemps_malefemelle",best_model)
-load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/Lambert93_models/grouse_winter_akde_saved_printemps_malefemelle.RData")
-assign("grouse_winter_akde_saved_printemps_malefemelle",grouse_winter_akde)
-load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/Lambert93_models/grouse_winter_telemetry_printemps_malefemelle.RData")
-assign("grouse_winter_telemetry_printemps_malefemelle",grouse_winter_telemetry)
-
-load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/Lambert93_models/best_model_saved_hiver_male.RData")
-assign("best_model_saved_hiver_male",best_model)
-load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/Lambert93_models/grouse_winter_akde_saved_hiver_male.RData")
-assign("grouse_winter_akde_saved_hiver_male",grouse_winter_akde)
-load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/Lambert93_models/grouse_winter_telemetry_hiver_male.RData")
-assign("grouse_winter_telemetry_hiver_male",grouse_winter_telemetry)
-
-load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/Lambert93_models/best_model_saved_hiver_femelle.RData")
-assign("best_model_saved_hiver_femelle",best_model)
-load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/Lambert93_models/grouse_winter_akde_saved_hiver_femelle.RData")
-assign("grouse_winter_akde_saved_hiver_femelle",grouse_winter_akde)
-load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/Lambert93_models/grouse_winter_telemetry_hiver_femelle.RData")
-assign("grouse_winter_telemetry_hiver_femelle",grouse_winter_telemetry)
+# 
+# load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/Lambert93_models/best_model_saved_hiver_malefemelle.RData")
+# assign("best_model_saved_hiver_malefemelle",best_model)
+# load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/Lambert93_models/grouse_winter_akde_saved_hiver_malefemelle.RData")
+# assign("grouse_winter_akde_saved_hiver_malefemelle",grouse_winter_akde)
+# load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/Lambert93_models/grouse_winter_telemetry_hiver_malefemelle.RData")
+# assign("grouse_winter_telemetry_hiver_malefemelle",grouse_winter_telemetry)
+# 
+# load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/Lambert93_models/best_model_saved_ete_malefemelle.RData")
+# assign("best_model_saved_ete_malefemelle",best_model)
+# load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/Lambert93_models/grouse_winter_akde_saved_ete_malefemelle.RData")
+# assign("grouse_winter_akde_saved_ete_malefemelle",grouse_winter_akde)
+# load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/Lambert93_models/grouse_winter_telemetry_ete_malefemelle.RData")
+# assign("grouse_winter_telemetry_ete_malefemelle",grouse_winter_telemetry)
+# 
+# load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/Lambert93_models/best_model_saved_automne_malefemelle.RData")
+# assign("best_model_saved_automne_malefemelle",best_model)
+# load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/Lambert93_models/grouse_winter_akde_saved_automne_malefemelle.RData")
+# assign("grouse_winter_akde_saved_automne_malefemelle",grouse_winter_akde)
+# load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/Lambert93_models/grouse_winter_telemetry_automne_malefemelle.RData")
+# assign("grouse_winter_telemetry_automne_malefemelle",grouse_winter_telemetry)
+# 
+# load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/Lambert93_models/best_model_saved_printemps_malefemelle.RData")
+# assign("best_model_saved_printemps_malefemelle",best_model)
+# load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/Lambert93_models/grouse_winter_akde_saved_printemps_malefemelle.RData")
+# assign("grouse_winter_akde_saved_printemps_malefemelle",grouse_winter_akde)
+# load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/Lambert93_models/grouse_winter_telemetry_printemps_malefemelle.RData")
+# assign("grouse_winter_telemetry_printemps_malefemelle",grouse_winter_telemetry)
+# 
+# load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/Lambert93_models/best_model_saved_hiver_male.RData")
+# assign("best_model_saved_hiver_male",best_model)
+# load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/Lambert93_models/grouse_winter_akde_saved_hiver_male.RData")
+# assign("grouse_winter_akde_saved_hiver_male",grouse_winter_akde)
+# load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/Lambert93_models/grouse_winter_telemetry_hiver_male.RData")
+# assign("grouse_winter_telemetry_hiver_male",grouse_winter_telemetry)
+# 
+# load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/Lambert93_models/best_model_saved_hiver_femelle.RData")
+# assign("best_model_saved_hiver_femelle",best_model)
+# load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/Lambert93_models/grouse_winter_akde_saved_hiver_femelle.RData")
+# assign("grouse_winter_akde_saved_hiver_femelle",grouse_winter_akde)
+# load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/Lambert93_models/grouse_winter_telemetry_hiver_femelle.RData")
+# assign("grouse_winter_telemetry_hiver_femelle",grouse_winter_telemetry)
 
 # no coordinate system files
 
@@ -184,8 +184,8 @@ assign("grouse_telemetry",grouse_winter_telemetry)
 ### DATASETS
 
 # GPS locations of black grouses
-data_bg_3V<-readRDS(file.path(base,"1_RAW_DATA/tot.ind.trois_vallees2_10_06_24.rds"))
-# data_bg_3V<-readRDS(file.path(base,"1_RAW_DATA/tot.ind.trois_vallees2.rds"))
+# data_bg_3V<-readRDS(file.path(base,"1_RAW_DATA/tot.ind.trois_vallees2_10_06_24.rds"))
+data_bg_3V<-readRDS(file.path(base,"1_RAW_DATA/tot.ind.trois_vallees2.rds"))
 
 # Main characteristics of tegged-black grouse
 # synth_bg_all_sites<-read.csv2(file.path(base,"1_RAW_DATA/bilan_captures_tetras_all_sites_feb2024.csv"),sep=",")[,-1]
@@ -267,7 +267,7 @@ cables_3V_no_id <- terra::vect(file.path(base,"1_RAW_DATA/human_traffic_in_ski_r
 cables_3V_no_id_WGS84<- project(cables_3V_no_id,y="+proj=longlat +datum=WGS84")
 
 # lek sites 
-lek_locations_vect <- terra::vect(file.path(base,"1_RAW_DATA/place_de_chant/places_de_chant.shp"))
+lek_locations_vect <- terra::vect(file.path(base,"1_RAW_DATA/place_de_chant/place_chant_02_07_2024.gpkg"))
 lek_locations_vect <- project(lek_locations_vect,y="+proj=longlat +datum=WGS84")
 lek_locations_vect_lambert <- project(lek_locations_vect,y="+init=epsg:2154")
 # transform lek_locations_vect in spatial object with metadata
@@ -344,10 +344,15 @@ e_poly<-(as.polygons(ext(e), crs=crs(data_bg_3V)))
                )
   }
   
+  # names(grouse_winter_pretelemetry)<-vect_nicknames
+  
+  save(grouse_winter_telemetry, file=paste0(base,"/3_R/heavy_saved_models/Lambert93_models/grouse_winter_telemetry_",season,"_",paste0(sex,collapse=""),"_Lambert93.RData"))
+  
   grouse_winter_telemetry<-list()
   for(i in 1:length(grouse_winter_pretelemetry))
   { 
-    grouse_winter_telemetry[[i]]<- as.telemetry(grouse_winter_pretelemetry[[i]],datum="WGS84",keep=c("saison","saison2","period_jour","sexe","age"))
+    # grouse_winter_telemetry[[i]]<- as.telemetry(grouse_winter_pretelemetry[[i]],datum="WGS84",keep=c("saison","saison2","period_jour","sexe","age"))
+    grouse_winter_telemetry[[i]]<- as.telemetry(grouse_winter_pretelemetry[[i]],projection="+init=epsg:2154",keep=c("saison","saison2","period_jour","sexe","age"))
     # grouse_winter_telemetry[[i]]<- as.telemetry(grouse_winter_pretelemetry[[i]],datum="WGS84")
     grouse_winter_telemetry[[i]]["x"] <- grouse_winter_telemetry[[i]]["longitude"]
     grouse_winter_telemetry[[i]]["y"] <- grouse_winter_telemetry[[i]]["latitude"]

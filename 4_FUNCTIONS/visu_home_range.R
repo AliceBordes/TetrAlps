@@ -12,7 +12,7 @@
 
 ######################################################################
 
-visu_HR<-function(background=FALSE,season=FALSE,colorby=FALSE,color_palette=FALSE,showleks=FALSE,showpoints=FALSE,writeplot=FALSE,proj="+init=epsg:2154")
+visu_HR<-function(telemetry_object,akde_object,background=FALSE,season=FALSE,colorby=FALSE,color_palette=FALSE,showleks=FALSE,showpoints=FALSE,writeplot=FALSE,proj="+init=epsg:2154")
 {
   #graph options 
   if(season=="hiver")

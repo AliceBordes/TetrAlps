@@ -63,39 +63,7 @@ base<-"C:/Users/albordes/Documents/PhD/TetrAlps"
 ### DATASETS
 
 # GPS locations of black grouses
-data_bg_3V<-readRDS(file.path(base,"1_RAW_DATA/tot.ind.trois_vallees2_10_06_24.rds"))
-
-# Main characteristics of tegged-black grouse
-# synth_bg_all_sites<-read.csv2(file.path(base,"1_RAW_DATA/bilan_captures_tetras_all_sites_feb2024.csv"),sep=",")[,-1]
-synth_bg_all_sites<-read.csv2(file.path(base,"1_RAW_DATA/bilan_captures_tetras_all_sites_mar2024_x_y_coord.csv"),sep=",")[,-1]
-
-# Union of data_bg_3V and synth_bg_all_sites dataset ATTENTION : join by the couple tag_id, ani_name otherwise, wrong match!
-data_bg_3V_synth_fusion<- dplyr::left_join(data_bg_3V ,synth_bg_all_sites %>% filter(zone_etude=="trois_vallees") %>% select(ani_nom,tag_id,marque_tag,energy,sexe,age), by=c("tag_id"="tag_id","ani_nom"="ani_nom"))
-
-# formatting synth_bg_all_sites to retrieve capture positions coordinates
-synth_bg_all_sites$x_capture_coord<-as.numeric(synth_bg_all_sites$x_capture_coord)
-synth_bg_all_sites$y_capture_coord<-as.numeric(synth_bg_all_sites$y_capture_coord)
-
-synth_bg_all_sites$x_capture_coord2<-ifelse(is.na(synth_bg_all_sites$x_capture_coord), 1,synth_bg_all_sites$x_capture_coord)
-synth_bg_all_sites$y_capture_coord2<-ifelse(is.na(synth_bg_all_sites$y_capture_coord), 1,synth_bg_all_sites$y_capture_coord)
-
-synth_bg_all_sites <- st_as_sf(as.data.frame(synth_bg_all_sites), coords = c("x_capture_coord2", "y_capture_coord2"), crs = 4326)
-
-# supress absurd GPS values
-for(i in 1: nrow(synth_bg_all_sites))
-{
-  if(st_bbox(synth_bg_all_sites$geometry[i])$xmin >100)
-  {
-    synth_bg_all_sites$geometry[i]<-NA
-  }
-}      
-
-# select all the points equal to POINT (1 1)
-# st_bbox(points$geometry[1])==1
-synth_bg_3V<-synth_bg_all_sites %>% filter(zone_etude=="trois_vallees")
-synth_bg_3V<-st_as_sf(synth_bg_3V)
-synth_bg_3V$geometry_lambert<-st_transform(synth_bg_3V$geometry,crs="+init=epsg:2154")
-synth_bg_3V<-synth_bg_3V %>% mutate(x_capture_lambert = st_coordinates(geometry_lambert)[,1],y_capture_lambert = st_coordinates(geometry_lambert)[,2])
+bg_3V_data<-readRDS(file.path(base,"2_DATA/black_grouse_dataset.rds"))
 
 ### RASTERS
 
@@ -145,7 +113,7 @@ cables_3V_no_id <- terra::vect(file.path(base,"1_RAW_DATA/human_traffic_in_ski_r
 cables_3V_no_id_WGS84<- project(cables_3V_no_id,y="+proj=longlat +datum=WGS84")
 
 # lek sites 
-lek_locations_vect <- terra::vect(file.path(base,"1_RAW_DATA/place_de_chant/places_de_chant.shp"))
+lek_locations_vect <- terra::vect(file.path(base,"1_RAW_DATA/place_de_chant/place_chant_02_07_2024.gpkg"))
 lek_locations_vect <- project(lek_locations_vect,y="+proj=longlat +datum=WGS84")
 lek_locations_vect_lambert <- project(lek_locations_vect,y="+init=epsg:2154")
 # transform lek_locations_vect in spatial object with metadata
@@ -199,28 +167,109 @@ source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/plot_check_RSF_resu
 # assign("grouse_winter_telemetry_hiver_malefemelle_WGS84",grouse_winter_telemetry)
 
 # # Lambert93 files
-
-load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/Lambert93_models/best_model_saved_hiver_malefemelle.RData")
-assign("best_model_saved_hiver_malefemelle",best_model)
-load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/Lambert93_models/grouse_winter_akde_saved_hiver_malefemelle.RData")
-assign("grouse_winter_akde_saved_hiver_malefemelle",grouse_winter_akde)
-load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/Lambert93_models/grouse_winter_telemetry_hiver_malefemelle.RData")
-assign("grouse_winter_telemetry_hiver_malefemelle",grouse_winter_telemetry)
+# 
+# load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/Lambert93_models/best_model_saved_hiver_malefemelle.RData")
+# assign("best_model_saved_hiver_malefemelle",best_model)
+# load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/Lambert93_models/grouse_winter_akde_saved_hiver_malefemelle.RData")
+# assign("grouse_winter_akde_saved_hiver_malefemelle",grouse_winter_akde)
+# load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/Lambert93_models/grouse_winter_telemetry_hiver_malefemelle.RData")
+# assign("grouse_winter_telemetry_hiver_malefemelle",grouse_winter_telemetry)
 
 # No coordinate system specify (data=Lambert93 and WGS84 transformation in functions) 
+# 
+# load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/season_default_coord_syst/best_model_fit_akde/grouse_best_model_fit_akde.RData")
+# assign("best_model_saved_hiver_malefemelle",best_model_3V)
+# load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/season_default_coord_syst/akde/grouse_akde.RData")
+# assign("grouse_winter_akde_saved_hiver_malefemelle",grouse_3V_akde)
+# load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/season_default_coord_syst/telemetry/grouse_telemetry.RData")
+# assign("grouse_winter_telemetry_hiver_malefemelle",grouse_3V_telemetry)
 
 load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/season_default_coord_syst/best_model_fit_akde/grouse_best_model_fit_akde.RData")
-assign("best_model_saved_hiver_malefemelle",best_model_3V)
-load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/season_default_coord_syst/akde_grouse_akde.RData")
-assign("grouse_winter_akde_saved_hiver_malefemelle",grouse_3V_akde)
+assign("best_model_saved_hiver_malefemelle",best_model)
+load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/season_default_coord_syst/akde/grouse_akde.RData")
+assign("grouse_winter_akde_saved_hiver_malefemelle",grouse_winter_akde)
 load("C:/Users/albordes/Documents/PhD/TetrAlps/3_R/heavy_saved_models/season_default_coord_syst/telemetry/grouse_telemetry.RData")
-assign("grouse_winter_telemetry_hiver_malefemelle",grouse_3V_telemetry)
+assign("grouse_winter_telemetry_hiver_malefemelle",grouse_winter_telemetry)
 #********************************************************************
 
 
 
 #### 1.3.1_Creation of the telemetry object with birds locations ----
 #********************************************************************
+
+#focus on bird locations in winter season
+# grouse_winter_raw<-as.data.frame(data_bg_3V_synth_fusion%>%filter(saison==season)%>%filter(sexe %in% sex))
+grouse_winter_raw<-as.data.frame(bg_3V_data)
+
+#' Create a dt formatted for importation in movebank 
+# grouse_winter_pretelemetry<-pre_telemetry(grouse_winter_raw,"Lambert93")
+grouse_winter_pretelemetry<-pre_telemetry(grouse_winter_raw,"WGS84")
+grouse_winter_pretelemetry<- grouse_winter_pretelemetry%>% filter((animal.ID != "Eros") & (animal.ID !="Emilien")) # the pb for 2021-05-14 = Emilien and the pb for 2021-06-11 = Eros
+write.csv(as.data.frame(grouse_winter_pretelemetry[,!names(grouse_winter_pretelemetry) %in% c("geometry","geometry_capture")]), row.names=FALSE, file="C:/Users/albordes/Documents/PhD/TetrAlps/2_DATA/pretelemetry_bg_3V_WGS84.csv")
+
+#create a list of data.frames for each animal
+grouse_winter<-multiple_dt_indiv(grouse_winter_raw,"nom")
+
+
+not<-negate('%in%')
+
+
+# # Removing the first day of location data as it often shows some unrealistic movements
+for(i in 1:length(grouse_winter_pretelemetry))
+{
+  grouse_winter_pretelemetry[[i]] <- grouse_winter_pretelemetry[[i]] %>% filter (study.local.timestamp >= (first(grouse_winter_pretelemetry[[i]]["study.local.timestamp"]) + ddays(1) ))
+  
+}
+
+# Removing the bird with less than 50 GPS positions data after removing the first day of movements
+# The estimation of the temporal autocorrelation between points, using plot(variogram(SVF_object),CTMM=ctmm_object) in ctmm, cannot be estimated with Escartefigue (53 locations) but with Dameur (83 locations it is ok)
+# often the programmation is 1 loc/h between 4:00 am and 8:00 pm UTC --> so at least 15 loc/day * 7 days = 105 loc ~ at least 100 loc are necessary to be able to do estimations
+grouse_winter_pretelemetryetry<- grouse_winter_pretelemetry[sapply(grouse_winter_pretelemetry, function(x) dim(x)[1]) > 100]
+
+
+
+
+for(i in 1:length(grouse_winter_pretelemetry))
+{
+  # keep only necessary variables
+  grouse_winter_pretelemetry[[i]] <- grouse_winter_pretelemetry[[i]] %>% 
+    select(individual.local.identifier,
+           timestamp,
+           location.long,
+           location.lat,
+           WGS84,
+           sensor.type,marque_tag,energy,
+           sexe,age,
+           saison, saison2,
+           period_jour, height.above.mean.sea.level
+    )
+}
+
+save(grouse_winter_telemetry, file=paste0(base,"/3_R/heavy_saved_models/Lambert93_models/grouse_winter_telemetry_",season,"_",paste0(sex,collapse=""),"_Lambert93.RData"))
+
+grouse_winter_telemetry<-list()
+for(i in 1:length(grouse_winter_pretelemetry))
+{ 
+  # grouse_winter_telemetry[[i]]<- as.telemetry(grouse_winter_pretelemetry[[i]],datum="WGS84",keep=c("saison","saison2","period_jour","sexe","age"))
+  grouse_winter_telemetry[[i]]<- as.telemetry(grouse_winter_pretelemetry[[i]],projection="+init=epsg:2154",keep=c("saison","saison2","period_jour","sexe","age"))
+  # grouse_winter_telemetry[[i]]<- as.telemetry(grouse_winter_pretelemetry[[i]],datum="WGS84")
+  grouse_winter_telemetry[[i]]["x"] <- grouse_winter_telemetry[[i]]["longitude"]
+  grouse_winter_telemetry[[i]]["y"] <- grouse_winter_telemetry[[i]]["latitude"]
+}
+
+
+# create a list with bird's names to plot the correct legend
+vect_nicknames<-list()
+for(i in (1:length(grouse_winter_pretelemetry)))
+{
+  vect_nicknames[[i]]<-unique(grouse_winter_pretelemetry[[i]]["individual.local.identifier"])
+}
+vect_nicknames<-unlist(vect_nicknames)
+vect_nicknames<-as.vector(vect_nicknames)
+
+# renamed each data frame from the list of data frames by the name of each bird 
+names(grouse_winter_pretelemetry)<-vect_nicknames
+names(grouse_winter_telemetry)<-vect_nicknames
 
 # creation of a list() where each element will corresponds to a season (winter 1, 2 or 3) for a bird i in grouse_winter_telemetry.
 
@@ -232,12 +281,13 @@ for(i in 1:length(grouse_winter_telemetry))
     # The list() will contain as many dataframes as seasons the bird i lived. 
     grouse_winter_telemetry_saison2[[j]]<-grouse_winter_telemetry[[i]][grouse_winter_telemetry[[i]]$saison2==unique(grouse_winter_telemetry[[i]]$saison2)[j],]
   }
+  names(grouse_winter_telemetry_saison2)<-unique(grouse_winter_telemetry[[i]]$saison2)
   # Save the list() of dataframes by seasons the bird i lived into the list of dataframes telemmetry objects for each bird i. 
   grouse_winter_telemetry[[i]]<-grouse_winter_telemetry_saison2
 }
 grouse_3V_telemetry<-grouse_winter_telemetry
 
-save(grouse_3V_telemetry, file=paste0(base,"/3_R/heavy_saved_models/season_default_coord_syst/telemetry/black_grouse_telemetry.RData"))
+# save(grouse_3V_telemetry, file=paste0(base,"/3_R/heavy_saved_models/season_default_coord_syst/telemetry/black_grouse_telemetry.RData"))
 
 
 
@@ -287,16 +337,41 @@ best_model_3V <- lapply(fitted_models_grouse_winter, function(fitted_models) {
   })
 })
 
+#set names
+for(i in 1:length(best_model_3V))
+{
+  names(best_model_3V[[i]])<-names(grouse_3V_telemetry[[i]])
+}
 
 save(best_model_3V, file=paste0(base,"/3_R/heavy_saved_models/season_default_coord_syst/best_model_fit_akde/best_model_3V.RData"))
 
+
+
+
 # Home range calculation                                                                                                                                       
 
-grouse_3V_akde <- lapply(grouse_winter_telemetry, function(guess_model) {
-  lapply(seq_along(guess_model), function(j) {
-    akde(guess_model[[j]], CTMM = best_model[[j]])
+# grouse_3V_akde <- lapply(grouse_winter_telemetry, function(guess_model) {
+#   lapply(seq_along(guess_model), function(j) {
+#     akde(guess_model[[j]], CTMM = best_model_3V[[j]])
+#   })
+# })
+
+# Home range calculation                                                                                                                                       
+
+grouse_3V_akde <- lapply(seq_along(grouse_3V_telemetry), function(i) {
+  lapply(seq_along(grouse_3V_telemetry[[i]]), function(j) {
+    akde(grouse_3V_telemetry[[i]][[j]], CTMM = best_model_3V[[i]][[j]])
   })
 })
+
+#set names
+names(grouse_3V_akde)<-names(grouse_3V_telemetry)
+
+#set names
+for(i in 1:length(grouse_3V_akde))
+{
+  names(grouse_3V_akde[[i]])<-names(grouse_3V_telemetry[[i]])
+}
 
 save(grouse_3V_akde, file=paste0(base,"/3_R/heavy_saved_models/season_default_coord_syst/akde/grouse_3V_akde.RData"))
 
@@ -396,6 +471,48 @@ ggplot()+
   geom_histogram(data=as.data.frame(data_bg_3V) %>% filter(ani_nom==grouse_winter_telemetry_hiver_malefemelle_WGS84[[bird]]@info$identity),aes(mnt_altitude))+
   ggtitle(grouse_winter_telemetry_hiver_malefemelle_WGS84[[bird]]@info$identity)+
   xlab("Altitude DEM (m)")
+
+
+
+
+
+# STRAVA
+
+#' Create named list of rasters in the WGS84 format (do not accept the format RasterLayer)
+r_strava<-raster(strava)
+r_strava_WGS84<-raster(strava_WGS84)
+
+#extract the polygon shape of the akde (https://groups.google.com/g/ctmm-user/c/wtBXI4P7-7k)
+poly_95_bird<-SpatialPolygonsDataFrame.UD(grouse_3V_akde[[bird]][["hiver1"]],level.UD=0.95,level=0.95)
+poly_95_bird<-st_as_sf(poly_95_bird)
+# crop the raster to the polygon extents
+r_strava_cropped <- crop(r_strava, extent(poly_95_bird))
+
+# check NA values
+plot(is.na(r_strava_cropped))
+plot(is.na(r_strava))
+
+raster_list <- list("strava" = r_strava_WGS84)
+plot(raster_list[[1]])
+
+#pb : my raster is not in background so the function extract()[--> extracting values of the raster under my telemetry points] inside rsf.fit() can not work.
+bird=1
+
+plot(grouse_3V_telemetry[[bird]][["hiver1"]],grouse_3V_akde[[bird]][["hiver1"]])
+plot(grouse_3V_telemetry[[bird]][["hiver1"]],raster_list[[1]])
+# poly_bird<-SpatialPolygonsDataFrame.UD(grouse_winter_akde_saved_hiver_malefemelle_WGS84[[bird]], level.UD = 0.95, level = 0.95)
+# plot(poly_bird,add=T)
+
+
+grouse_winter_rsf_riemann<-rsf.fit(grouse_3V_telemetry[[bird]][["hiver1"]], 
+                                   grouse_3V_akde[[bird]][["hiver1"]], 
+                                   R=raster_list,  
+                                   integrator = "Riemann")
+
+summary(grouse_winter_rsf_riemann)
+grouse_winter_rsf_riemann$beta # coefs beta of the model
+
+
 
 
 # MULTIPLE RASTER
@@ -1006,23 +1123,28 @@ save(grouse_winter_akde, file=paste0(base,"/3_R/heavy_saved_models/Lambert93_mod
 
 #*************************************************************
 
-
+#birds 1,2,6,8 have an home range for "hiver1"
 source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/plot_check_RSF_results.R")
-plot_check_RSF_res(2,"habitats",analysis_object="study_area",season_text="winter",writeplot=TRUE)
-plot_check_RSF_res(2,"habitats",analysis_object="HR",season_text="winter",writeplot=TRUE)
-plot_check_RSF_res(2,"strava",analysis_object="study_area",season_text="winter",writeplot=TRUE)
-plot_check_RSF_res(2,"strava",analysis_object="HR",season_text="winter",writeplot=TRUE)
+plot_check_RSF_res(6,"habitats",analysis_object="study_area",subseason="hiver1",writeplot=TRUE)
+plot_check_RSF_res(6,"habitats",analysis_object="HR",subseason="hiver1",writeplot=TRUE)
+plot_check_RSF_res(8,"strava",analysis_object="study_area",subseason="hiver1",data_visu="continuous",writeplot=TRUE)
+plot_check_RSF_res(8,"strava",analysis_object="HR",subseason="hiver1",data_visu="continuous",writeplot=TRUE)
+
 
 
 # data exploration 
 bird=1
 
 #extract the polygon shape of the akde (https://groups.google.com/g/ctmm-user/c/wtBXI4P7-7k)
-poly_95_bird<-SpatialPolygonsDataFrame.UD(grouse_winter_akde_saved_hiver_malefemelle[[bird]],level.UD=0.95,level=0.95)
+poly_95_bird<-SpatialPolygonsDataFrame.UD(grouse_winter_akde[[bird]][["hiver1"]],level.UD=0.95,level=0.95)
 crs(poly_95_bird)<-"+init=epsg:2154"
 poly_95_bird<-st_as_sf(poly_95_bird)
 
 #subset the CI's and extract shape of middle contour
+low<-paste(grouse_winter_akde[[bird]][["hiver1"]]@info$identity,"95% low")
+high<-paste(grouse_winter_akde[[bird]][["hiver1"]]@info$identity,"95% high")
+est<-paste(grouse_winter_akde[[bird]][["hiver1"]]@info$identity,"95% est")
+
 poly_95_bird_est <- subset(poly_95_bird, name == est)
 poly_95_bird_low <- subset(poly_95_bird, name == low)
 poly_95_bird_high <- subset(poly_95_bird, name == high)
@@ -1036,10 +1158,6 @@ bbox_polygon_sf <- st_sf(geometry = bbox_polygon)
 # Assign CRS to the bounding box polygon
 st_crs(bbox_polygon_sf) <- st_crs(poly_95_bird)
 
-
-low<-paste(grouse_winter_akde_saved_hiver_femelle[[1]]@info$identity,"95% low")
-high<-paste(grouse_winter_akde_saved_hiver_femelle[[1]]@info$identity,"95% high")
-est<-paste(grouse_winter_akde_saved_hiver_femelle[[1]]@info$identity,"95% est")
 
 #plot the home range polygon object for the bird
 fgh<-ggplot()+
@@ -1164,7 +1282,7 @@ ggplot(class_proportions_named, aes(x="", y=Proportion, fill=Class)) +
 # strava_buffed<-buffer(strava,50)
 
 # crop the raster to the polygon extents
-cropped_r_habitat <- crop(strava, extent(poly_95_bird))
+cropped_r <- crop(strava, extent(poly_95_bird))
 
 # Mask the raster using the polygon to get the values within the polygon only
 masked_raster <- mask(cropped_r_habitat, poly_95_bird)
@@ -1180,7 +1298,7 @@ ggplot()+
   geom_point(data=grouse_winter_telemetry_hiver_malefemelle[[bird]],aes(x=longitude,y=latitude))
 
 # Extract the values from the masked raster:
-values_r_habitat <- getValues(raster(masked_raster))
+values_r_habitat <- getValues(raster(strava))
 
 # Remove NA values 
 values_r_habitat <- values_r_habitat[!is.na(values_r_habitat)]
@@ -1241,17 +1359,13 @@ ggplot(class_proportions_named, aes(x="", y=Proportion, fill=Class)) +
   labs(title=paste(grouse_winter_akde_saved_hiver_malefemelle[[bird]]@info$identity,"\nProportion of Strava disturbance Classes")) 
 
 
-# Ensure that classified_values is numeric
-classified_values <- as.numeric(classified_values)
-
-# Create a new raster to store the classified values
-classified_raster <- values_r_habitat
-
-# Set the classified values to the raster
-classified_raster <- setValues(classified_raster, classified_values)
-
-
-
+# Histogram
+g_histo_HR_or_study_area<-ggplot() +
+  geom_histogram(aes(x=values_r_habitat),fill="red",alpha=0.4)+
+  ggtitle("Strava intensity in the study area (proxy of human disturbance)")+
+  xlab("Strava intensity")
+  # theme_classic()
+g_histo_HR_or_study_area
 
 
 
@@ -1261,26 +1375,26 @@ classified_raster <- setValues(classified_raster, classified_values)
 # Determine which telemetry points fall within the masked area
 # Create an sf object from the longitude and latitude columns
 # Create a geometry column
-grouse_winter_telemetry_hiver_malefemelle[[bird]]$geometry <- st_sfc(
-  lapply(seq_len(nrow(grouse_winter_telemetry_hiver_malefemelle[[bird]])), function(i) {
-    st_point(c(grouse_winter_telemetry_hiver_malefemelle[[bird]]$longitude[i], 
-               grouse_winter_telemetry_hiver_malefemelle[[bird]]$latitude[i]))
+grouse_winter_telemetry_hiver_malefemelle[[bird]][["hiver1"]]$geometry <- st_sfc(
+  lapply(seq_len(nrow(grouse_winter_telemetry_hiver_malefemelle[[bird]][["hiver1"]])), function(i) {
+    st_point(c(grouse_winter_telemetry_hiver_malefemelle[[bird]][["hiver1"]]$longitude[i], 
+               grouse_winter_telemetry_hiver_malefemelle[[bird]][["hiver1"]]$latitude[i]))
   }),
   crs = st_crs(poly_95_bird)
 )
 
 # Convert the data frame to an sf object
-telemetry_sf <- st_as_sf(grouse_winter_telemetry_hiver_malefemelle[[bird]]$geometry)
+telemetry_sf <- st_as_sf(grouse_winter_telemetry_hiver_malefemelle[[bird]][["hiver1"]]$geometry)
 
 # Filter the points that fall within the polygon
 telemetry_inside_mask <- telemetry_sf[st_within(telemetry_sf, poly_95_bird, sparse = FALSE), ]
 
 # Assuming masked_raster is a SpatRaster object from the terra package
 # Convert sf object to SpatVector for extraction
-telemetry_inside_mask_vect <- vect(st_geometry(telemetry_inside_mask))
+# telemetry_inside_mask_vect <- vect(st_geometry(telemetry_inside_mask))
 
 # Extract the values of the habitat classes at those telemetry points
-telemetry_values <- terra::extract(masked_raster, telemetry_inside_mask)
+telemetry_values <- terra::extract(cropped_r, telemetry_inside_mask)
 
 # Combine the extracted values with the original data
 telemetry_inside_mask <- cbind(telemetry_inside_mask, telemetry_values)
@@ -1294,7 +1408,7 @@ print(paste("NA values",sum(is.na(telemetry_inside_mask))))
 
 
 # Count the occurrences of each class
-telemetry_class_counts <-table(telemetry_inside_mask$landcover_1m)
+telemetry_class_counts <-table(telemetry_inside_mask$lyr.1)
 
 # Calculate the proportion of each class:
 telemetry_total_pixels <- sum(telemetry_class_counts)

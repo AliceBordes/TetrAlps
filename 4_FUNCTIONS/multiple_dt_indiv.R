@@ -28,6 +28,7 @@ multiple_dt_indiv<-function(data,pattern)
     dt.list[[i]]<-data %>% filter(data[indx] == vect.animal.names[i])
 
   }
+  names(dt.list)<-vect.animal.names
 
   return(dt.list)
 }

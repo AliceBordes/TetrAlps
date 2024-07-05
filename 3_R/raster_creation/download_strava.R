@@ -11,7 +11,6 @@
 ### adapté de N. Courbin, 13/04/2022
 #'''''''''''''''''''''''''''''''''''
 
-
 # Description:
 #'''''''''''''''''''''''''''''''''''
 ### Import Strava heatmap using the WMTS flux from the PN Mercantour, thanks to Vincent Prunet, details https://github.com/PnMercantour/heatmap
@@ -19,77 +18,70 @@
 #'''''''''''''''''''''''''''''''''''
 
 
+library(devtools)
+# devtools::install_git('https://forgemia.inra.fr/bjoern.reineking/strava.git')
+library(strava)
+library(terra)
 
-#' Download strava tiles
+# extents of the study area
+e_3Vallees <- c(963981.7, 1002351.7 ,6464374.9 ,6495464.1)
+e_Foret_blanche <- c(982999.6-1000, 994999.7+1000, 6384999.6-1000, 6399999.7+1000)
+e_Les_arcs <- c(991999.6-1000, 1004999.7+1000, 6499999.6-1000, 6507999.7+1000)
+e_Bauges <- c(946999.6-1000, 955999.7 +1000, 6513999.6-1000, 6522999.7+1000)
+e_Valcenis <- c(998999.6-1000, 1014999.7+1000, 6467999.6-1000, 6476999.7+1000)
+
+setwd("C:/Users/albordes/Documents/PhD/TetrAlps/2_DATA/strava/Bauges")
+
+#' Download strava tiles (in epsg:3857)
 #'
-#' @param zone A SpatExtent object. The projection of the SpatExtent must be specified in projwin_srs. Default is EPSG:3857.
-#' @param sport Strava sport. One of "all", "ride", "run", "walk", "hike", "water", "winter"
-#' @param outputfile Name of outputfile
-#' @param outputpath Path where to save outputfile
-#' @param projwin_srs Projection of zone
+#' @param zone Study zone for which to download data. A terra::SpatExtent
+#' object. The projection of the SpatExtent must be specified in argument
+#' projwin_srs.
+#' @param sport Strava sport. One of e.g. "all", "ride", "run", "water",
+#' "winter". For a complete list, see strava:::strava_activities.
+#' @param destfile Name of outputfile
+#' @param projwin_srs Projection of zone (default: EPSG:3857)
+#' @param tilematrix Which zoom level to choose (between 0 and 12)
+#' (default: NULL, i.e. highest available resolution).
 #' @export
 #'
 download_strava_heatmap <- function(zone, sport = "all",
-                                    outputfile = paste0("strava-", sport, ".tif"),
-                                    outputpath = getwd(),
-                                    projwin_srs = "EPSG:3857")  # pseudo-mercator = projection strava 
-      {
-        activities <- c("all", "ride", "run", "water", "winter")
-        stopifnot(sport %in% activities)
-        if(inherits(zone, "SpatExtent")) {
-          ulx <- zone[1]
-          uly <- zone[4]
-          lrx <- zone[2]
-          lry <- zone[3]
-        }
-        opts <- c("-projwin", ulx, uly, lrx, lry,
-                  "-projwin_srs", projwin_srs)# , "-overwrite")
-        sf::gdal_utils("translate",
-                       source = paste("WMTS:https://raw.githubusercontent.com/PnMercantour/heatmap/master/WMTS/strava-public.xml,layer=strava-", sport, sep=''),
-                       destination = file.path(outputpath, outputfile),
-                       options = opts)
-        
-        
-        
-        # Construction of a 3-band raster whose values give the distance between the observation point and the nearest crossing point of category greater than or equal to 1, 2 or 3
-        # using gdal_proximity.py() which generates a raster proximity map indicating the distance from the center of each pixel to the center of the nearest pixel identified as a target pixel
-        # Les pixels sont représentés par 3 bandes RGB et une bande alpha. On utilisera dans les traitements suivants la valeur de la bande alpha qui reflète bien les différents niveaux de fréquentation.
-        # On définit 4 niveaux de fréquentation de 0 à 3 par une répartition égale (visuellement, ce mode de répartition semble cohérent avec l'original couleur produit par strava). On utilise pour cela gdal_translate
-        
-        strava_rgb <- terra::rast(file.path(outputpath, outputfile))
-        
-        ### Look at the RGB image
-        # if (plot_rgb) {terra::plotRGB(strava_rgb)}
-        
-        ### Reduce information in a single band raster
-        strava_one <- grDevices::rgb(strava_rgb[[1]][], 
-                                     strava_rgb[[2]][], 
-                                     strava_rgb[[3]][], 
-                                     alpha = strava_rgb[[4]][], 
-                                     maxColorValue = 255)  # La bande alpha (-b 4) prend une valeur nulle ou comprise 85 et 255.
-        ordered_cols <- sort(unique(strava_one))
-        # Verify that the gradient color is correclty ordered
-        # ggplot2::qplot(x = 1:256, y = 1, fill = I(ordered_cols), geom = 'col', width = 1) + ggplot2::theme_void()
-        
-        # Recode color in numeric value between 0 and 255
-        for(i in 1:256){
-          strava_one[which(strava_one == ordered_cols[i])] <- i - 1
-        }
-        strava_one <- as.numeric(strava_one)
-        strava_one <- matrix(strava_one, nrow = nrow(strava_rgb), ncol = ncol(strava_rgb), byrow=TRUE)
-        strava_one <- terra::rast(strava_one, crs = terra::crs(strava_rgb), extent = terra::ext(strava_rgb))
-        # if (plot_single) {terra::plot(strava_one, col = viridis::magma(256))}
-        
-        # Save single band image
-        terra::writeRaster(strava_one, file = file.path(outputpath, paste0(outputfile, '_single.tif')), 
-                           overwrite = T)
-      }
-
-
-download_strava_heatmap(zone=ext(slope_3V),sport="winter",outputfile="strava_3V_winter_sports_rgb.tif",outputpath=file.path(here(),"2_DATA/strava"),projwin_srs="+init=epsg:2154")
-
-strava2<-rast(file.path(here(),"2_DATA/strava/strava_3V_winter_sports.tif"))
-plot(strava2)
-
-
+                                    destfile = file.path(getwd(),
+                                                         paste0("strava_",
+                                                                sport, "_",
+                                                                format(Sys.time(), "%Y_%m_%d"),
+                                                                ".tif")),
+                                    projwin_srs = "EPSG:3857",
+                                    tilematrix = NULL) {
   
+  stopifnot(sport %in% strava:::strava_activities)
+  stopifnot(is.null(tilematrix) || tilematrix %in% c(0:12))
+  if(inherits(zone, "SpatExtent")) {
+    ulx <- zone[1]
+    uly <- zone[4]
+    lrx <- zone[2]
+    lry <- zone[3]
+  }
+  opts <- c("-projwin", ulx, uly, lrx, lry, "-projwin_srs", projwin_srs)
+  sf::gdal_utils("translate",
+                 source = paste0("WMTS:",
+                                 system.file("strava-public-full.xml",
+                                             package = "strava"),
+                                 ",layer=strava-", sport,
+                                 ifelse(is.null(tilematrix), "",
+                                        paste0(",tilematrix=", tilematrix))),
+                 destination = destfile,
+                 options = opts)
+  
+}
+
+# e <- terra::ext(6.02, 6.12, 45.06, 45.15)
+# download_strava_heatmap(e, "sport_NordicSki", projwin_srs = "EPSG:4326",
+# tilematrix = 10)
+# ww <- terra::rast(paste0("strava-sport_NordicSki_", Sys.Date(), ".tif"))
+# terra::plotRGB(ww)
+# terra::plot(strava::as_numeric(ww), col = viridis::magma(256))
+
+download_strava_heatmap(zone=ext(e_Bauges),sport="winter",projwin_srs="+init=epsg:2154")
+
+
