@@ -1,4 +1,4 @@
-#### PhD Tetras_test project ####
+#### PhD TetraAlps project ####
 
 # Alice Bordes #
 
@@ -32,6 +32,9 @@ library(ggnewscale)
 library(broom)
 library(janitor)
 library(lubridate)
+library(openxlsx)
+library(tidyverse)
+library(dplyr)
 #********************************************************************
 
 
@@ -372,7 +375,93 @@ snow_meribel <- read.xlsx("C:/Users/albordes/Documents/PhD/TetrAlps/1_RAW_DATA/e
         }
         
         menuires_visitors <- menuires_formatting(save = FALSE)
-       
+
+        
+        
+        
+        
+        
+        
+        
+        
+        
+### Snow depth    
+  # Méribel      
+meribel_snow_formatting <- function(folderpath = file.path(base,"TetrAlps/1_RAW_DATA/environment/enneigement/meribel_meteo_france_neige.xlsx"),
+                                    folderoutpath = file.path(base,"TetrAlps/2_DATA/snow_depth"), save = FALSE)
+{
+  list_data <- list()
+  
+  for(year in c(2016:2022))
+  {
+    data <- tryCatch(
+      {
+        read.xlsx(xlsxFile = folderpath, sheet = as.character(paste0("Saison ",year,".",year+1)))
+      }, 
+      error = function(e) 
+      {
+        message("Error reading file: ", folderpath, "\n", e)
+        return(NULL)
+      })
+    colnames(data) <- c( "Date", "cumul.H.neige.cm", "Neige.fraiche.cm", "Cumul.neige.fraiche.avant.saison.cm")
+    # Fill NA values in the Date column with the value above
+    data <- data %>% fill(Date, .direction = "down")
+    data$Date <- excel_numeric_to_date(data$Date)
+    
+    list_data[[year-2015]] <- data
+  }
+  
+  snow_data <- do.call(rbind, list_data)
+  
+  if(save == TRUE)
+  {
+    write.csv(snow_data, file = file.path(folderoutpath,"meribel_snow_depth.csv"), row.names = FALSE)
+  }
+  
+    return(snow_data)
+    
+}
+
+snow_meribel <- meribel_snow_formatting(save = TRUE)
+
+  # Courchevel
+
+courchevel_snow_formatting <- function(folderpath = file.path(base,"TetrAlps/1_RAW_DATA/environment/enneigement/courchevel1850_hauteurdeneige_journaliere_2019_2023_13072023.xlsx"),
+                                       folderoutpath = file.path(base,"TetrAlps/2_DATA/snow_depth"), save = FALSE)
+{
+  list_data <- list()
+  
+  for(year in c(2019:2022))
+  {
+    data <- tryCatch(
+      {
+        read.xlsx(xlsxFile = folderpath, sheet = as.character(paste0("cumul ",year-2000,"-",year+1-2000)), startRow = 2)
+      }, 
+      error = function(e) 
+      {
+        message("Error reading file: ", folderpath, "\n", e)
+        return(NULL)
+      })
+    data <- data[,1:4]
+    colnames(data) <- c( "Date", "cumul.H.neige.cm", "Neige.fraiche.cm", "moyenne")
+    # Fill NA values in the Date column with the value above
+    data$Date <- excel_numeric_to_date(as.numeric(data$Date))
+    
+    list_data[[year-2018]] <- data
+  }
+  
+  snow_data <- do.call(rbind, list_data)
+  
+  if(save == TRUE)
+  {
+    write.csv(snow_data, file = file.path(folderoutpath,"courchevel_snow_depth.csv"), row.names = FALSE)
+  }
+  
+  return(snow_data)
+  
+}
+
+snow_courchevel <- courchevel_snow_formatting(save = TRUE)
 #********************************************************************
 
 

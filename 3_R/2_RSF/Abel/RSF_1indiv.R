@@ -1,3 +1,15 @@
+#### PhD Tetralpes project ####
+
+# Alice Bordes #
+
+# September 2024 #
+
+# Description:
+
+# RSF on 1 indiv
+
+
+
 #### 1_Loading objects ----
 
 ### Loading libraries ---- 
@@ -49,26 +61,11 @@ borders_3V_vect <- terra::vect(file.path(base,"Tetralps/1_RAW_DATA/borders_3V.gp
 # Environment stack
 load(file.path(base,"TetrAlps/3_R/0_Heavy_saved_models/environment_3V/env_RL_list.RData"))
 
-# Snow deph
-snow_meribel <- read.xlsx("C:/Users/albordes/Documents/PhD/TetrAlps/1_RAW_DATA/environment/enneigement/meribel_meteo_france_neige.xlsx", sheet = "Saison 2018.2019")
-colnames(snow_meribel) <- c( "Date", "H.neige.cm", "Neige.fraiche.cm", "Cumul.neige.fraiche.avant.saison.cm")
-# Fill NA values in the Date column with the value above
-snow_meribel <- snow_meribel %>% fill(Date, .direction = "down")
-snow_meribel$Date <- excel_numeric_to_date(snow_meribel$Date)
-# "saison 2" in the bird dataset : winter = 15 nov to 14 feb
-snow_meribel <- snow_meribel[snow_meribel$Date >= as.Date("2018-11-15") & snow_meribel$Date <= as.Date("2019-02-14"), ]
+# Visitor numbers
+visitor_meribel <- read.csv2("C:/Users/albordes/Documents/PhD/TetrAlps/2_DATA/ski_resorts_visitor_numbers/meribel_visitors.csv", sep=",")
 
-# Ski resort visitors
-# Méribel Mottaret
-meribel_human_traffic_18_19 <- read.xlsx(sheet="Passage Détail",file.path(base,"TetrAlps/1_RAW_DATA/human_traffic_in_ski_resorts/Meribel_mottaret_RM_Historique_des_passages_2017_22/Passage_Mensuel_par_RM_Mottaret_18_19.xlsx"))
-names(meribel_human_traffic_18_19)[1] <- "Mois" ; names(meribel_human_traffic_18_19)[2] <- "Jour"
-meribel_human_traffic_18_19 <- meribel_human_traffic_18_19 %>% fill(Mois, .direction = "down") # `fill()` defaults to replacing missing data from top to bottom
-meribel_human_traffic_18_19 <- meribel_human_traffic_18_19 %>% replace(is.na(.), 0) # assuming all the NA = 0 visitors
-meribel_human_traffic_18_19 <- meribel_human_traffic_18_19 %>% mutate(Date = paste(Mois, Jour, sep = "-"))
-meribel_human_traffic_18_19$Date <- as.Date(meribel_human_traffic_18_19$Date)
-meribel_human_traffic_18_19 <- meribel_human_traffic_18_19[meribel_human_traffic_18_19$Date >= as.Date("2018-11-15") & meribel_human_traffic_18_19$Date <= as.Date("2019-02-14"), ]
-meribel_human_traffic_18_19 <- meribel_human_traffic_18_19 %>% select(Date, everything()) %>% select(-Mois) %>% select(-Jour)
-meribel_human_traffic_18_19 <- meribel_human_traffic_18_19 %>% mutate(Total = rowSums(select(., where(is.numeric)), na.rm = TRUE))
+# Snow deph
+snow_meribel <- read.csv2("C:/Users/albordes/Documents/PhD/TetrAlps/2_DATA/ski_resorts_visitor_numbers/meribel_visitors.csv", sep=",")
 #********************************************************************
 
 
@@ -200,7 +197,28 @@ library(sf)
 library(mvtnorm)
 library(terra)
 
-### Setting the limit of the study area for the bird ----
+
+#### 3.1_Required assumptions to calculate and interprete an home range ----
+
+# The animal must show a resident behevior on the considered scale : 
+# "Finally, at larger scales, most animals will exhibit a tendency to remain in a defined region or ‘home range’". (Calabrese, 2016)
+
+
+# The variogram, or semivariogram, plots time lags on the x-axis for all pairs of observations
+# against their semi-variance (half of the variance for the distance each observation pair) on the y-axis. (Animove 2022)
+
+
+# Bird's VARIOGRAM
+# assuming homogenous sampling schedule (which is not the case)
+SVF_0 <- variogram(telemetry_winter) # bird's variogram
+plot(SVF_0,fraction=0.9,level=c(0.5,0.95),CTMM=fit_winter)
+title(paste(bird,"'s variogram - winter\n(assuming homogenous sampling schedule)"),cex.main=1,line = -2)
+# The position timescale is roughly the time lag it takes of the variogram to reach 63% of its asymptote. 
+# The velocity autocorrelation timescale visually corresponds to width of the concave bowl shape at the beginning of the variogram
+
+
+
+### 3.2_Setting the limit of the study area for the bird ----
 
 # calculating the 99% HR
 r_mybird_akde_99 <- SpatialPolygonsDataFrame.UD(akde_winter,level.UD=.99,level=.95) # UD area at 99% with a 95% confidence level for the magnitude of the above area
@@ -208,9 +226,8 @@ r_mybird_akde_99 <- SpatialPolygonsDataFrame.UD(akde_winter,level.UD=.99,level=.
 # calculating the mcp 
 subset_df <- telemetry_winter[, c("x", "y")]
 class(subset_df) <- "data.frame"
-mcp(subset_df, percent = 100) # Create a SpatialPoints object
 coordinates(subset_df) <- ~x + y # Perform the Minimum Convex Polygon calculation
-mcp_result <- mcp(subset_df, percent = 100)
+mcp_result <- mcp(subset_df, percent = 100) # Create a SpatialPoints object
 
 
 max(ext(r_mybird_akde_99),ext(mcp_result))
@@ -241,7 +258,7 @@ ggplot()+geom_sf(data=buffered_polygon)+geom_sf(data=polygon)
 
 e_mybird_buff <- as.vector(ext(buffered_polygon))
 
-### 3.1_Visualization "raw" HR (without environmental effects) ----
+### 3.3_Visualization "raw" HR (without environmental effects) ----
 #********************************************************************
 plot(birds_sample_bg_telemetry_seasons[[bird]][[season]],UD=birds_sample_bg_akde_seasons[[bird]][[season]]) #95% HR + incertities around this 95% HR
 
@@ -262,7 +279,7 @@ terra::plot(add=TRUE,UD_mybird_spatial)
 #********************************************************************
 
 
-### 3.2_Expected results of the RSF ----
+### 3.4_Expected results of the RSF ----
 #********************************************************************
 #birds 1,2,6,8 have an home range for "hiver1"
 source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/plot_check_RSF_results.R")
@@ -359,7 +376,7 @@ ggplot()+
 
 
 
-### 3.3_Suitability map ----
+### 3.5_Suitability map ----
 
 #' A suitability map - with 95% confidence interval
 # mybird_suitability_riemann <- ctmm::suitability(mybird_rsf_riemann, R = bg_env_list, grid=reference_grid) ## error, why?
@@ -379,7 +396,7 @@ ggplot()+
   ggtitle(paste(bird,"suitability map"))
 
 
-### 3.4_ Range distribution (includes the ranging behaviour) ----
+### 3.6_ Range distribution (includes the ranging behaviour) ----
 mybird_agde <- agde(CTMM = mybird_rsf_riemann, R = bg_env_list, 
                     grid = bg_env_list[[1]])
 # save(mybird_agde, file = paste0(base,"/Animove2024/my_project/rsf/heavy_models_rsf/",bird,"_",season,"_agde.RData"))
@@ -404,7 +421,7 @@ UD_mybird_spatial_agde <- SpatialPolygonsDataFrame.UD(mybird_agde,level.UD=.95,l
 UD_mybird_spatial_agde_contours<-mask(r_mybird_agde,UD_mybird_spatial_agde)
 
 
-#### 3.5_Selection-informed akde : akde_rsf ----
+#### 3.7_Selection-informed akde : akde_rsf ----
 
 # Selection-informed akde = create a new akde taking into account env preferences + actual points where the animals are
 mybird_akde_rsf <- akde(birds_sample_bg_telemetry_seasons[[bird]][[season]], CTMM = mybird_rsf_riemann, R = bg_env_list, 

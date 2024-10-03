@@ -23,16 +23,12 @@ library(devtools)
 library(strava)
 library(terra)
 
-# extents of the study area
-e_3Vallees <- c(963981.7, 1002351.7 ,6464374.9 ,6495464.1)
-e_Foret_blanche <- c(982999.6-1000, 994999.7+1000, 6384999.6-1000, 6399999.7+1000)
-e_Les_arcs <- c(991999.6-1000, 1004999.7+1000, 6499999.6-1000, 6507999.7+1000)
-e_Bauges <- c(946999.6-1000, 955999.7 +1000, 6513999.6-1000, 6522999.7+1000)
-e_Valcenis <- c(998999.6-1000, 1014999.7+1000, 6467999.6-1000, 6476999.7+1000)
+
+setwd(file.path("C:/Users/albordes/Documents/PhD/TetrAlps/2_DATA/strava"))
 
 
-setwd(file.path("C:/Users/albordes/Documents/PhD/TetrAlps/2_DATA/strava/Valcenis"))
-
+# Function 
+#*************************************************************************************
 #' Download strava tiles (in epsg:3857)
 #'
 #' @param zone Study zone for which to download data. A terra::SpatExtent
@@ -47,13 +43,18 @@ setwd(file.path("C:/Users/albordes/Documents/PhD/TetrAlps/2_DATA/strava/Valcenis
 #' @export
 #'
 download_strava_heatmap <- function(zone, sport = "all",
-                                    destfile = file.path(getwd(),
-                                                         paste0("strava_",
-                                                                sport, "_",
-                                                                format(Sys.time(), "%Y_%m_%d"),
-                                                                ".tif")),
+                                    destfile = file.path("C:/Users/albordes/Documents/PhD/TetrAlps/2_DATA/strava"),
                                     projwin_srs = "EPSG:3857",
                                     tilematrix = NULL) {
+  
+  file_name <- sub(".*e_([^)]*).*", "\\1", deparse(substitute(zone)))
+  
+  destfile = file.path(getwd(),file_name,
+                       paste0("strava_",
+                              sport, "_",
+                              format(Sys.time(), "%Y_%m_%d"),
+                              ".tif"))
+  
   
   stopifnot(sport %in% strava:::strava_activities)
   stopifnot(is.null(tilematrix) || tilematrix %in% c(0:12))
@@ -82,7 +83,26 @@ download_strava_heatmap <- function(zone, sport = "all",
 # ww <- terra::rast(paste0("strava-sport_NordicSki_", Sys.Date(), ".tif"))
 # terra::plotRGB(ww)
 # terra::plot(strava::as_numeric(ww), col = viridis::magma(256))
+#*************************************************************************************
 
+
+
+
+# extents of the study area
+#*************************************************************************************
+e_3Vallees <- c(963981.7, 1002351.7 ,6464374.9 ,6495464.1)
+e_Foret_blanche <- c(982999.6-1000, 994999.7+1000, 6384999.6-1000, 6399999.7+1000)
+e_Les_arcs <- c(991999.6-1000, 1004999.7+1000, 6499999.6-1000, 6507999.7+1000)
+e_Bauges <- c(946999.6-1000, 955999.7 +1000, 6513999.6-1000, 6522999.7+1000)
+e_Valcenis <- c(998999.6-1000, 1014999.7+1000, 6467999.6-1000, 6476999.7+1000)
+#*************************************************************************************
+
+# export the strava rasters
+#*************************************************************************************
+download_strava_heatmap(zone=ext(e_3Vallees),sport="winter",projwin_srs="+init=epsg:2154")
+download_strava_heatmap(zone=ext(e_Foret_blanche),sport="winter",projwin_srs="+init=epsg:2154")
+download_strava_heatmap(zone=ext(e_Les_arcs),sport="winter",projwin_srs="+init=epsg:2154")
+download_strava_heatmap(zone=ext(e_Bauges),sport="winter",projwin_srs="+init=epsg:2154")
 download_strava_heatmap(zone=ext(e_Valcenis),sport="winter",projwin_srs="+init=epsg:2154")
-
+#*************************************************************************************
 
