@@ -1,0 +1,6 @@
+DATA FORMATTING
+
+- 0_Dataset_formatting_BG_rds : add capture data to the RDS file
+- 1_Data_prep_BG_telemetry_akde : creation a telemetry, a fit and a akde (home-range) object with animals in groups and season in sub-groups. 
+	Seasons are defined according to a management point of view (begining of the snow/ski season - until the end).
+- 1_Data_prep_telemetry_akde_FOX : creation a telemetry, a fit and a akde (home-range) object for one fox, Corentin

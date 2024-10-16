@@ -30,7 +30,8 @@ e_Les_arcs <- c(991999.6-1000, 1004999.7+1000, 6499999.6-1000, 6507999.7+1000)
 e_Bauges <- c(946999.6-1000, 955999.7 +1000, 6513999.6-1000, 6522999.7+1000)
 e_Valcenis <- c(998999.6-1000, 1014999.7+1000, 6467999.6-1000, 6476999.7+1000)
 
-setwd("C:/Users/albordes/Documents/PhD/TetrAlps/2_DATA/strava/Bauges")
+
+setwd(file.path("C:/Users/albordes/Documents/PhD/TetrAlps/2_DATA/strava/Valcenis"))
 
 #' Download strava tiles (in epsg:3857)
 #'
@@ -82,6 +83,6 @@ download_strava_heatmap <- function(zone, sport = "all",
 # terra::plotRGB(ww)
 # terra::plot(strava::as_numeric(ww), col = viridis::magma(256))
 
-download_strava_heatmap(zone=ext(e_Bauges),sport="winter",projwin_srs="+init=epsg:2154")
+download_strava_heatmap(zone=ext(e_Valcenis),sport="winter",projwin_srs="+init=epsg:2154")
 
 

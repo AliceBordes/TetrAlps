@@ -88,7 +88,7 @@ cables_3V_no_id_WGS84<- project(cables_3V_no_id,y="+proj=longlat +datum=WGS84")
 
 # 3V human traffic
   # Méribel Mottaret
-meribel_human_traffic<-read_excel(sheet="Passage Détail",file.path(base,"1_RAW_DATA/human_traffic_in_ski_resorts/Meribel_mottaret_RM_Historique_des_passages_2017_22/Passage Mensuel par RM Mottaret 22-23.xlsx"))
+meribel_human_traffic<-read_excel(sheet="Passage Détail",file.path(base,"1_RAW_DATA/human_traffic_in_ski_resorts/Meribel_mottaret_RM_Historique_des_passages_2017_22/Passage_Mensuel_par_RM_Mottaret_22_23.xlsx"))
 meribel_human_traffic<-meribel_human_traffic %>% fill(Mois) # `fill()` defaults to replacing missing data from top to bottom
 meribel_human_traffic<-meribel_human_traffic %>% replace(is.na(.), 0) # assuming all the NA = 0 visitors
 

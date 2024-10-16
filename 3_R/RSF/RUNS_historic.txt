@@ -1,0 +1,5 @@
+RSF 1 indiv
+
+- 26/08/24 : travail sur le Rscript "C:\Users\albordes\Documents\PhD\TetrAlps\3_R\RSF\2_RSF_1indiv"
+- 27/08/24 : travail sur le Rscript "C:\Users\albordes\Documents\PhD\TetrAlps\3_R\RSF\2_RSF_1indiv_v2" + 
+creation C:\Users\albordes\Documents\PhD\TetrAlps\3_R\0_Heavy_saved_models\birds_3V et C:\Users\albordes\Documents\PhD\TetrAlps\3_R\0_Heavy_saved_models\environment_2V
