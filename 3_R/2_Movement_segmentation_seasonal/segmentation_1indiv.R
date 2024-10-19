@@ -34,9 +34,13 @@ base<-"C:/Users/albordes/Documents/PhD"
 # Loading data ----
 #********************************************************************
 ### DATASET
-birds_bg_dt<-read.csv2(file.path(base,"Tetralps/2_DATA/data_bg_pretelemetry.csv"),sep=",") #upload the file from a csv, not a move2 object
+birds_bg_dt<-read.csv2(file.path(base,"Tetralps/2_DATA/data_bg_pretelemetry_2024_10_18.csv"),sep=",") #upload the file from a csv, not a move2 object
 #********************************************************************
 
+# Loading functions ----
+#********************************************************************
+source(file.path(base,"Tetralps/4_FUNCTIONS/plot_coord.R")) 
+#********************************************************************
 
 
 #********************************************************************
@@ -46,6 +50,9 @@ setwd(base)
 bird="Alpha"
 season="hiver2"
 list_of_animals = bird
+
+#all animals
+vect_ani <- unique(birds_bg_dt$animal.ID)
 #********************************************************************
 
 
@@ -83,7 +90,38 @@ ggplot() +
 #********************************************************************
 
 
-### 2_Finding changing points
+### 2_Looking at changing points in longitude and latitude coordinates time series
+#********************************************************************
+coordXY(vect_ani[1:4])
+coordXY_multiple_bg(vect_ani, "G", write = TRUE)
+#********************************************************************
+
+
+### 3_Finding changing points ----
+#********************************************************************
+brkplot <- brkpts_coordXY(vect_name = vect_ani[1:4], 
+                          threshold = 0.2, 
+                          write = TRUE, 
+                          outputfolder = file.path(base,"TetrAlps/5_OUTPUTS/data_exploration/season_segmentation/breakpoints"))
+
+brkplot
+
+#********************************************************************
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### 2_Finding changing points with smoove ----
 #********************************************************************
 
 with(bird_sf, scan_track(x = as.numeric(bird_sf$location.long), y = as.numeric(bird_sf$location.lat), time = as.POSIXct(bird_sf$study.local.timestamp)))
