@@ -48,14 +48,7 @@ base<-"C:/Users/albordes/Documents/PhD"
 #********************************************************************
 
 ### DATASET
-birds_bg_dt<-read.csv2(file.path(base,"Tetralps/2_DATA/data_bg_pretelemetry.csv"),sep=",") #upload the file from a csv, not a move2 object
-
-
-### VECTORS
-
-# 3V borders 
-borders_3V_vect <- st_read(file.path(base,"Tetralps/1_RAW_DATA/borders_3V.gpkg"))
-borders_3V_vect <- terra::vect(file.path(base,"Tetralps/1_RAW_DATA/borders_3V.gpkg"))
+birds_bg_dt<-read.csv2(file.path(base,"Tetralps/2_DATA/data_bg_pretelemetry_2024_10.csv"),sep=",") #upload the file from a csv, not a move2 object
 
 # Environment stack
 load(file.path(base,"TetrAlps/3_R/0_Heavy_saved_models/environment_3V/env_RL_list.RData"))
@@ -72,7 +65,7 @@ list_of_animals = bird
 
 
 
-### Loading data for rsf ----
+### 1_Loading data for rsf ----
 #********************************************************************
 #### Creation of a global telemetry object (for all birds)
 
@@ -100,7 +93,7 @@ akde_winter <- akde(telemetry_winter,
 
 
 
-#### 3_Home range estimation : Fitting an RSF for 1 bird ----
+#### 2_Home range estimation : Fitting an RSF for 1 bird ----
 #********************************************************************
 ### Loading packages for RSF ----
 #+  results='hide', message=FALSE, warning=FALSE
@@ -111,7 +104,7 @@ library(mvtnorm)
 library(terra)
 
 
-### Choosing environmental predictors ----
+### 3_Choosing environmental predictors ----
 #********************************************************************
 # Predictor selection 
 env_RL_list <- env_RL_list[c("elevation", "square_elevation", "strava", "carto_habitats_winter","leks")]
@@ -121,7 +114,7 @@ buff_vector <- c(1,100,200,500,1000,10000) # different size for the integration 
 #********************************************************************
 
 
-### Setting the limit of the study area for the bird ----
+### 4_Setting the limit of the study area for the bird ----
 #********************************************************************
 # calculating the 99% HR
 r_mybird_akde_99 <- SpatialPolygonsDataFrame.UD(akde_winter,level.UD=.99,level=.95) # UD area at 99% with a 95% confidence level for the magnitude of the above area
@@ -149,36 +142,33 @@ terra::plot(r_mybird_akde_99,add=T, border="blue")
 
 
 
-# Visualisation of the different buffers
+### 5_Visualization of the different buffers
 #********************************************************************
-# Apply a buffer of 200 units
+
+# Creation of the polygon for the first integration area = max(mcp, akde99)
 polygon <- as.polygons(ext(e_mybird))
 crs(polygon) <- "EPSG:2154"
-buffered_polygon1 <- terra::buffer(polygon, width = buff_vector[1], joinstyle = "mitre")
-buffered_polygon100 <- terra::buffer(polygon, width = buff_vector[2], joinstyle = "mitre")
-buffered_polygon200 <- terra::buffer(polygon, width = buff_vector[3], joinstyle = "mitre")
-buffered_polygon500 <- terra::buffer(polygon, width = buff_vector[4], joinstyle = "mitre")
-buffered_polygon1000 <- terra::buffer(polygon, width = buff_vector[5], joinstyle = "mitre")
-buffered_polygon10000 <- terra::buffer(polygon, width = buff_vector[6], joinstyle = "mitre")
+
+# Creation of the different integration area sizes (buffered polygon)
+buffered_polygons <- lapply(buff_vector, function(width) {
+  terra::buffer(polygon, width = width, joinstyle = "mitre")
+})
 
 
+# Transform mcp and akde 99% in polygon
 mcp_sf <- st_as_sf(mcp_result)
 st_crs(mcp_sf) <- 2154
 mcp_result_WGS84 <- st_transform(mcp_sf, crs = 2154)
-
 
 akde99_sf <- st_as_sf(r_mybird_akde_99)
 st_crs(akde99_sf) <- 2154
 akde99_WGS84 <- st_transform(akde99_sf, crs = 2154)
 
-ggplot()+
-  geom_spatvector(data = buffered_polygon1, fill = NA)+
-  geom_spatvector(data = buffered_polygon100, fill = NA)+
-  geom_spatvector(data = buffered_polygon200, fill = NA)+
-  geom_spatvector(data = buffered_polygon500, fill = NA)+
-  geom_spatvector(data = buffered_polygon1000, fill = NA)+
-  geom_spatvector(data = buffered_polygon10000, fill = NA)+
-  geom_sf(data = mcp_result_WGS84, fill = NA, color = "blue")+
+
+# Visualization of the different integration areas
+ggplot() +
+  lapply(buffered_polygons, function(p) geom_spatvector(data = p, fill = NA)) +
+  geom_sf(data = mcp_result_WGS84, fill = NA, color = "blue") +
   geom_sf(data = akde99_WGS84, fill = NA, color = "red")
 #********************************************************************
 
@@ -186,18 +176,17 @@ ggplot()+
 
 
 
-### RSF functions --> estimation of the environmental effects ----
+### 5_RSF functions --> estimation of the environmental effects ----
 #********************************************************************
-
+######################*
 # using ctmm::rsf.fit()
+######################*
 
 rsf_summary <- list()
 
 for(i in seq_along(buff_vector))
 {
-# Apply a buffer of 200 units
-polygon <- as.polygons(ext(e_mybird))
-crs(polygon) <- "EPSG:2154"
+
 buffered_polygon <- terra::buffer(polygon, width = buff_vector[i], joinstyle = "mitre") # joinstyle = "mitre" : to correctly represent the limit of the area # width = Unit is meter if x has a longitude/latitude CRS, or in the units of the coordinate reference system in other cases (typically also meter)
 # ggplot()+geom_sf(data=buffered_polygon)+geom_sf(data=polygon)
 
@@ -209,9 +198,7 @@ e_mybird_buff <- as.vector(ext(buffered_polygon))
 env_RL_list_cropped <- lapply(env_RL_list, function(raster) {
   terra::crop(raster, extent(e_mybird_buff)*2)
 })
-# cheking environment slacks
-# terra::plot(envir_crop)
-# terra::plot(envir_crop[["carto_habitats_winter"]])
+
 
 
 # RSF
@@ -229,42 +216,35 @@ rsf_summary[[i]]<- sum_rsf
 
 }
 
-rsf_table <- do.call(rbind,rsf_summary)
-rownames(rsf_table) <- 1:nrow(rsf_table)
 
-rsf_table
+
+# bind the summary of the different area of integration
+rsf_table <- do.call(rbind,rsf_summary) %>%
+  mutate(
+    covariates = sapply(strsplit(covariates, " "), `[[`, 1), # Split the string at spaces
+    covariates = case_when(
+      covariates == "area" ~ "area (km^2)",
+      covariates == "τ[position]" ~ "τ[position] (days)",
+      covariates == "diffusion" ~ "diffusion (ha/day)",
+      TRUE ~ covariates # This ensures that any values in covariates that do not match the specified conditions remain unchanged.
+    )
+  )
+
+
+# Réinitialiser les noms de ligne pour qu'ils soient consécutifs
+rownames(rsf_table) <- NULL
+
+# ordering factors for plotting
 rsf_table$IA <- factor(rsf_table$IA, levels = c("IA_1_m"   ,  "IA_100_m" ,  "IA_200_m"  , "IA_500_m"  , "IA_1000_m",  "IA_10000_m"))
 
-for(i in 1:nrow(rsf_table))
-{
-  rsf_table$covariates[i] <- strsplit(rsf_table$covariates[i], " ")[[1]][1] # Split the string at spaces
-}
-
-for(i in 1:nrow(rsf_table))
-{
-  if(rsf_table$covariates[i]=="area")
-  {
-    rsf_table$covariates[i] <- paste0("area (km^2)")
-  }
-  if(rsf_table$covariates[i]=="T[position]")
-  {
-    rsf_table$covariates[i] <- paste0("T[position] (days)")
-  }
-  if(rsf_table$covariates[i]=="diffusion")
-  {
-    rsf_table$covariates[i] <- paste0("diffusion (ha/day)")
-  } 
-}
 
 
 
 
 
-
-
-
+######################*
 # using a glm()
-
+######################*
 #' # Traditional RSF with downweighted Poisson regression
 #' Functions to generate quadrature points and predict with the model
 rsf_points <- function(x, UD, R = NULL, n = 1e5, k = 1e6, type = "Riemann",
@@ -341,8 +321,8 @@ rsf_points <- function(x, UD, R = NULL, n = 1e5, k = 1e6, type = "Riemann",
   xy <- st_coordinates(xx)
   colnames(xy) <- c("x_", "y_")
   sd <- sqrt(UD@CTMM$sigma[1,1])
-  xy[,1] <- (xy[,1] - UD@CTMM$mu[1])/sd   # telemetry point coordinate x - HR center coordinate x/sd  
-  xy[,2] <- (xy[,2] - UD@CTMM$mu[2])/sd   # telemetry point coordinate x - HR center coordinate x/sd  
+  # xy[,1] <- (xy[,1] - UD@CTMM$mu[1])/sd   # telemetry point coordinate x - HR center coordinate x/sd  = standardization
+  # xy[,2] <- (xy[,2] - UD@CTMM$mu[2])/sd   # telemetry point coordinate y - HR center coordinate y/sd  = standardization
   xx <- cbind(xy, xx)
   xx
 }
@@ -354,9 +334,7 @@ summary_rsf_glm <- list()
 
 for(i in seq_along(buff_vector))
 {
-  # Apply a buffer of 200 units
-  polygon <- as.polygons(ext(e_mybird))
-  crs(polygon) <- "EPSG:2154"
+  
   buffered_polygon <- terra::buffer(polygon, width = buff_vector[i], joinstyle = "mitre") # joinstyle = "mitre" : to correctly represent the limit of the area # width = Unit is meter if x has a longitude/latitude CRS, or in the units of the coordinate reference system in other cases (typically also meter)
   # ggplot()+geom_sf(data=buffered_polygon)+geom_sf(data=polygon)
   
@@ -368,16 +346,14 @@ for(i in seq_along(buff_vector))
   env_RL_list_cropped <- lapply(env_RL_list, function(raster) {
     terra::crop(raster, extent(e_mybird_buff)*2)
   })
-  # cheking environment slacks
-  # terra::plot(envir_crop)
-  # terra::plot(envir_crop[["carto_habitats_winter"]])
   
   raster_brick_env <- stack(env_RL_list_cropped)
   
   # RSF
   set.seed(3)
   rsf_abel_df <- rsf_points(telemetry_winter, akde_winter, raster_brick_env, interpolation = TRUE)
-  # rsf_abel_df <- rsf_abel_df[!is.na(rsf_abel_df$slope),] # Remove lines with NA values
+  rsf_abel_df$carto_habitats_winter <- factor(rsf_abel_df$carto_habitats_winter, levels = c(1, 2, 3, 4, 5)) # ensuring carto_habitats_winter is a categorical raster
+  rsf_abel_df <- rsf_abel_df[!is.na(rsf_abel_df$carto_habitats_winter), ] # Remove lines with NA values
   
   #' Fit a downweighted Poisson regression
   #' the homeranging behaviour is represented by x_ + y_ + I(-(x_^2 + y_^2)/2)
@@ -393,40 +369,76 @@ for(i in seq_along(buff_vector))
   # to calculate this distance from the HR center we should have (x-x0)^2 + (y-y0)^2
   # Then it is negated and divided by 2, just for a convenience of interpretation of the coefficient beta estimated. C. Fleming explain this /2 in the appendix of his paper.
   
-  sum_glm_dt <- as.data.frame(summary(m_rsf_abel)$coefficients)
+  
+  sum_glm_dt <- as.data.frame(summary(m_rsf_abel)$coefficients) #$coefficients : to be certain to get back the whole value of the estimated coefficient
+  
+  ##################################
+  # function to obtain the parameters mu_x = beta x, mu_y = beta y, and variance = 1/beta rr (beta = estimates from the glm model)
+  model_results <- function(model_output)
+  {
+    
+    mu_x = model_output["x_","Estimate"]/model_output["I(-(x_^2 + y_^2)/2)","Estimate"]
+    mu_y = model_output["y_","Estimate"]/model_output["I(-(x_^2 + y_^2)/2)","Estimate"]
+    variance = 1/model_output["I(-(x_^2 + y_^2)/2)","Estimate"]
+    
+    dims = 2 # x,y
+    errbnd <- 0.05 
+    confidence <- 1-errbnd
+    chich = qchisq(confidence, dims)
+    CovMatrix = diag(variance,2) #CovMatrix = contains the variance of the 2 variables (x,y) in a diag matrix 
+    area = (pi*sqrt(det(CovMatrix))*chich)/1000000
+    
+    para_est_dt <- data.frame(parameters = c("IA", "mu_x","mu_y","variance","area","x_","y_","I(-(x_^2 + y_^2)/2)"),
+                              estimates = c(paste0("IA_",buff_vector[i],"_m"), mu_x, mu_y, variance, area, model_output["y_","Estimate"], model_output["x_","Estimate"], model_output["I(-(x_^2 + y_^2)/2)","Estimate"]))
+    
+    return(para_est_dt)
+  }
+  
+  print(model_results(sum_glm_dt))
+  ##################################
+  
+  
+
   sum_glm_dt$covariates <- rownames(sum_glm_dt)
   
-  confidence_glm_dt <- as.data.frame(confint(m_rsf_abel))
+  confidence_glm_dt <- as.data.frame(confint.default(m_rsf_abel))
   colnames(confidence_glm_dt) <- c("low","high")
   
   sum_rsf_glm <- cbind(sum_glm_dt %>% dplyr::select(covariates, Estimate),confidence_glm_dt)
   colnames(sum_rsf_glm)[2] <- c("est")
-  
   sum_rsf_glm$IA <- paste0("IA_",buff_vector[i],"_m")
   
   summary_rsf_glm[[i]] <- sum_rsf_glm
 }
 
+# bind the summary of the different area of integration
 rsf_glm_table <- do.call(rbind,summary_rsf_glm)
-rownames(rsf_glm_table) <- 1:nrow(rsf_glm_table)
+rownames(rsf_glm_table) <- NULL
 
-rsf_glm_table
+# ordering factors for plotting
 rsf_glm_table$IA <- factor(rsf_glm_table$IA, levels = c("IA_1_m"   ,  "IA_100_m" ,  "IA_200_m"  , "IA_500_m"  , "IA_1000_m",  "IA_10000_m"))
 
 
+rsf_glm_table <- rsf_glm_table %>% 
+  mutate(covariates = case_when(
+    covariates == "carto_habitats_winter2" ~ "carto_habitats_winter.2_1",
+    covariates == "carto_habitats_winter3" ~ "carto_habitats_winter.3_1",
+    covariates == "carto_habitats_winter4" ~ "carto_habitats_winter.4_1",
+    covariates == "carto_habitats_winter5" ~ "carto_habitats_winter.5_1",
+  TRUE ~ covariates  # Keep other values unchanged
+))
 
 
 
-
+######################*
 # using glm without HR
+######################*
 
 summary_rsf_glm_noHR <- list()
 
 for(i in seq_along(buff_vector))
 {
-  # Apply a buffer of 200 units
-  polygon <- as.polygons(ext(e_mybird))
-  crs(polygon) <- "EPSG:2154"
+
   buffered_polygon <- terra::buffer(polygon, width = buff_vector[i], joinstyle = "mitre") # joinstyle = "mitre" : to correctly represent the limit of the area # width = Unit is meter if x has a longitude/latitude CRS, or in the units of the coordinate reference system in other cases (typically also meter)
   # ggplot()+geom_sf(data=buffered_polygon)+geom_sf(data=polygon)
   
@@ -438,19 +450,16 @@ for(i in seq_along(buff_vector))
   env_RL_list_cropped <- lapply(env_RL_list, function(raster) {
     terra::crop(raster, extent(e_mybird_buff)*2)
   })
-  # cheking environment slacks
-  # terra::plot(envir_crop)
-  # terra::plot(envir_crop[["carto_habitats_winter"]])
   
   raster_brick_env <- stack(env_RL_list_cropped)
   
   # RSF
   set.seed(3)
   rsf_abel_df <- rsf_points(telemetry_winter, akde_winter, raster_brick_env, interpolation = TRUE)
-  # rsf_abel_df <- rsf_abel_df[!is.na(rsf_abel_df$slope),] # Remove lines with NA values
+  rsf_abel_df$carto_habitats_winter <- factor(rsf_abel_df$carto_habitats_winter, levels = c(1, 2, 3, 4, 5)) # ensuring carto_habitats_winter is a categorical raster
+  rsf_abel_df <- rsf_abel_df[!is.na(rsf_abel_df$carto_habitats_winter), ] # Remove lines with NA values
   
   #' Fit a downweighted Poisson regression
-  #' the homeranging behaviour is represented by x_ + y_ + I(-(x_^2 + y_^2)/2)
   m_rsf_abel <- glm(case_*k_ ~  elevation + square_elevation + strava + leks + carto_habitats_winter,
                     family = poisson(), data= rsf_abel_df, weights = w_)
   #' Summary of model and confidence intervals for parameter estimates
@@ -460,27 +469,39 @@ for(i in seq_along(buff_vector))
   sum_glm_dt <- as.data.frame(summary(m_rsf_abel)$coefficients)
   sum_glm_dt$covariates <- rownames(sum_glm_dt)
   
-  confidence_glm_dt <- as.data.frame(confint(m_rsf_abel))
+  confidence_glm_dt <- as.data.frame(confint.default(m_rsf_abel))
   colnames(confidence_glm_dt) <- c("low","high")
   
   sum_rsf_glm <- cbind(sum_glm_dt %>% dplyr::select(covariates, Estimate),confidence_glm_dt)
   colnames(sum_rsf_glm)[2] <- c("est")
-  
   sum_rsf_glm$IA <- paste0("IA_",buff_vector[i],"_m")
   
   summary_rsf_glm_noHR[[i]] <- sum_rsf_glm
 }
 
+# bind the summary of the different area of integration
 rsf_glm_table_noHR <- do.call(rbind,summary_rsf_glm_noHR)
-rownames(rsf_glm_table_noHR) <- 1:nrow(rsf_glm_table_noHR)
+rownames(rsf_glm_table_noHR) <- NULL
 
-rsf_glm_table_noHR
+# ordering factors for plotting
 rsf_glm_table_noHR$IA <- factor(rsf_glm_table_noHR$IA, levels = c("IA_1_m"   ,  "IA_100_m" ,  "IA_200_m"  , "IA_500_m"  , "IA_1000_m",  "IA_10000_m"))
+
+
+rsf_glm_table_noHR <- rsf_glm_table_noHR %>% 
+  mutate(covariates = case_when(
+    covariates == "carto_habitats_winter2" ~ "carto_habitats_winter.2_1",
+    covariates == "carto_habitats_winter3" ~ "carto_habitats_winter.3_1",
+    covariates == "carto_habitats_winter4" ~ "carto_habitats_winter.4_1",
+    covariates == "carto_habitats_winter5" ~ "carto_habitats_winter.5_1",
+    TRUE ~ covariates  # Keep other values unchanged
+  ))
 #********************************************************************
 
 
 
-### Graph visualisation of the impact of the study area size (integration area) ----
+
+
+### 6_Graph visualisation of the impact of the study area size (integration area) ----
 #********************************************************************
 # plot estimated parameters beta ~ the integrated area 
 plot_IA_rsf_ctmm<-
@@ -490,7 +511,7 @@ plot_IA_rsf_ctmm<-
                    group = IA,
                    color = covariates))+
     geom_errorbar(aes(x = IA, ymin = low, ymax = high, group = IA, color = covariates, width = 0.1))+
-    labs( title=paste("Impact of the integration area size (bird: Abel, 2nd winter)"),
+    labs( title=paste0("Impact of the integration area size (bird:", bird,", 2nd winter)"),
           x = "Integration area",
           y = "Coefficient value",
           color = "RSF Estimated coefficients")+
@@ -563,17 +584,70 @@ rsf_table$method <- "ctmm::rsf"
 rsf_glm_table$method <- "glm"
 rsf_glm_table_noHR$method <- "glm_noHR"
 
+# add the estimation of the area to the global table
+rsf_glm_table2 <- list()
+
+
+# Calcul des estimations pour rsf_glm_table2 
+    errbnd <- 0.05 # equivalent 1/20 values falls outside of my predictions
+    confidence <- 1-errbnd #confidence region = 95%
+    # Joint analysis : in 2D. We use chi-squared (chi2) distribution to compute(calculate) the confidence circle = minimal area
+    dims = 2 # x,y
+    chich = qchisq(confidence, dims) # chi2 bound, quantile function and random generation for the chi-squared
+
+    
+    
+for(i in seq_along(unique(rsf_glm_table$IA))) {
+  current_IA <- unique(rsf_glm_table$IA)[i]
+  print(current_IA)
+  
+  # Create a new data frame for each unique IA
+  covariate_est <- exp(rsf_glm_table[rsf_glm_table$covariates == "I(-(x_^2 + y_^2)/2)" & 
+                                       rsf_glm_table$IA == current_IA, "est"])
+  covariate_low <- exp(rsf_glm_table[rsf_glm_table$covariates == "I(-(x_^2 + y_^2)/2)" & 
+                                       rsf_glm_table$IA == current_IA, "low"])
+  covariate_high <- exp(rsf_glm_table[rsf_glm_table$covariates == "I(-(x_^2 + y_^2)/2)" & 
+                                        rsf_glm_table$IA == current_IA, "high"])
+  
+  rsf_glm_table2[[i]] <- data.frame(
+    covariates = "area (km^2)",
+    IA = current_IA,
+    method = "glm", 
+    est = pi * chich * sqrt(det(diag(1 / (covariate_est), 2))),
+    low = pi * chich * sqrt(det(diag(1 / (covariate_low), 2))),
+    high = pi * chich * sqrt(det(diag(1 / (covariate_high), 2)))
+  )
+  
+  print(rsf_glm_table2[[i]])
+}
+
+# Combine the list into a single data frame
+rsf_glm_table2_combined <- do.call(rbind, rsf_glm_table2)
+
+
+
+rsf_glm_table <- rbind(rsf_glm_table, rsf_glm_table2_combined)
 rsf_table_multi <- rbind(rsf_table, rsf_glm_table)
 rsf_table_multi <- rbind(rsf_table_multi, rsf_glm_table_noHR)
 
+
+# option 1) Comparison effets glm VS glm_noHR (focusing on I(-(x^2+y^2)/2))
+rsf_table_multi_plot <- rsf_table_multi %>% filter(method!="ctmm::rsf") %>% filter(covariates!="area (km^2)")
+values_color = c("#3399FF","#00CC00")
+# option 2) Comparison effets glm VS ctmm
+rsf_table_multi_plot <- rsf_table_multi %>% filter(method!="glm_noHR")
+values_color = c("#FF6633","#3399FF")
+
+
 # plot estimated parameters beta ~ the integrated area 
 plot_rsf_multi <-
-  ggplot(data = rsf_table_multi %>% filter(covariates!="(Intercept)"))+
+  ggplot(data = rsf_table_multi_plot %>% filter(covariates!="(Intercept)"))+
   geom_point(aes(y = est, 
                  x = IA, 
                  group = IA,
                  color = method))+
   geom_errorbar(aes(x = IA, ymin = low, ymax = high, group = IA, color = method, width = 0.1))+
+  scale_color_manual(values=values_color)+
   labs( title=paste("Impact of the integration area size (bird: Abel, 2nd winter)"),
         x = "Integration area",
         y = "Coefficient value",
@@ -589,13 +663,17 @@ plot_rsf_multi <-
 ggsave(plot=plot_rsf_multi, filename="plot_rsf_multi_abel.png",path="C:/Users/albordes/Documents/PhD/TetrAlps/5_OUTPUTS/data_exploration/integration_area",width = 40, height = 20, units = "cm")
 #********************************************************************
 
+# metadata carto_habitat_winter
+
+# cat 1) Soils and low vegetation : Unclassified soil, Fine mineral soil, Coarse mineral soil, Dry or rocky grassland, Herbaceous, Low ligneous
+# cat 2) Shrubs
+# cat 3) Trees : Unclassified trees, Deciduous trees, Resinous trees
+# cat 4) Buildings
+# cat 5) Cliffs and water : Cliff, Natural pond, Artificial pond, Waterway, Unclassified
 
 
 
-
-
-
-### Statistic analysis of the impact of the study area size (integration area) ----
+### 7_Statistic analysis of the impact of the study area size (integration area) ----
 #********************************************************************
 # Is the variability of estimations important? 
 data_rsf = rsf_table
@@ -612,7 +690,7 @@ TukeyHSD(model, conf.level = 0.95)
 
 
 
-### Vizualising the landscape composition pattern for each integration area ----
+### 8_Vizualising the landscape composition pattern for each integration area ----
 #********************************************************************
 # boxplot of availiable values inside the raster crooped to the integration area extents
 

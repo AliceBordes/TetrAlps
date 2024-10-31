@@ -47,14 +47,6 @@ capture <- read.csv2(file.path(base,"from_postgray_data_based/capture_table.csv"
 animal <- read.csv2(file.path(base,"from_postgray_data_based/animal_features_trois_vallees.csv"), sep=",", row.names = 1)
 
 
-
-
-
-
-# Main characteristics of tagged-black grouse
-synth_bg_all_sites <- read.csv2(file.path(base,"TetrAlps/1_RAW_DATA/bilan_captures_tetras_all_sites_mar2024_x_y_coord.csv"),sep=",")[,-1]
-
-
 ### VECTORS
 
 # 3V borders 
@@ -72,7 +64,7 @@ borders_3V_vectlayer <- st_read(file.path(base,"Tetralps/1_RAW_DATA/borders_3V.g
 
 #### 1.1_Fusion GPS and animal features ----
 #********************************************************************
-capture_synth <- capture %>% select(ani_nom, 
+capture_synth <- capture %>% dplyr::select(ani_nom, 
                                     tag_id, 
                                     cpt_date_capture, 
                                     age_libelle, 
@@ -82,22 +74,22 @@ capture_synth <- capture %>% select(ani_nom,
                                     ela_libelle,
                                     zet_nom) %>% arrange(ani_nom)
 
-gps_synth <- GPS %>% select(tag_id, mtg_libelle, etg_libelle)
+gps_synth <- GPS %>% dplyr::select(tag_id, mtg_libelle, etg_libelle)
 
 deployment <- inner_join(gps_synth, capture_synth, by = "tag_id") %>% arrange(ani_nom) # inner_join() returns only the rows that have matching values in both data frames
 
 # check the anomalies between data_bg_3V from Marc and the tables from the database
-    global <- inner_join(deployment %>% select(tag_id, ani_nom), data_bg_3V, by = join_by(tag_id, ani_nom)) 
+    global <- dplyr::inner_join(deployment %>% dplyr::select(tag_id, ani_nom), data_bg_3V, by = join_by(tag_id, ani_nom)) 
     
     data_bg_3V_unique <- as.data.frame(data_bg_3V) %>%
-      select(ani_nom, tag_id) %>%
+      dplyr::select(ani_nom, tag_id) %>%
       distinct()
     
     global_unique <- as.data.frame(global) %>%
-      select(ani_nom, tag_id) %>%
+      dplyr::select(ani_nom, tag_id) %>%
       distinct()
     
-    setdiff(data_bg_3V_unique$ani_nom, global_unique$ani_nom) # "Barjot" "Galile" are in data_bg_3V_unique but not in global_unique
+    dplyr::setdiff(data_bg_3V_unique$ani_nom, global_unique$ani_nom) # "Barjot" "Galile" are in data_bg_3V_unique but not in global_unique
     # Results : 
     # Abel and Barjot have the same tag & Filou and Galile also
     # Galilee in capture VS Galile in data_bg_3V
@@ -112,12 +104,12 @@ deployment <- inner_join(gps_synth, capture_synth, by = "tag_id") %>% arrange(an
       mutate(ani_nom = if_else(ani_nom == "Galile", "Galilee", ani_nom))
 
 # add info on GPS manifacturer and energy of the device + capture features 
-bg_3V_synth <- inner_join(as.data.frame(data_bg_3V) %>% select(-age), deployment, by = join_by("tag_id","ani_nom")) 
+bg_3V_synth <- inner_join(as.data.frame(data_bg_3V) %>% dplyr::select(-age), deployment, by = join_by("tag_id","ani_nom")) 
 
 
 # check the match between ani_nom and tag_id (1 ani_nom for serval tag_id is possible but not the contrary)
 as.data.frame(bg_3V_synth) %>%
-  select(ani_nom, tag_id) %>%
+  dplyr::select(ani_nom, tag_id) %>%
   distinct()
 #********************************************************************
 
@@ -125,9 +117,9 @@ as.data.frame(bg_3V_synth) %>%
 #### 1.2_Add data on visitor numbers ----
 #********************************************************************
 # Ski resort visitors
+
+# Snow depth
 #********************************************************************
-
-
 
 
 
@@ -144,7 +136,7 @@ data_bg_pretelemetry <- pre_telemetry(bg_3V_synth,"WGS84")
 # # Removing the first day of location data as it often shows some unrealistic movements
 data_bg_pretelemetry <- data_bg_pretelemetry %>%
   group_by(animal.ID) %>%
-  filter(as.Date(study.local.timestamp) > min(as.Date(study.local.timestamp)))
+  filter(as.Date(timestamp) > min(as.Date(timestamp)))
 
 
 # Removing the bird with less than 100 GPS positions data after removing the first day of movements
@@ -156,6 +148,6 @@ data_bg_pretelemetry <- data_bg_pretelemetry %>%
   ungroup() 
 
 
-write.csv(data_bg_pretelemetry[,!names(data_bg_pretelemetry) %in% c("geometry","geometry_capture")], row.names=FALSE, file=paste0("C:/Users/albordes/Documents/PhD/TetrAlps/2_DATA/data_bg_pretelemetry_",format(Sys.Date(), format = "%Y_%m_%d"),".csv"))
+write.csv(data_bg_pretelemetry[,!names(data_bg_pretelemetry) %in% c("geometry","geometry_capture")], row.names=FALSE, file=paste0("C:/Users/albordes/Documents/PhD/TetrAlps/2_DATA/data_bg_pretelemetry_",format(Sys.Date(), format = "%Y_%m"),".csv"))
 #********************************************************************
 

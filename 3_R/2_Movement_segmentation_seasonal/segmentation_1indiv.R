@@ -22,6 +22,9 @@ require(mapview)
 library(mcp)
 library(smoove)
 # require(devtools)
+# install_github("EliGurarie/bcpa")
+# library(bcpa)
+# require(devtools)
 # library(remotes)
 # install_github("EliGurarie/smoove", build_vignettes = TRUE)
 
@@ -34,7 +37,7 @@ base<-"C:/Users/albordes/Documents/PhD"
 # Loading data ----
 #********************************************************************
 ### DATASET
-birds_bg_dt<-read.csv2(file.path(base,"Tetralps/2_DATA/data_bg_pretelemetry_2024_10_18.csv"),sep=",") #upload the file from a csv, not a move2 object
+birds_bg_dt <- read.csv2(file.path(base,"Tetralps/2_DATA/data_bg_pretelemetry_2024_10.csv"),sep=",") #upload the file from a csv, not a move2 object
 #********************************************************************
 
 # Loading functions ----
@@ -92,15 +95,196 @@ ggplot() +
 
 ### 2_Looking at changing points in longitude and latitude coordinates time series
 #********************************************************************
-coordXY(vect_ani[1:4])
+# Predefined season dates : 15 sept to 14 nov ; 15 nov to 14 feb ; 15 feb to 14 jun ; 15 jun to 14 sept (TO CHECK IN OFB COMPUTER)
+coordXY(vect_ani)
 coordXY_multiple_bg(vect_ani, "G", write = TRUE)
+
+
+# count the results, considering the predefined season is included in winter patterns identified in the coordinate time series, considering the info is available only if telemetry data are available during the whole predefined winter
+
+proportion_bird_seg <- read.csv2(file.path(base,"Tetralps/5_OUTPUTS/data_exploration/season_segmentation/breakpoints_synthesis.csv"),sep=";") #upload the file from a csv, not a move2 object
+
+# replace absent_brk by no
+proportion_bird_seg <- proportion_bird_seg %>%
+  mutate(across(everything(), ~ ifelse(. == "absent_brk", "no", .)))
+
+proportion_bird_seg <- proportion_bird_seg %>%
+  mutate(
+    results_winter1 = ifelse(winter1_first_breakpoint_before_November15 == "" & 
+                               winter1_second_breakpoint_after_February14 == "",
+                             NA,
+                             ifelse(
+                               winter1_first_breakpoint_before_November15 == "yes" & 
+                                 winter1_second_breakpoint_after_February14 == "yes", 
+                               "yes", 
+                               ifelse(
+                                 winter1_first_breakpoint_before_November15 == "no" & 
+                                   winter1_second_breakpoint_after_February14 == "no", 
+                                 "no", 
+                                 "missing_data"
+                               )
+                             )
+    ))
+
+proportion_bird_seg <- proportion_bird_seg %>%
+  mutate(
+    results_winter2 = ifelse(winter2_first_breakpoint_before_November15 == "" & 
+                               winter2_second_breakpoint_after_February14 == "",
+                             NA,
+                             ifelse(
+                               winter2_first_breakpoint_before_November15 == "yes" & 
+                                 winter2_second_breakpoint_after_February14 == "yes", 
+                               "yes", 
+                               ifelse(
+                                 winter2_first_breakpoint_before_November15 == "no" & 
+                                   winter2_second_breakpoint_after_February14 == "no", 
+                                 "no", 
+                                 "missing_data"
+                               )
+                             )
+    ))
+
+proportion_bird_seg <- proportion_bird_seg %>%
+  mutate(
+    results_winter3 = ifelse(winter3_first_breakpoint_before_November15 == "" & 
+                               winter3_second_breakpoint_after_February14 == "",
+                             NA,
+                             ifelse(
+                               winter3_first_breakpoint_before_November15 == "yes" & 
+                                 winter1_second_breakpoint_after_February14 == "yes", 
+                               "yes", 
+                               ifelse(
+                                 winter3_first_breakpoint_before_November15 == "no" & 
+                                   winter3_second_breakpoint_after_February14 == "no", 
+                                 "no", 
+                                 "missing_data"
+                               )
+                             )
+    ))
+
+
+
+# Count for each winter
+count_winter1 <- proportion_bird_seg %>% count(results_winter1)
+count_winter2 <- proportion_bird_seg %>% count(results_winter2)
+count_winter3 <- proportion_bird_seg %>% count(results_winter3)
+
+# Rename the columns for clarity
+count_winter1 <- count_winter1 %>% rename(winter1_count = n)
+count_winter2 <- count_winter2 %>% rename(winter2_count = n)
+count_winter3 <- count_winter3 %>% rename(winter3_count = n)
+
+# Full join to combine the counts
+combined_counts <- count_winter1 %>%
+  full_join(count_winter2, by = c("results_winter1" = "results_winter2")) %>%
+  full_join(count_winter3, by = c("results_winter1" = "results_winter3"))
+
+# Replace NA with 0 for clarity
+combined_counts[is.na(combined_counts)] <- 0
+
+# View the combined counts
+combined_counts <- combined_counts %>% mutate(results = rowSums(select(., winter1_count, winter2_count, winter3_count), na.rm = TRUE))
+combined_counts <- combined_counts[-nrow(combined_counts),] #drop the NA
+combined_counts <- combined_counts %>% mutate(results_prop = round((results/sum(combined_counts$results))*100,1))
+
+combined_counts
+
+
+# count the results, considering the predefined season is included in winter patterns identified in the coordinate time series, even if the second breakpoint in the coordinate time series is unknown beacause of a lack of data
+
+proportion_bird_seg2 <- read.csv2(file.path(base,"Tetralps/5_OUTPUTS/data_exploration/season_segmentation/breakpoints_synthesis.csv"),sep=";") #upload the file from a csv, not a move2 object
+
+proportion_bird_seg2 <- proportion_bird_seg2 %>%
+  mutate(
+    results_winter1 = ifelse(winter1_first_breakpoint_before_November15 == "" & 
+                               winter1_second_breakpoint_after_February14 == "",
+                             NA,
+                             ifelse(
+                               winter1_first_breakpoint_before_November15 == "yes" | 
+                                 winter1_second_breakpoint_after_February14 == "yes", 
+                               "yes", 
+                               ifelse(
+                                 winter1_first_breakpoint_before_November15 == "no" | 
+                                   winter1_second_breakpoint_after_February14 == "no", 
+                                 "no", 
+                                 "missing_data"
+                               )
+                             )
+    ))
+
+proportion_bird_seg2 <- proportion_bird_seg2 %>%
+  mutate(
+    results_winter2 = ifelse(winter2_first_breakpoint_before_November15 == "" & 
+                               winter2_second_breakpoint_after_February14 == "",
+                             NA,
+                             ifelse(
+                               winter2_first_breakpoint_before_November15 == "yes" | 
+                                 winter2_second_breakpoint_after_February14 == "yes", 
+                               "yes", 
+                               ifelse(
+                                 winter2_first_breakpoint_before_November15 == "no" | 
+                                   winter2_second_breakpoint_after_February14 == "no", 
+                                 "no", 
+                                 "missing_data"
+                               )
+                             )
+    ))
+
+proportion_bird_seg2 <- proportion_bird_seg2 %>%
+  mutate(
+    results_winter3 = ifelse(winter3_first_breakpoint_before_November15 == "" & 
+                               winter3_second_breakpoint_after_February14 == "",
+                             NA,
+                             ifelse(
+                               winter3_first_breakpoint_before_November15 == "yes" | 
+                                 winter1_second_breakpoint_after_February14 == "yes", 
+                               "yes", 
+                               ifelse(
+                                 winter3_first_breakpoint_before_November15 == "no" | 
+                                   winter3_second_breakpoint_after_February14 == "no", 
+                                 "no", 
+                                 "missing_data"
+                               )
+                             )
+    ))
+
+
+
+# Count for each winter
+count_winter1.2 <- proportion_bird_seg2 %>% count(results_winter1)
+count_winter2.2 <- proportion_bird_seg2 %>% count(results_winter2)
+count_winter3.2 <- proportion_bird_seg2 %>% count(results_winter3)
+
+# Rename the columns for clarity
+count_winter1.2 <- count_winter1.2 %>% rename(winter1_count = n)
+count_winter2.2 <- count_winter2.2 %>% rename(winter2_count = n)
+count_winter3.2 <- count_winter3.2 %>% rename(winter3_count = n)
+
+# Full join to combine the counts
+combined_counts.2 <- count_winter1.2 %>%
+  full_join(count_winter2.2, by = c("results_winter1" = "results_winter2")) %>%
+  full_join(count_winter3.2, by = c("results_winter1" = "results_winter3"))
+
+# Replace NA with 0 for clarity
+combined_counts.2[is.na(combined_counts.2)] <- 0
+
+# View the combined counts
+combined_counts.2 <- combined_counts.2 %>% mutate(results = rowSums(select(., winter1_count, winter2_count, winter3_count), na.rm = TRUE))
+combined_counts.2 <- combined_counts.2[-nrow(combined_counts.2),] #drop the NA
+combined_counts.2 <- combined_counts.2 %>% mutate(results_prop = round((results/sum(combined_counts.2$results))*100,1))
+
+combined_counts.2
+
+
+
 #********************************************************************
 
 
 ### 3_Finding changing points ----
 #********************************************************************
-brkplot <- brkpts_coordXY(vect_name = vect_ani[1:4], 
-                          threshold = 0.2, 
+# detach(package:plyr) # if plyr is loaded after dplyr, I get an overall summary instead of a grouped summary
+brkplot <- brkpts_coordXY(vect_name = vect_ani, 
+                          threshold = 1.2, 
                           write = TRUE, 
                           outputfolder = file.path(base,"TetrAlps/5_OUTPUTS/data_exploration/season_segmentation/breakpoints"))
 
@@ -109,6 +293,16 @@ brkplot
 #********************************************************************
 
 
+### 4_Finding changing points with bcpa ----
+#********************************************************************
+with(bird_dt, plot(study.local.timestamp, location.long, type = "o"))
+depth.ws <- WindowSweep(bird_dt, variable = "location.long", time.var = "study.local.timestamp", windowsize = 25, windowstep = 1, progress=FALSE)
+
+
+
+
+
+#********************************************************************
 
 
 
@@ -120,8 +314,7 @@ brkplot
 
 
 
-
-### 2_Finding changing points with smoove ----
+### Finding changing points with smoove ---- --> not correct if velocities not autocorrelated
 #********************************************************************
 
 with(bird_sf, scan_track(x = as.numeric(bird_sf$location.long), y = as.numeric(bird_sf$location.lat), time = as.POSIXct(bird_sf$study.local.timestamp)))

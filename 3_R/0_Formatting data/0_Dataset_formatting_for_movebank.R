@@ -11,6 +11,7 @@
 ### Loading libraries ---- 
 #********************************************************************
 library(tidyverse) # includes packages : ggplot2, tidyr, dplyr, lubridate, readr, purrr, tibble, stringr, forcats
+library(dplyr)
 #********************************************************************
 
 ### Settings ----
@@ -21,7 +22,7 @@ base <- "C:/Users/albordes/Documents/PhD"
 # Loading data ----
 #********************************************************************
 ### DATASET
-birds_bg_dt<-read.csv2(file.path(base,"Tetralps/2_DATA/data_bg_pretelemetry_2024_10_18.csv"),sep=",") #upload the file from a csv, not a move2 object
+birds_bg_dt<-read.csv2(file.path(base,"Tetralps/2_DATA/data_bg_pretelemetry_2024_10.csv"),sep=",") #upload the file from a csv, not a move2 object
 #********************************************************************
 # sensor.type = GPS or acceleration
 
@@ -52,7 +53,7 @@ bg_deployement <- birds_bg_dt %>% select(animal.ID,
                                          capture.timestamp,
                                          stress.at.capture,
                                          capture.longitude,
-                                         capture.latitude) #%>% filter (! duplicated(animal.ID))
+                                         capture.latitude) %>%  distinct()
 
 # create a dataset for animals 
 # require animal.ID and tag.ID
@@ -60,8 +61,9 @@ bg_deployement <- birds_bg_dt %>% select(animal.ID,
 bg_animals <- birds_bg_dt %>% select(animal.ID, 
                                      tag.ID,
                                          
-                                     animal.sex) #%>% filter (! duplicated(animal.ID))
-# 
+                                     animal.sex) %>%  group_by(animal.ID,tag.ID) %>%  distinct()
+
+ 
 # bg_animals2 <- bg_animals
 # for(i in 1:nrow(bg_animals))
 # {
@@ -77,13 +79,13 @@ bg_animals <- birds_bg_dt %>% select(animal.ID,
 # create a dataset for animals 
 bg_tags <- birds_bg_dt %>% select(tag.ID,
                                   tag.manufacturer.name,
-                                  tag.energy) %>% filter (! duplicated(tag.ID))
+                                  tag.energy)  %>%  distinct()
 
 
 write.csv(bg_events, file=paste0("C:/Users/albordes/Documents/PhD/TetrAlps/2_DATA/Movebank/bg_events_",format(Sys.time(), "%m_%Y"),".csv"))
 write.csv(bg_deployement, file=paste0("C:/Users/albordes/Documents/PhD/TetrAlps/2_DATA/Movebank/bg_deployement_",format(Sys.time(), "%m_%Y"),".csv"))
-# write.csv(bg_animals2, file=paste0("C:/Users/albordes/Documents/PhD/TetrAlps/2_DATA/Movebank/bg_animals_",format(Sys.time(), "%m_%Y"),".csv"))
-# write.csv(bg_tags, file=paste0("C:/Users/albordes/Documents/PhD/TetrAlps/2_DATA/Movebank/bg_tags_",format(Sys.time(), "%m_%Y"),".csv"))
+write.csv(bg_animals, file=paste0("C:/Users/albordes/Documents/PhD/TetrAlps/2_DATA/Movebank/bg_animals_",format(Sys.time(), "%m_%Y"),".csv"))
+write.csv(bg_tags, file=paste0("C:/Users/albordes/Documents/PhD/TetrAlps/2_DATA/Movebank/bg_tags_",format(Sys.time(), "%m_%Y"),".csv"))
 
 
 
@@ -91,8 +93,8 @@ write.csv(bg_deployement, file=paste0("C:/Users/albordes/Documents/PhD/TetrAlps/
 #********************************************************************
 # 1) Create an account
 # 2) Go to studies --> New study
-# 3) Upload GPS data --> custom GPS data
-# 4) Inform the 5 required categories (*) (for map species select "set fixed species for all rows")
+# 3) Upload --> import data --> Tracking data : GPS data --> custom GPS data (because aggregated data of all GPS types formatted in a rds)
+# 4) Inform the 5 required categories (*) (for map species select "set fixed species for all rows") ("Europe/Berlin" will convert timestamps in the file from UTC+2 during DST (summer) and from UTC+1 during standard time (winter))
 # 5) Click on "Finish" --> importation is processing --> accept all automatically proposed deployements
 # 6) Upload --> Import data --> reference data --> Use Movebank standard reference data format. If the study already contains deployements, do not select "replacing existing"
 # ISSUE : NOT WORKING : overlapping deployement with Abel 17149, why???

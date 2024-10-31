@@ -37,6 +37,7 @@ library(janitor)
 library(dplyr)
 library(ctmm)
 library(adehabitatHR)
+library(sjmisc)
 #********************************************************************
 
 
@@ -49,7 +50,7 @@ base<-"C:/Users/albordes/Documents/PhD"
 #********************************************************************
 
 ### DATASET
-birds_bg_dt<-read.csv2(file.path(base,"Tetralps/2_DATA/data_bg_pretelemetry.csv"),sep=",") #upload the file from a csv, not a move2 object
+birds_bg_dt<-read.csv2(file.path(base,"Tetralps/2_DATA/data_bg_pretelemetry_2024_10.csv"),sep=",") #upload the file from a csv, not a move2 object
 
 
 ### VECTORS
@@ -63,9 +64,14 @@ load(file.path(base,"TetrAlps/3_R/0_Heavy_saved_models/environment_3V/env_RL_lis
 
 # Visitor numbers
 visitor_meribel <- read.csv2("C:/Users/albordes/Documents/PhD/TetrAlps/2_DATA/ski_resorts_visitor_numbers/meribel_visitors.csv", sep=",")
+visitor_meribel$Date <- as.Date(visitor_meribel$Date)
+visitor_meribel$Total_std <- scale(visitor_meribel$Total)
 
 # Snow deph
-snow_meribel <- read.csv2("C:/Users/albordes/Documents/PhD/TetrAlps/2_DATA/ski_resorts_visitor_numbers/meribel_visitors.csv", sep=",")
+snow_meribel <- read.csv2("C:/Users/albordes/Documents/PhD/TetrAlps/2_DATA/snow_depth/meribel_snow_depth.csv", sep=",")
+snow_meribel$Date <- as.Date(snow_meribel$Date)
+snow_meribel <- snow_meribel %>% group_by(Date) %>% summarise(snow.depth = mean(cumul.H.neige.cm))
+snow_meribel$snow.depth_std <- scale(snow_meribel$snow.depth)
 #********************************************************************
 
 
@@ -99,13 +105,32 @@ list_of_animals = bird
 #### Creation of a global telemetry object (for all birds)
 
 birds_sample_bg_pretele <- birds_bg_dt %>% filter(animal.ID %in% list_of_animals)
-telemetry <- as.telemetry(birds_sample_bg_pretele,projection="EPSG:2154",keep=c("saison","saison2","period_jour","animal.sex","animal.life.stage"))
+
+## add visitor number and snow depth according to the bird's location (Meribel, Courchevel or Les Ménuires)
+# Alpha is in Méribel
+birds_sample_bg_pretele <- birds_sample_bg_pretele %>% mutate("Date" = as.Date(timestamp))
+birds_sample_bg_pretele <- left_join(birds_sample_bg_pretele, visitor_meribel %>% dplyr::select(Date,Total_std), by = "Date" )
+birds_sample_bg_pretele <- birds_sample_bg_pretele %>% rename(total.visitors.meribel = Total_std)
+birds_sample_bg_pretele <- left_join(birds_sample_bg_pretele, snow_meribel %>% dplyr::select(Date,snow.depth_std), by = "Date" )
+birds_sample_bg_pretele <- birds_sample_bg_pretele %>% rename(snow.depth = snow.depth_std)
+
+telemetry <- as.telemetry(birds_sample_bg_pretele,projection="EPSG:2154",
+                          keep=c("saison",
+                                 "saison2",
+                                 "period_jour",
+                                 "animal.sex",
+                                 "animal.life.stage", 
+                                 "total.visitors.meribel",
+                                 "snow.depth"))
+
 
 #### projection()!! only once for a two-dimension object (such as a raster), to avoid distortion, + change the resolution (aggreate) in the same time i change the projection
 ctmm::projection(telemetry)<-"EPSG:2154" # nead to project my telemetry data in the projection of my rasters
 
 # winter telemetry
 telemetry_winter <- telemetry[telemetry$saison2==season,]
+telemetry_winter$snow.depth <- scale(telemetry_winter$snow.depth)
+telemetry_winter$total.visitors.meribel <- scale(telemetry_winter$total.visitors.meribel)
 
 # home range akde
 guess_winter <- ctmm.guess(telemetry_winter,
@@ -199,7 +224,7 @@ library(terra)
 
 
 #### 3.1_Required assumptions to calculate and interprete an home range ----
-
+#*****
 # The animal must show a resident behevior on the considered scale : 
 # "Finally, at larger scales, most animals will exhibit a tendency to remain in a defined region or ‘home range’". (Calabrese, 2016)
 
@@ -219,7 +244,7 @@ title(paste(bird,"'s variogram - winter\n(assuming homogenous sampling schedule)
 
 
 ### 3.2_Setting the limit of the study area for the bird ----
-
+#*****
 # calculating the 99% HR
 r_mybird_akde_99 <- SpatialPolygonsDataFrame.UD(akde_winter,level.UD=.99,level=.95) # UD area at 99% with a 95% confidence level for the magnitude of the above area
 
@@ -300,10 +325,14 @@ plot_check_RSF_res(telemetry_winter,akde_winter,"strava",analysis_object="study_
 env_RL_list_cropped <- lapply(env_RL_list, function(raster) {
   terra::crop(raster, extent(e_mybird)*2)
 })
-# cheking environment slacks
-# terra::plot(envir_crop)
-# terra::plot(envir_crop[["carto_habitats_winter"]])
 
+# metadata carto_habitat_winter
+
+# cat 1) Soils and low vegetation : Unclassified soil, Fine mineral soil, Coarse mineral soil, Dry or rocky grassland, Herbaceous, Low ligneous
+# cat 2) Shrubs
+# cat 3) Trees : Unclassified trees, Deciduous trees, Resinous trees
+# cat 4) Buildings
+# cat 5) Cliffs and water : Cliff, Natural pond, Artificial pond, Waterway, Unclassified
 
 
 
@@ -313,9 +342,63 @@ env_RL_list_cropped <- lapply(env_RL_list, function(raster) {
 env_RL_list_cropped_rsf <- env_RL_list_cropped[c("elevation", "square_elevation", "strava", "carto_habitats_winter","leks")]
 
 set.seed(3)
-mybird_rsf_riemann <- rsf.fit(telemetry_winter, akde_winter,  
-                              R = env_RL_list_cropped_rsf,
-                              integrator = "Riemann") #Riemann = faster option
+mybird_rsf_mc_strava <- rsf.fit(telemetry_winter, 
+                                akde_winter,  
+                                R = env_RL_list_cropped_rsf,
+                                integrator = "MonteCarlo",   #Riemann = faster option but only for spatial variables (rasters); MonteCarlo = for spatial and temporal variables
+                                formula = ~ elevation + square_elevation + leks + strava) 
+summary(mybird_rsf_mc_strava)
+# negative effect of strava
+
+set.seed(3)
+mybird_rsf_mc_strava.visitors <- rsf.fit(telemetry_winter, 
+                                         akde_winter,  
+                                         R = env_RL_list_cropped_rsf,
+                                         integrator = "MonteCarlo",   #Riemann = faster option but only for spatial variables (rasters); MonteCarlo = for spatial and temporal variables
+                                         formula = ~ elevation + square_elevation + strava + total.visitors.meribel + strava:total.visitors.meribel) 
+summary(mybird_rsf_mc_strava.visitors)
+
+set.seed(3)
+mybird_rsf_mc_strava_hab <- rsf.fit( telemetry_winter, 
+                                     akde_winter,  
+                                     R = env_RL_list_cropped_rsf,
+                                     integrator = "MonteCarlo",   #Riemann = faster option but only for spatial variables (rasters); MonteCarlo = for spatial and temporal variables
+                                     formula = ~ elevation + square_elevation + leks + strava + carto_habitats_winter) 
+summary(mybird_rsf_mc_strava_hab)
+
+set.seed(3)
+mybird_rsf_mc_hab <- rsf.fit( telemetry_winter, 
+                                     akde_winter,  
+                                     R = env_RL_list_cropped_rsf,
+                                     integrator = "MonteCarlo",   #Riemann = faster option but only for spatial variables (rasters); MonteCarlo = for spatial and temporal variables
+                                     formula = ~ elevation + square_elevation + carto_habitats_winter) 
+summary(mybird_rsf_mc_hab)
+
+set.seed(3)
+mybird_rsf_mc_hab_snow <- rsf.fit( telemetry_winter, 
+                                     akde_winter,  
+                                     R = env_RL_list_cropped_rsf,
+                                     integrator = "MonteCarlo",   #Riemann = faster option but only for spatial variables (rasters); MonteCarlo = for spatial and temporal variables
+                                     formula = ~ elevation + square_elevation + carto_habitats_winter:snow.depth) 
+summary(mybird_rsf_mc_hab_snow)
+
+
+
+
+
+
+
+
+
+
+set.seed(3)
+mybird_rsf_mc <- rsf.fit(telemetry_winter, 
+                         akde_winter,  
+                         R = env_RL_list_cropped_rsf,
+                         integrator = "MonteCarlo",   #Riemann = faster option but only for spatial variables (rasters); MonteCarlo = for spatial and temporal variables
+                         formula = ~ elevation + square_elevation + leks + strava:total.visitors.meribel + carto_habitats_winter:snow.depth) 
+
+
 
 # reference = c(1,1,1,1,6)) NOT WORKING
 # formula= ~ elev2+elev) #if i don t put interaction effects, better not to use the formula because with the formula, 

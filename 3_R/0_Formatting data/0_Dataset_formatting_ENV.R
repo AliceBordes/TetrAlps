@@ -89,7 +89,6 @@ carto_habitats_3V_winter <- classify(carto_habitats_3V_winter, cbind(52, 3)) #Re
 carto_habitats_3V_winter <- classify(carto_habitats_3V_winter, cbind(60, 4)) #Buildings
 
 carto_habitats_3V_winter <- classify(carto_habitats_3V_winter, cbind(23, 5)) #Cliff
-carto_habitats_3V_winter <- classify(carto_habitats_3V_winter, cbind(60, 5)) #Buildings
 carto_habitats_3V_winter <- classify(carto_habitats_3V_winter, cbind(92, 5)) #Natural pond
 carto_habitats_3V_winter <- classify(carto_habitats_3V_winter, cbind(93, 5)) #Artificial pond
 carto_habitats_3V_winter <- classify(carto_habitats_3V_winter, cbind(94, 5)) #Waterway
@@ -525,7 +524,7 @@ terra::plot(rast_resid2,main="strava residuals")
 
 # 2.3_Collinearity between a continuous raster and a factorial raster
 
-aov1<-aov(values(env_RL_list[["leks"]]) ~ values(env_RL_list[["slope"]]))
+aov1<-aov(values(env_RL_list[["strava"]]) ~ values(env_RL_list[["carto_habitats_winter"]])==1 )
 summary(aov1)
 
 tidy_aov1 <- tidy(aov1)
