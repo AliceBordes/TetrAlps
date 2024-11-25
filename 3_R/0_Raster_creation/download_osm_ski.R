@@ -58,18 +58,29 @@ library(here)
 library(ggspatial)
 #********************************************************************
 
+# Loading data ----
+#********************************************************************
+# Environment stack
+load(file.path(base,"TetrAlps/3_R/0_Heavy_saved_models/environment_3V/env_RL_list.RData"))
+#********************************************************************
 
-load(file.path(here(),'myRasterEnvironment.RData'))
 # ---- Settings ---- 
 #********************************************************************
-e<-c(min(e1[1],e2[1])-1000,max(e1[2],e2[2])+1000,min(e1[3],e2[3])-1000,max(e1[4],e2[4])+1000) 
-e_poly<-(as.polygons(ext(e), crs=crs(data_bg_3V)))
+# extents of the environment
+e <- ext(env_RL_list[["elevation"]])
+sect <- as.polygons(e)
+crs(sect) <- crs(env_RL_list[["elevation"]])
+sect <- st_as_sf(sect)
+
+# e<-c(min(e1[1],e2[1])-1000,max(e1[2],e2[2])+1000,min(e1[3],e2[3])-1000,max(e1[4],e2[4])+1000) 
+# e_poly<-(as.polygons(ext(e), crs=crs(data_bg_3V)))
 # timeout : max time to make a request
 # attention timeout a changer pour grand secteur
 tmo <- 300
-sect<-as_sf(e_poly)
+# sect<-as_sf(e_poly)
 output_crs<-4326
-output_folder_zone<-file.path(here(),"2_DATA")
+# output_crs<-2154
+output_folder_zone<-file.path(here(),"2_DATA/osm")
 #********************************************************************
 
 # ---- download osm function ---- 
@@ -156,7 +167,7 @@ piste_osm <- bind_rows(
   dplyr::select(osm_ski_nor, all_of(l_piste)),
   osm_ski_rando %>% select(any_of(l_piste)),
   dplyr::select(osm_ski_hike, all_of(l_piste)),
-  osm_ski_co %>% select(any_of(l_piste))
+  osm_ski_co %>% dplyr::select(any_of(l_piste))
 )
 
 table(piste_osm$piste.type)
@@ -274,16 +285,16 @@ mapview::mapView(osm_aerial_goods[,1])
 # ---- compute & save ski lift data ----
 l_ski_lift <- c("name", "aerialway.capacity", "aerialway.occupancy", "aerialway.length", "aerialway","opening_hours")
 ski_lift_osm <- bind_rows(
-  osm_aerial_cables %>% select(any_of(l_ski_lift)),
-  osm_aerial_gondola %>% select(any_of(l_ski_lift)),
-  osm_aerial_chair_lift %>% select(any_of(l_ski_lift)),
-  osm_aerial_drag_lift %>% select(any_of(l_ski_lift)),
-  osm_aerial_j_bar %>% select(any_of(l_ski_lift)),
-  osm_aerial_platter %>% select(any_of(l_ski_lift)),
-  osm_aerial_rope_tow %>% select(any_of(l_ski_lift)),
-  osm_aerial_magic_carpet %>% select(any_of(l_ski_lift)),
-  osm_aerial_zip_line %>% select(any_of(l_ski_lift)),
-  osm_aerial_goods %>% select(any_of(l_ski_lift))
+  osm_aerial_cables %>% dplyr::select(any_of(l_ski_lift)),
+  osm_aerial_gondola %>% dplyr::select(any_of(l_ski_lift)),
+  osm_aerial_chair_lift %>% dplyr::select(any_of(l_ski_lift)),
+  osm_aerial_drag_lift %>% dplyr::select(any_of(l_ski_lift)),
+  osm_aerial_j_bar %>% dplyr::select(any_of(l_ski_lift)),
+  osm_aerial_platter %>% dplyr::select(any_of(l_ski_lift)),
+  osm_aerial_rope_tow %>% dplyr::select(any_of(l_ski_lift)),
+  osm_aerial_magic_carpet %>% dplyr::select(any_of(l_ski_lift)),
+  osm_aerial_zip_line %>% dplyr::select(any_of(l_ski_lift)),
+  osm_aerial_goods %>% dplyr::select(any_of(l_ski_lift))
 )
 
 table(ski_lift_osm$aerialway)

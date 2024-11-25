@@ -42,7 +42,8 @@ birds_bg_dt <- read.csv2(file.path(base,"Tetralps/2_DATA/data_bg_pretelemetry_20
 
 # Loading functions ----
 #********************************************************************
-source(file.path(base,"Tetralps/4_FUNCTIONS/plot_coord.R")) 
+source(file.path(base,"Tetralps/4_FUNCTIONS/coord_segmentation/plot_coord.R")) 
+source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/RSF/rsf_functions.R")
 #********************************************************************
 
 
@@ -274,10 +275,8 @@ combined_counts.2 <- combined_counts.2[-nrow(combined_counts.2),] #drop the NA
 combined_counts.2 <- combined_counts.2 %>% mutate(results_prop = round((results/sum(combined_counts.2$results))*100,1))
 
 combined_counts.2
-
-
-
 #********************************************************************
+
 
 
 ### 3_Finding changing points ----
@@ -293,19 +292,41 @@ brkplot
 #********************************************************************
 
 
+
+
 ### 4_Finding changing points with bcpa ----
 #********************************************************************
 with(bird_dt, plot(study.local.timestamp, location.long, type = "o"))
 depth.ws <- WindowSweep(bird_dt, variable = "location.long", time.var = "study.local.timestamp", windowsize = 25, windowstep = 1, progress=FALSE)
 
 
-
-
-
 #********************************************************************
 
 
 
+
+### 5_Looking at the overlap between the different winters encountered by 1 bird ----
+#********************************************************************
+dt_overlap_synthesis <- overlap_winter(telemetry_list = l_telemetry_winter)
+dt_overlap_synthesis$animal <- as.factor(dt_overlap_synthesis$animal)
+ 
+label_close_to_pts <- jitter(scale((as.numeric(factor(dt_overlap_synthesis$animal )))))
+
+ggplot(data = dt_overlap_synthesis, aes(y = estimated_overlap))+
+  geom_boxplot(fill = alpha("lightgreen", 0.4), width=max(abs(label_close_to_pts))*2)+
+  geom_point(data = dt_overlap_synthesis, aes(x = label_close_to_pts), width = 0.2, color = "black", size = 3)+
+  geom_text(data = dt_overlap_synthesis, aes(x = label_close_to_pts, label = animal), 
+            position = position_jitter(width = 0.15, height = 0),  # Match jitter width to geom_jitter for alignment
+            size = 5,  # Slightly above points
+            hjust = 0.5,
+            vjust = - 0.5) + # Center the labels horizontally
+  labs(x = "Birds that have encounter multiple winters ",
+       y = "Estimated minimum overlap between winters encountered by a bird (%)", 
+       title = paste0("Estimated minimum overlap between winters encountered \nby the birds that have encounter multiple winters (mean = ",round(mean(dt_overlap_synthesis$estimated_overlap),2)*100,"%)"))+
+  theme(plot.title = element_text(size = 16, hjust = 0.5),
+        axis.title = element_text(size = 14),
+        axis.text.x=element_blank())
+#********************************************************************
 
 
 
@@ -342,8 +363,8 @@ bird.cp <- findCandidateChangePoints(windowsweep = bird_sweep, clusterwidth = 12
 # clusterwidth = A time span within which very close change points are considered a single chagne point. 
 abline(v = bird.cp)
 
-# Display predefined season dates : 15 sept to 14 nov ; 15 nov to 14 feb ; 15 feb to 14 jun ; 15 jun to 14 sept (TO CHECK IN OFB COMPUTER)
-season_dates <- as.data.frame(bird_sf %>% select(saison, saison2,study.local.timestamp) %>% group_by(saison2) %>% slice(1,n())) %>% select(-geometry)
+# Display predefined season dates : 16 sept to 15 dec ; 16 dec to 15 mar ; 16 mar to 15 jun ; 16 jun to 15 sept 
+season_dates <- as.data.frame(bird_sf %>% dplyr::select(saison, saison2,timestamp) %>% group_by(saison2) %>% slice(1,n())) %>% dplyr::select(-geometry)
 odd_numbers <- seq(1, nrow(season_dates), by = 2)
 even_numbers <- seq(2, nrow(season_dates), by = 2)
 

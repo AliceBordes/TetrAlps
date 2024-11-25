@@ -344,7 +344,7 @@ brkpts_coordXY <- function(
     # Get rupture points for the current animal 
     animal_rupture_pts <- rupture_pts_ani_filtered %>% filter(animal == vect_names[ani])
     
-    # Display predefined season dates : 15 sept to 14 nov ; 15 nov to 14 feb ; 15 feb to 14 jun ; 15 jun to 14 sept (TO CHECK IN OFB COMPUTER)
+    # Display predefined season dates : 16 sept to 15 dec ; 16 dec to 15 mar ; 16 mar to 15 jun ; 16 jun to 15 sept 
     season_dates <- as.data.frame(bird_sf %>% select(saison, saison2,timestamp) %>% group_by(saison2) %>% slice(1,n())) %>% select(-geometry)
     odd_numbers <- seq(1, nrow(season_dates), by = 2)
     even_numbers <- seq(2, nrow(season_dates), by = 2)

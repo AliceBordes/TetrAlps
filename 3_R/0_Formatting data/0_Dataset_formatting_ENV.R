@@ -179,8 +179,8 @@ snow_meribel <- read.xlsx("C:/Users/albordes/Documents/PhD/TetrAlps/1_RAW_DATA/e
             data <- data %>% replace(is.na(.), 0) # assuming all the NA = 0 visitors
             data <- data %>% mutate(Date = paste(Mois, Jour, sep = "-"))
             data$Date <- as.Date(data$Date)
-            data <- data %>% select(Date, everything()) %>% select(-Mois) %>% select(-Jour)
-            data <- data %>% mutate(Total = rowSums(select(., where(is.numeric)), na.rm = TRUE))
+            data <- data %>% dplyr::select(Date, everything()) %>% dplyr::select(-Mois) %>% dplyr::select(-Jour)
+            data <- data %>% mutate(Total = rowSums(dplyr::select(., where(is.numeric)), na.rm = TRUE))
             
             list_dt[[file]] <- data
           }
@@ -247,13 +247,13 @@ snow_meribel <- read.xlsx("C:/Users/albordes/Documents/PhD/TetrAlps/1_RAW_DATA/e
               }
             }
             
-            data <- data %>% select(.,-contains("otal"),-starts_with("X"))
+            data <- data %>% dplyr::select(.,-contains("otal"),-starts_with("X"))
             # Convert all columns to numeric except for "Jour" and "Date"
             data <- data %>% mutate(across(-c(Jour, Date), as.numeric))
-            data <- data %>% mutate(Total = rowSums(select(., where(is.numeric)), na.rm = TRUE))
+            data <- data %>% mutate(Total = rowSums(dplyr::select(., where(is.numeric)), na.rm = TRUE))
             
             
-            View(data)
+            # View(data)
             list_dt[[file]] <- data
           }
           # Merging data frames
@@ -304,9 +304,9 @@ snow_meribel <- read.xlsx("C:/Users/albordes/Documents/PhD/TetrAlps/1_RAW_DATA/e
             
             # Convert all columns to numeric except for "Jour" and "Date"
             data <- data %>% mutate(across(-c(Date), as.numeric))
-            data <- data %>% mutate(Total = rowSums(select(., where(is.numeric)), na.rm = TRUE))
+            data <- data %>% mutate(Total = rowSums(dplyr::select(., where(is.numeric)), na.rm = TRUE))
             
-            View(data)
+            # View(data)
             list_dt[[year]] <- data
           }
           # Merging data frames
@@ -357,7 +357,7 @@ snow_meribel <- read.xlsx("C:/Users/albordes/Documents/PhD/TetrAlps/1_RAW_DATA/e
             
             # Convert all columns to numeric except for "Jour" and "Date"
             data <- data %>% mutate(across(-c(Date), as.numeric))
-            data <- data %>% mutate(Total = rowSums(select(., where(is.numeric)), na.rm = TRUE))
+            data <- data %>% mutate(Total = rowSums(dplyr::select(., where(is.numeric)), na.rm = TRUE))
             
             View(data)
             list_dt[[year]] <- data
@@ -466,17 +466,119 @@ snow_courchevel <- courchevel_snow_formatting(save = TRUE)
 
 
 
-### 1_Create an environment stack ----
+### 1.1_Create an environment stack for predictors ----
 #********************************************************************
+
+# Changing names
+mnt_9_squared <- mnt_9^2
+names(mnt_9_squared) <- "squared_elevation"
+names(mnt_9) <- "elevation"
+names(strava) <- "strava"
+names(slope_3V) <- "slope"
+names(carto_habitats_3V_winter) <- "carto_habitats_winter"
+names(r_leks_dist) <- "leks"
+
 #' stacking it all in an env layer 
-envir_stack <- c(mnt_9,mnt_9^2,strava,slope_3V,carto_habitats_3V_winter,r_leks_dist)
+envir_stack <- c(mnt_9,mnt_9_squared,strava,slope_3V,carto_habitats_3V_winter,r_leks_dist)
 
 env_RL_list <- lapply(envir_stack,raster::raster)
-names(env_RL_list) <- c("elevation", "square_elevation", "strava", "slope", "carto_habitats_winter","leks")
+names(env_RL_list) <- names(envir_stack)
+
+# Set the Lambert crs (EPSG:2154) to each raster element in env_RL_list
+env_RL_list <- lapply(env_RL_list, function(x) {
+  crs(x) <- "EPSG:2154"
+  return(x)
+})
+
 
 save(env_RL_list,file=file.path(base,"TetrAlps/3_R/0_Heavy_saved_models/environment_3V/env_RL_list.RData"))
 load(file.path(base,"TetrAlps/3_R/0_Heavy_saved_models/environment_3V/env_RL_list.RData"))
 #********************************************************************
+
+
+
+
+
+### 1.2_Scale the environment stack ----
+#********************************************************************
+# Scaling of the rasters : needed for rsf with interaction in ctmm
+
+# Users are responsible for standardizing rasters when interactions are supplied!!!!!!
+# scaling raster for interactions : 
+# Scale all rasters in the list using the scale function
+scaled_env_RL_list <- lapply(env_RL_list, function(raster) {
+  # Check if the raster is categorical (e.g., by name or checking levels)
+  # Here, we assume the categorical raster has "carto" in its name
+  if (grepl("carto_habitats_winter", names(raster)) || grepl("leks", names(raster))) {
+    return(raster)  # Return the categorical raster unchanged
+  } else {
+    # If it's not categorical, scale the values
+    scaled_values <- scale(values(raster), center = TRUE, scale = TRUE)
+    raster <- setValues(raster, scaled_values)  # Replace raster values with scaled values
+    return(raster)  # Return the scaled raster
+  }
+})
+
+
+
+#'Dealing with categorical raster 
+
+# dummy method : we can create as many dummy variables as the categorical raster has classes. dummy variable = takes a binary value (0 or 1) 
+# Dummy variables are commonly used in regression analysis to represent categorical variables that have more than two levels, such as education level or occupation. 
+# In this case, multiple dummy variables would be created to represent each level of the variable, and only one dummy variable would take on a value of 1 for each observation.
+
+
+# Assume scaled_env_RL_list[["carto_habitats_winter"]] is your raster with 5 classes
+carto_habitats_winter_bin <- scaled_env_RL_list[["carto_habitats_winter"]]
+
+# Identify the unique classes in the raster
+classes <- unique(values(carto_habitats_winter_bin))
+
+# Initialize a list to store the binary rasters
+carto_habitats_winter_bins <- list()
+
+# Loop to create a binary raster for each class
+for (class in classes[!is.nan(classes)]) {
+  
+  # Create a binary raster where pixels of the specified class are 1, others are 0
+  carto_habitats_winter_binary <- calc(carto_habitats_winter_bin, fun = function(x) { as.integer(x == class) })
+  
+  # Assign a meaningful name based on the class
+  new_name <- case_when(
+    class == 1 ~ "Soils_low_vegetation",
+    class == 2 ~ "Shrubs",
+    class == 3 ~ "Trees",
+    class == 4 ~ "Buildings",
+    class == 5 ~ "Cliffs_water"
+  )
+  
+  # Set the name of the binary raster
+  names(carto_habitats_winter_binary) <- new_name
+  
+  # Add the binary raster to the list
+  carto_habitats_winter_bins[[new_name]] <- carto_habitats_winter_binary
+}
+
+
+# Suppress carto_habitats_winter and replace it by multiple binary raster
+scaled_env_RL_list <- scaled_env_RL_list[!names(scaled_env_RL_list) %in% "carto_habitats_winter"] # supress the unsclaled raster
+scaled_env_RL_list <- c(scaled_env_RL_list, carto_habitats_winter_bins[!names(carto_habitats_winter_bins) %in% c("Soils_low_vegetation")]) # supress the raster "Soils_low_vegetation" = reference class : by default, all 0 common of the 4 other raster are consider Soils_low_vegetation  
+
+
+# cat 1) Soils and low vegetation : Unclassified soil, Fine mineral soil, Coarse mineral soil, Dry or rocky grassland, Herbaceous, Low ligneous
+# cat 2) Shrubs
+# cat 3) Trees : Unclassified trees, Deciduous trees, Resinous trees
+# cat 4) Buildings
+# cat 5) Cliffs and water : Cliff, Natural pond, Artificial pond, Waterway, Unclassified
+
+
+save(scaled_env_RL_list,file=file.path(base,"TetrAlps/3_R/0_Heavy_saved_models/environment_3V/scaled_env_RL_list.RData"))
+load(file.path(base,"TetrAlps/3_R/0_Heavy_saved_models/environment_3V/scaled_env_RL_list.RData"))
+#********************************************************************
+
+
+
+
 
 
 

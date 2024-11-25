@@ -147,7 +147,83 @@ data_bg_pretelemetry <- data_bg_pretelemetry %>%
   filter(n() >= 100) %>%
   ungroup() 
 
-
 write.csv(data_bg_pretelemetry[,!names(data_bg_pretelemetry) %in% c("geometry","geometry_capture")], row.names=FALSE, file=paste0("C:/Users/albordes/Documents/PhD/TetrAlps/2_DATA/data_bg_pretelemetry_",format(Sys.Date(), format = "%Y_%m"),".csv"))
+#********************************************************************
+
+
+
+
+### 3_Add info on the Valley and resort to allow the assignation between bird and visitor numbers and snow depth ----
+#********************************************************************
+### Load DATASET
+birds_bg_dt<-read.csv2(file.path(base,"Tetralps/2_DATA/data_bg_pretelemetry_2024_10.csv"),sep=",") #upload the file from a csv, not a move2 object
+
+### We read in this dataset downloaded from Movebank directly as a move2 object
+bg <- vroom::vroom(file.path(base,"Tetralps/2_DATA/data_bg_pretelemetry_2024_10.csv")) # with vroom package, timestamps get recognized, are assumed to be in UTC
+
+# now create a move2 object from a data.frame
+bg_move2 <- mt_as_move2(bg, 
+                        coords = c("location.long","location.lat"),
+                        crs = "EPSG:4326",
+                        time_column = "timestamp",
+                        track_id_column = "animal.ID",  # name of the column which will be define your tracks
+                        na.fail = F) # allows or not empty coordinates
+
+
+# Identification of the Valley and resorts
+birds_sample_bg_winter <- bg_move2 %>%filter(saison %in% c(season1))
+dt_resorts <- data.frame("animal" = character(), "valley" = character(), "resort" = character())
+for(bg in seq_along(unique(birds_sample_bg_winter$animal.ID)))
+{
+  birds_sample_bg_winter_ani <- bg_move2 %>% filter(animal.ID %in% c(unique(birds_sample_bg_winter$animal.ID)[bg]))
+
+  gg_obj <-
+    ggplot() + theme_void() +
+    ggtitle("Black grouse GPS-tagged in the 3 Vallées region (Nothern Alps)")+
+    geom_spatvector(data = borders_3V_vect,fill = NA, aes(color = NOM))+
+    scale_color_manual(
+      values = c("Courchevel" = "blue", "Les Allues" = "turquoise", "Les Belleville" = "darkblue"),
+      labels = c("Courchevel" = "Courchevel (1)", "Les Allues" = "Les Allues (2)", "Les Belleville" = "Les Belleville (3)")) +
+    labs(color = "Valley")+
+    new_scale_color()+
+    geom_sf(data = ski_lift_traffic_3V, aes(color = resort))+
+    scale_color_manual(
+      values = c("Val Thorens-Orelle" = "orange", "Les Ménuires" = "purple", "NA" = "grey","Courchevel" = "lightgreen","Méribel-Mottaret" = "red"),
+      labels = c("Val Thorens-Orelle" = "Val Thorens-Orelle (4)", "Les Ménuires" = "Les Ménuires (2)", "NA" = "Méribel (and NA) (5)","Courchevel" = "Courchevel (1)","Méribel-Mottaret" = "Méribel-Mottaret (3)"))+
+    geom_sf(data = birds_sample_bg_winter_ani) +
+    new_scale_color()+
+    geom_sf(data = mt_track_lines(birds_sample_bg_winter_ani), aes(color = `animal.ID`)) # to transform data into lines
+  plot(gg_obj)
+
+  # Prompting the user for input in R
+  resp1 <- readline(prompt = "Valley: ")
+  resp1 <- case_when(
+    resp1 == "1" ~ "Les Allues",      # If input is "1", set resp1 to "Les Allues"
+    resp1 == "2" ~ "Courchevel",      # If input is "2", set resp1 to "Courchevel"
+    resp1 == "3" ~ "Les Belleville",  # If input is "3", set resp1 to "Les Belleville"
+    TRUE ~ "Unknown Valley"           # Default case for any other input
+  )
+
+  resp2 <- readline(prompt = "Resort: ")
+  resp2 <- case_when(
+    resp2 == "1" ~ "Courchevel",          # If input is "1", set resp1 to "Courchevel"
+    resp2 == "2" ~ "Les Ménuires",        # If input is "2", set resp1 to "Courchevel"
+    resp2 == "3" ~ "Méribel-Mottaret",    # If input is "3", set resp1 to "Les Belleville"
+    resp2 == "4" ~ "Val Thorens-Orelle",  # If input is "3", set resp1 to "Les Belleville"
+    resp2 == "5" ~ "Méribel",                  # If input is "3", set resp1 to "Les Belleville"
+    TRUE ~ "Unknown Valley"               # Default case for any other input
+  )
+
+  dt_resorts_to_bind <- data.frame("animal" = unique(bg_move2$animal.ID)[bg], "valley" = resp1, "resort" = resp2)
+  dt_resorts <- rbind(dt_resorts, dt_resorts_to_bind)
+}
+write.csv2(dt_resorts, file = file.path(base,"Tetralps","2_Data","bg_winter_assign_valley_resort.csv"), row.names = FALSE)
+
+birds_bg_dt <- left_join(birds_bg_dt, dt_resorts, by = c("animal.ID" = "animal")) # ; summary_res <- birds_bg_dt %>% group_by(animal.ID, valley, resort)  %>% summarise(count = n(), .groups = "drop") 
+
+
+# Cesar, Evoila, Fangio : not really associated with a specific resort
+
+write.csv(birds_bg_dt, file = file.path(base,"Tetralps","2_Data","data_bg_pretelemetry_2024_10.csv"), row.names=FALSE)
 #********************************************************************
 
