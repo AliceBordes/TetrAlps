@@ -307,7 +307,15 @@ depth.ws <- WindowSweep(bird_dt, variable = "location.long", time.var = "study.l
 
 ### 5_Looking at the overlap between the different winters encountered by 1 bird ----
 #********************************************************************
-dt_overlap_synthesis <- overlap_winter(telemetry_list = l_telemetry_winter)
+
+# Selection of the birds with multiple winters
+# birds_multipl_winters <- c("Alpha","Caramel","Dalton","Dario","Donald","Dynamite","Dyonisos","Eros","Fast","Fleau","Foliedouce")
+l_telemetry_winter_multipl_win <- l_telemetry_winter[birds_multipl_winters] 
+l_fit_winter_multipl_win <- l_fit_winter[birds_multipl_winters] 
+
+dt_overlap_synthesis <- overlap_winter(telemetry_list = l_telemetry_winter_multipl_win, 
+                                       fit_list = l_fit_winter_multipl_win, 
+                                       overlap_type = "multiple winters")
 dt_overlap_synthesis$animal <- as.factor(dt_overlap_synthesis$animal)
  
 label_close_to_pts <- jitter(scale((as.numeric(factor(dt_overlap_synthesis$animal )))))
@@ -331,7 +339,48 @@ ggplot(data = dt_overlap_synthesis, aes(y = estimated_overlap))+
 
 
 
+### 6_Looking at the overlap between the predefined and the large winter season ----
+#********************************************************************
+load(file = file.path(base,"Tetralps","3_R","0_Heavy_saved_models","birds_3V","multipl_telemetry_winter_all.Rdata"))
+load(file = file.path(base,"Tetralps","3_R","0_Heavy_saved_models","birds_3V","multipl_guess_winter_all.Rdata"))
+load(file = file.path(base,"Tetralps","3_R","0_Heavy_saved_models","birds_3V","multipl_fit_winter_all.Rdata"))
+load(file = file.path(base,"Tetralps","3_R","0_Heavy_saved_models","birds_3V","multipl_akde_winter_all.Rdata"))
 
+l_telemetry_winter_large_win <- l_telemetry_winter[!names(l_telemetry_winter) %in% birds_multipl_winters] 
+l_fit_winter_large_win <- l_fit_winter[!names(l_telemetry_winter) %in% birds_multipl_winters] 
+
+load(file = file.path(base,"Tetralps","3_R","0_Heavy_saved_models","birds_3V","multipl_telemetry_winter_saison2.Rdata"))
+load(file = file.path(base,"Tetralps","3_R","0_Heavy_saved_models","birds_3V","multipl_guess_winter_saison2.Rdata"))
+load(file = file.path(base,"Tetralps","3_R","0_Heavy_saved_models","birds_3V","multipl_fit_winter_saison2.Rdata"))
+load(file = file.path(base,"Tetralps","3_R","0_Heavy_saved_models","birds_3V","multipl_akde_winter_saison2.Rdata"))
+
+l_telemetry_winter_predefined_win <- l_telemetry_winter[!names(l_telemetry_winter) %in% birds_multipl_winters] 
+l_fit_winter_predefined_win <- l_fit_winter[!names(l_telemetry_winter) %in% birds_multipl_winters] 
+
+dt_overlap_synthesis <- overlap_winter(telemetry_list = l_telemetry_winter_predefined_win,
+                                       telemetry_list2 = l_telemetry_winter_large_win,
+                                       fit_list = l_fit_winter_predefined_win, 
+                                       fit_list2 = l_fit_winter_large_win, 
+                                       overlap_type = "season length")
+dt_overlap_synthesis$animal <- as.factor(dt_overlap_synthesis$animal)
+
+label_close_to_pts <- jitter(scale((as.numeric(factor(dt_overlap_synthesis$animal )))))
+
+ggplot(data = dt_overlap_synthesis, aes(y = estimated_overlap))+
+  geom_boxplot(fill = alpha("lightgreen", 0.4), width=max(abs(label_close_to_pts))*2)+
+  geom_point(data = dt_overlap_synthesis, aes(x = label_close_to_pts), width = 0.2, color = "black", size = 3)+
+  geom_text(data = dt_overlap_synthesis, aes(x = label_close_to_pts, label = animal), 
+            position = position_jitter(width = 0.15, height = 0),  # Match jitter width to geom_jitter for alignment
+            size = 5,  # Slightly above points
+            hjust = 0.5,
+            vjust = - 0.5) + # Center the labels horizontally
+  labs(x = "Birds that have encounter multiple winters ",
+       y = "Estimated minimum overlap between winters encountered by a bird (%)", 
+       title = paste0("Estimated minimum overlap between winters encountered \nby the birds that have encounter multiple winters (mean = ",round(mean(dt_overlap_synthesis$estimated_overlap),2)*100,"%)"))+
+  theme(plot.title = element_text(size = 16, hjust = 0.5),
+        axis.title = element_text(size = 14),
+        axis.text.x=element_blank())
+#********************************************************************
 
 
 

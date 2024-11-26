@@ -333,7 +333,7 @@ snow_meribel <- read.xlsx("C:/Users/albordes/Documents/PhD/TetrAlps/1_RAW_DATA/e
           {
             data <- tryCatch(
               {
-                read.xlsx(xlsxFile = resort_files, sheet = as.character(paste0(year,"-",year+1)), startRow = 3)
+                read.xlsx(xlsxFile = resort_files, sheet = as.character(paste0(year,"-",year+1)), startRow = 2)
               }, 
               error = function(e) 
               {
@@ -341,29 +341,54 @@ snow_meribel <- read.xlsx("C:/Users/albordes/Documents/PhD/TetrAlps/1_RAW_DATA/e
                 return(NULL)
               })
             
-            View(data)
+            print(year)
             
-            data <- data[!grepl("otal", data[, 1]), ]
-            data <- data[,-c(1,3)]
+            if(names(data)[1]=="X1" && names(data)[2]=="X2")
+            {
+              # Concatenate X1 and X2
+              data <- data %>%
+                mutate(X1 = paste(X1, X2, sep = " "))
+              data <- data[,-2]
+              print(data$X1)
+              data <- data[!grepl("otal", data$X1), ]
+            }
             
+            
+            data <- data[, !grepl("totaux", names(data))]
+            names(data)[1] <- "Date"
+            data <- data[, !grepl("X", names(data))]
+            data[1,] <- names(data)
+            data <- data %>% filter(if_any(everything(), ~ !is.na(.)))
+            
+            
+            if(any(duplicated(data$Date)))
+            {
+              duplicated_name <- unique(data$Date[duplicated(data$Date)])
+              print(duplicated_name)
+              
+              data <- data[!(data$Date == duplicated_name & !duplicated(data$Date)), ] # the first line with "Bruyères2" = total "Bruyères1" + "Bruyères2" so we delete this one
+            }
+            
+            row.names(data) <- data[,1]
+            data <- data[,-1]
+            
+
+
             data <- as.data.frame(t(data))
-            
-            lift_names <- data[1,]
-            colnames(data) <- c("Date",lift_names[2:length(lift_names)])
-            data <- data[-1,]
-            
-            data <- data %>% replace(is.na(.), 0) # assuming all the NA = 0 visitors
             data$Date <- excel_numeric_to_date(as.numeric(data$Date))
+            data <- data %>% replace(is.na(.), 0) # assuming all the NA = 0 visitors
             
+            data <- data[, !grepl("otal", names(data))]
+
             # Convert all columns to numeric except for "Jour" and "Date"
             data <- data %>% mutate(across(-c(Date), as.numeric))
             data <- data %>% mutate(Total = rowSums(dplyr::select(., where(is.numeric)), na.rm = TRUE))
             
-            View(data)
             list_dt[[year]] <- data
           }
           # Merging data frames
           merged_data <- bind_rows(list_dt)
+          merged_data <- merged_data[-nrow(merged_data),]
           
           if(save == TRUE)
           {
@@ -626,11 +651,13 @@ terra::plot(rast_resid2,main="strava residuals")
 
 # 2.3_Collinearity between a continuous raster and a factorial raster
 
-aov1<-aov(values(env_RL_list[["strava"]]) ~ values(env_RL_list[["carto_habitats_winter"]])==1 )
+aov1<-aov(values(env_RL_list[["strava"]]) ~ values(env_RL_list[["carto_habitats_winter"]])==5 )
+# aov1<-aov(values(scaled_env_RL_list[["strava"]]) ~ values(scaled_env_RL_list[["Cliffs_water"]]) ) # same results if all predictors are scaled
 summary(aov1)
 
 tidy_aov1 <- tidy(aov1)
 R <- sqrt(tidy_aov1$sumsq[1] / (tidy_aov1$sumsq[1] + tidy_aov1$sumsq[2])) # R-square = Sum Sq(values) / (Total Sum of squares (sq) = Sum Sq(values)+Sum Sq(residuals))
+R
 # here, R is equivalent to the Pearson coefficient
 #********************************************************************
 

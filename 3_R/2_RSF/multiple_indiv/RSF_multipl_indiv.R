@@ -139,10 +139,10 @@ head(filtered_birds_bg_dt)
 
 
 
-tele_akde(data = birds_bg_dt,
+tele_akde(data = filtered_birds_bg_dt,
           # birds_vect = names(l_telemetry_winterS),
           season = "hiver",
-          subset_category = "saison2",
+          subset_category = "all",
           outputfolder = file.path(base, "Tetralps", "3_R", "0_Heavy_saved_models", "birds_3V"),
           write = TRUE)
 #********************************************************************  
@@ -200,53 +200,41 @@ bird_variogram(l_telemetry_winter,
 
 ### 3.3_Visualization "raw" HR (without environmental effects) ----
 #********************************************************************
-# 
-# UD_mybird_spatial <- SpatialPolygonsDataFrame.UD(akde_winter,level.UD=.95,level=.95)
-# UD_mybird_spatial2 <- SpatialPolygonsDataFrame.UD(l_akde_winter[[bird]][["hiver2"]],level.UD=.95,level=.95)
-# 
-# 
-# ggplot() + theme_void() +
-#   ggtitle("Black grouse GPS-tagged in the 3 Vallées region (Nothern Alps)")+
-#   geom_spatvector(data = borders_3V_vect,fill = NA, aes(color = NOM))+
-#   scale_color_manual(values = c("Courchevel" = "darkgreen", "Les Allues" = "lightgreen", "Les Belleville" = "darkgrey")) +
-#   labs(color = "Valley")+
-#   new_scale_color()+
-#   geom_sf(data = st_as_sf(UD_mybird_spatial),fill=alpha("blue",0.1), color = "blue")+
-#   geom_sf(data = st_as_sf(UD_mybird_spatial2),fill=alpha("turquoise",0.1), color = "turquoise")
-# 
-# 
-# 
-# 
-# # Create a data frame to map the "hiver1" and "hiver2" names
-# legend_data <- rbind(
-#   st_as_sf(UD_mybird_spatial) %>% mutate(winter = "hiver1"),
-#   st_as_sf(UD_mybird_spatial2) %>% mutate(winter = "hiver2")
-# )
-# 
-# 
-# # Plot with the updated legend
-# ggplot() + 
-#   theme_void() + theme(plot.title = element_text(size = 16), legend.text = element_text(size=12), legend.title = element_text(size=14)) +
-#   ggtitle("Fast winter home ranges based on winter GPS locations in the 3 Vallées region (Northern Alps)") +
-#   
-#   # Plot the vector borders with valley names
-#   geom_spatvector(data = borders_3V_vect, fill = NA, aes(color = NOM)) +
-#   scale_color_manual(values = c("Courchevel" = "darkgreen", "Les Allues" = "lightgreen", "Les Belleville" = "darkgrey")) +
-#   labs(color = "Valley") +
-#   
-#   # Start a new scale for the winter layers
-#   new_scale_color() +
-#   geom_sf(data = legend_data, aes(fill = winter), color = NA, alpha = 0.1) +
-#   
-#   # Define the colors and labels for the winter legend
-#   scale_fill_manual(name = "Winters",
-#                     values = c("hiver1" = "blue", "hiver2" = "turquoise"),
-#                     labels = c("hiver1" = "First winter", "hiver2" = "Second winter")) +
-#   
-#   # Add borders for the winter regions
-#   geom_sf(data = st_as_sf(UD_mybird_spatial), color = "blue", fill = NA) +
-#   geom_sf(data = st_as_sf(UD_mybird_spatial2), color = "turquoise", fill = NA)
-# 
+bird = "Foliedouce"
+  
+UD_mybird_spatial <- SpatialPolygonsDataFrame.UD(l_akde_winter[[bird]][["hiver1"]],level.UD=.95,level=.95)
+UD_mybird_spatial2 <- SpatialPolygonsDataFrame.UD(l_akde_winter[[bird]][["hiver2"]],level.UD=.95,level=.95)
+
+# Create a data frame to map the "hiver1" and "hiver2" names
+legend_data <- rbind(
+  st_as_sf(UD_mybird_spatial) %>% mutate(winter = "hiver1"),
+  st_as_sf(UD_mybird_spatial2) %>% mutate(winter = "hiver2")
+)
+
+
+# Plot with the updated legend
+ggplot() +
+  theme_void() + theme(plot.title = element_text(size = 16), legend.text = element_text(size=12), legend.title = element_text(size=14)) +
+  ggtitle("Fast winter home ranges based on winter GPS locations in the 3 Vallées region (Northern Alps)") +
+
+  # Plot the vector borders with valley names
+  geom_spatvector(data = borders_3V_vect, fill = NA, aes(color = NOM)) +
+  scale_color_manual(values = c("Courchevel" = "darkgreen", "Les Allues" = "lightgreen", "Les Belleville" = "darkgrey")) +
+  labs(color = "Valley") +
+
+  # Start a new scale for the winter layers
+  new_scale_color() +
+  geom_sf(data = legend_data, aes(fill = winter), color = NA, alpha = 0.1) +
+
+  # Define the colors and labels for the winter legend
+  scale_fill_manual(name = "Winters",
+                    values = c("hiver1" = "blue", "hiver2" = "turquoise"),
+                    labels = c("hiver1" = "First winter", "hiver2" = "Second winter")) +
+
+  # Add borders for the winter regions
+  geom_sf(data = st_as_sf(UD_mybird_spatial), color = "blue", fill = NA) +
+  geom_sf(data = st_as_sf(UD_mybird_spatial2), color = "turquoise", fill = NA)
+
 
 
 #********************************************************************
@@ -269,94 +257,6 @@ scaled_env_RL_list_selection <-  scaled_env_RL_list[!(names(scaled_env_RL_list) 
 # scaled_env_RL_list_selection <-  scaled_env_RL_list[c("elevation", "squared_elevation", "strava","leks")]
   
 
-RSF_birds <- function(telemetry_list, 
-                           akde_list,
-                           env_raster_list,
-                           outputfolder = file.path(base, "Tetralps", "3_R", "0_Heavy_saved_models", "birds_3V"),
-                           write = TRUE)
-{
-  warning("The arguments telemetry_list and akde_list must be unested lists.")
-  
-  start_time <- proc.time()
-  
-  
-  sum_rsf_multipl <- list()
-  
-  for(bg in seq_along(akde_list))
-  {
-    
-    ### Setting the limit of the study area for the bird
-    # calculating the 99% HR
-    r_mybird_akde_99 <- SpatialPolygonsDataFrame.UD(akde_list[[bg]][[1]],level.UD=.99,level=.95) # UD area at 99% with a 95% confidence level for the magnitude of the above area
-    
-    # calculating the mcp 
-    subset_df <- telemetry_list[[bg]][[1]][, c("x", "y")]
-    class(subset_df) <- "data.frame"
-    coordinates(subset_df) <- ~x + y # Perform the Minimum Convex Polygon calculation
-    mcp_result <- mcp(subset_df, percent = 100) # Create a SpatialPoints object
-    
-    
-    max(ext(r_mybird_akde_99),ext(mcp_result))
-    min(ext(r_mybird_akde_99),ext(mcp_result))
-    
-    e_mybird <- c(min(ext(r_mybird_akde_99),ext(mcp_result))[1],
-                  max(ext(r_mybird_akde_99),ext(mcp_result))[1],
-                  min(ext(r_mybird_akde_99),ext(mcp_result))[2],
-                  max(ext(r_mybird_akde_99),ext(mcp_result))[2])
-    
-    plot(e_mybird[1:2],e_mybird[3:4],type="n")
-    terra::plot(mcp_result,add=T) ; terra::plot(telemetry_list[[bg]][[1]],add=T) # plot results to check
-    terra::plot(r_mybird_akde_99,add=T, border="blue")
-    
-    # readline("Look at the plot. If it is ok enter whatever you want to next.")
-    
-    ### Crop the environment stack around the bird of interest
-    #' cropping the stack environment to the extent of the bird data locations *2
-    env_RL_list_cropped <- lapply(env_raster_list, function(raster) {
-      terra::crop(raster, extent(e_mybird)*2)
-    })
-    
-    
-    
-    ### RSF function 
-    #' The integrator = "Riemann" option is much faster
-    set.seed(3)
-    mybird_rsf_mc_strava <- rsf.fit(telemetry_list[[bg]][[1]], 
-                                    akde_list[[bg]][[1]],  
-                                    R = env_RL_list_cropped,
-                                    integrator = "MonteCarlo",   #Riemann = faster option but only for spatial variables (rasters); MonteCarlo = for spatial and temporal variables
-                                    formula = ~ elevation + squared_elevation + strava + 
-                                      # leks +
-                                      Shrubs +
-                                      Trees +
-                                      Cliffs_water +
-                                      Buildings)
-    
-    sum_rsf <- summary(mybird_rsf_mc_strava)
-    
-    sum_rsf_multipl[[bg]] <- sum_rsf
-    
-  }
-  names(sum_rsf_multipl) <- names(telemetry_list)
-  
-  if(write == TRUE)
-  {
-    save(sum_rsf_multipl, file = file.path(outputfolder, "RSF_results", paste0(deparse(substitute(telemetry_list)),".Rdata")))
-  }
-  
-  
-  
-  end_time <- proc.time()
-  
-  # Calculate elapsed time
-  execution_time <- end_time - start_time
-  print(execution_time)
-  
-  
-  
-  return(sum_rsf_multipl)
-}
-
 system.time(
 RSF_results_multpl_birds <- RSF_birds(  l_telemetry_winter[1:25], 
                                         l_akde_winter[1:25],
@@ -366,7 +266,7 @@ RSF_results_multpl_birds <- RSF_birds(  l_telemetry_winter[1:25],
                                         ) 
 )
 
-load(file = file.path(base, "Tetralps", "3_R", "0_Heavy_saved_models", "birds_3V", "RSF_results", paste0("l_telemetry_winter.Rdata")))
+load(file = file.path(base, "Tetralps", "3_R", "0_Heavy_saved_models", "birds_3V", "RSF_results", paste0("l_telemetry_winter[1_25].Rdata")))
 #********************************************************************
 
 
@@ -395,11 +295,12 @@ for(bg in seq_along(RSF_results_multpl_birds))
 }
 
 
-ggplot(data = rsf_results_table %>% filter(covariates %in% c("strava", "leks", "elevation")), aes(y = covariates, x = est))+
+ggplot(data = rsf_results_table %>% filter(covariates %in% c("strava", "Cliffs_water", "Trees", "Shrubs", "Buildings")), aes(y = covariates, x = est))+
   geom_boxplot(aes(color = covariates), fill = alpha("grey", 0.2))+
   geom_jitter(color = alpha("black",0.6))+
   theme(axis.text.x = element_text(hjust = 1),  panel.background = element_blank()) +
-  labs(y = "Covariates", x = "Estimates", title = "Estimated coeficients by covariate")
+  labs(y = "Covariates", x = "Estimates", title = "Estimated coeficients by covariate")+
+  geom_vline(xintercept = 0, linetype = "dashed")
 
 #********************************************************************
 

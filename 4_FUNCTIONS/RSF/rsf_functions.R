@@ -232,25 +232,65 @@ bird_variogram <- function(telemetry_list = l_telemetry_winter, dt_hour = NULL, 
 
 # Function to calculate the overlap between the akde of all the winters encountered by 1 bird 
 #********************************************************************  
-overlap_winter <- function(telemetry_list = l_telemetry_winter)
+overlap_winter <- function(telemetry_list, 
+                           fit_list,
+                           telemetry_list2 = NULL, 
+                           fit_list2 = NULL,
+                           overlap_type)
 {
   dt_overlap <- data.frame("animal" = character(), "estimated_overlap" = numeric())
   
-  for(bg in seq_along(names(l_telemetry_winter))) #l_telemetry_winter
+  if(overlap_type == "multiple winters")
   {
-    if(length(names(l_telemetry_winter[[bg]]))>1)
+    
+    
+    for(bg in seq_along(names(telemetry_list))) 
     {
-        print(l_telemetry_winter[[bg]][[1]]@info$identity)
+      if(length(names(telemetry_list[[bg]]))>1)
+      {
+        print(telemetry_list[[bg]][[1]]@info$identity)
         # But this works because HRs are estimated simultaneously (and consistently)
-        over <- overlap(akde(l_telemetry_winter[[bg]],l_fit_winter[[bg]]))
+        over <- overlap(akde(telemetry_list[[bg]],fit_list[[bg]]))
         print(over$CI[,,"est"])
         
-        dt_to_overlap <- data.frame( "animal" = l_telemetry_winter[[bg]][[1]]@info$identity, 
+        dt_to_overlap <- data.frame( "animal" = telemetry_list[[bg]][[1]]@info$identity, 
                                      "estimated_overlap" = min(over$CI[,,"est"]))
         dt_overlap <- rbind(dt_overlap, dt_to_overlap)
+      }
+      
     }
-
   }
+  
+  
+  if(overlap_type == "season length")
+  {
+    if (is.null(telemetry_list2) || is.null(fit_list2)) 
+      {stop("2 telemetry lists are needed")}
+      
+      dt_overlap <- data.frame("animal" = character(), "estimated_overlap" = numeric())
+    
+      common_names <- intersect(names(l_telemetry_winter_predefined_win), names(l_telemetry_winter_large_win)) 
+      
+    for(bg in seq_along(common_names))
+    {
+      
+      print(telemetry_list[[common_names[bg]]][[1]]@info$identity)
+      # But this works because HRs are estimated simultaneously (and consistently)
+      over <- overlap(akde(list(telemetry_list[[common_names[bg]]][[1]], telemetry_list2[[common_names[bg]]][[1]]),
+                           list(fit_list[[common_names[bg]]][[1]], fit_list2[[common_names[bg]]][[1]])))
+      print(over$CI[,,"est"])
+      
+      dt_to_overlap <- data.frame( "animal" = telemetry_list[[common_names[bg]]][[1]]@info$identity, 
+                                   "estimated_overlap" = min(over$CI[,,"est"]))
+      dt_overlap <- rbind(dt_overlap, dt_to_overlap)
+      
+      
+      
+    }
+  }
+  
+  
+  
   
   return(dt_overlap)
 }
@@ -259,7 +299,103 @@ overlap_winter <- function(telemetry_list = l_telemetry_winter)
 
 
 
+# Function to apply RSF on multiple birds
+#********************************************************************  
+RSF_birds <- function(telemetry_list, 
+                      akde_list,
+                      env_raster_list,
+                      outputfolder = file.path(base, "Tetralps", "3_R", "0_Heavy_saved_models", "birds_3V"),
+                      write = TRUE)
+{
+  warning("The arguments telemetry_list and akde_list must be unested lists.")
+  
+  start_time <- proc.time()
+  
+  
+  sum_rsf_multipl <- list()
+  
+  for(bg in seq_along(akde_list))
+  {
+    
+    ### Setting the limit of the study area for the bird
+    # calculating the 99% HR
+    r_mybird_akde_99 <- SpatialPolygonsDataFrame.UD(akde_list[[bg]][[1]],level.UD=.99,level=.95) # UD area at 99% with a 95% confidence level for the magnitude of the above area
+    
+    # calculating the mcp 
+    subset_df <- telemetry_list[[bg]][[1]][, c("x", "y")]
+    class(subset_df) <- "data.frame"
+    coordinates(subset_df) <- ~x + y # Perform the Minimum Convex Polygon calculation
+    mcp_result <- mcp(subset_df, percent = 100) # Create a SpatialPoints object
+    
+    
+    max(ext(r_mybird_akde_99),ext(mcp_result))
+    min(ext(r_mybird_akde_99),ext(mcp_result))
+    
+    e_mybird <- c(min(ext(r_mybird_akde_99),ext(mcp_result))[1],
+                  max(ext(r_mybird_akde_99),ext(mcp_result))[1],
+                  min(ext(r_mybird_akde_99),ext(mcp_result))[2],
+                  max(ext(r_mybird_akde_99),ext(mcp_result))[2])
+    
+    plot(e_mybird[1:2],e_mybird[3:4],type="n")
+    terra::plot(mcp_result,add=T) ; terra::plot(telemetry_list[[bg]][[1]],add=T) # plot results to check
+    terra::plot(r_mybird_akde_99,add=T, border="blue")
+    
+    # readline("Look at the plot. If it is ok enter whatever you want to next.")
+    
+    ### Crop the environment stack around the bird of interest
+    #' cropping the stack environment to the extent of the bird data locations *2
+    env_RL_list_cropped <- lapply(env_raster_list, function(raster) {
+      terra::crop(raster, extent(e_mybird)*2)
+    })
+    
+    
+    
+    ### RSF function 
+    #' The integrator = "Riemann" option is much faster
+    set.seed(3)
+    mybird_rsf_mc_strava <- rsf.fit(telemetry_list[[bg]][[1]], 
+                                    akde_list[[bg]][[1]],  
+                                    R = env_RL_list_cropped,
+                                    integrator = "MonteCarlo",   #Riemann = faster option but only for spatial variables (rasters); MonteCarlo = for spatial and temporal variables
+                                    formula = ~ elevation + squared_elevation + strava + 
+                                      # leks +
+                                      Shrubs +
+                                      Trees +
+                                      Cliffs_water +
+                                      Buildings)
+    
+    sum_rsf <- summary(mybird_rsf_mc_strava)
+    
+    sum_rsf_multipl[[bg]] <- sum_rsf
+    
+  }
+  names(sum_rsf_multipl) <- names(telemetry_list)
+  
+  if(write == TRUE)
+  {
+    # Get the name of the object
+    obj_name <- deparse(substitute(telemetry_list))
+    
+    # Replace ":" (not allowed name format for a file) with "_"
+    clean_name <- gsub(":", "_", obj_name)
+    
+    save(sum_rsf_multipl, file = file.path(outputfolder, "RSF_results", paste0(clean_name,".Rdata")))
+  }
+  
+  
+  
+  end_time <- proc.time()
+  
+  # Calculate elapsed time
+  execution_time <- end_time - start_time
+  print(execution_time)
+  
+  
+  
+  return(sum_rsf_multipl)
+}
 
+#******************************************************************** 
 
 
 

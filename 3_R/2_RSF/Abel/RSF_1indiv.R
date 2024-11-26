@@ -382,41 +382,40 @@ for (i in seq_along(env_RL_list_selection)) {
 }
 
 
-set.seed(3)
-mybird_rsf_mc_strava <- rsf.fit(telemetry_winter, 
-                                akde_winter,  
-                                R = env_RL_list_cropped_rsf,
-                                integrator = "MonteCarlo",   #Riemann = faster option but only for spatial variables (rasters); MonteCarlo = for spatial and temporal variables
-                                formula = ~ elevation + square_elevation + leks + strava + carto_habitats_winter) 
-summary(mybird_rsf_mc_strava)
+# set.seed(3)
+# mybird_rsf_mc_strava <- rsf.fit(telemetry_winter, 
+#                                 akde_winter,  
+#                                 R = env_RL_list_cropped_rsf,
+#                                 integrator = "MonteCarlo",   #Riemann = faster option but only for spatial variables (rasters); MonteCarlo = for spatial and temporal variables
+#                                 formula = ~ elevation + squared_elevation + leks + strava + carto_habitats_winter) 
+# summary(mybird_rsf_mc_strava)
 # negative effect of strava
 
+
+
 set.seed(3)
 mybird_rsf_mc_strava <- rsf.fit(telemetry_winter, 
                                 akde_winter,  
-                                R = scaled_env_RL_list,
+                                R = env_RL_list_selection,
                                 integrator = "MonteCarlo",   #Riemann = faster option but only for spatial variables (rasters); MonteCarlo = for spatial and temporal variables
-                                formula = ~ elevation + square_elevation + strava + total.visitors.meribel + strava:total.visitors.meribel) 
+                                formula = ~ elevation + squared_elevation + strava*total.visitors.meribel) 
 summary(mybird_rsf_mc_strava)
-
-
-
 
 
 set.seed(3)
 mybird_rsf_mc_strava.visitors <- rsf.fit(telemetry_winter, 
                                          akde_winter,  
-                                         R = scaled_env_RL_list, # scale raster to add an interaction
+                                         R = env_RL_list_selection, # scale raster to add an interaction
                                          integrator = "MonteCarlo",   #Riemann = faster option but only for spatial variables (rasters); MonteCarlo = for spatial and temporal variables
-                                         formula = ~ elevation + square_elevation + strava*total.visitors.meribel) # to estimate the interaction, necessary to put the strava effect alone to estimate the intercept (but not necessary to put the temporal variable alone bc the intercept will be suppressed anyway)
+                                         formula = ~ elevation + squared_elevation + strava*total.visitors.meribel) # to estimate the interaction, necessary to put the strava effect alone to estimate the intercept (but not necessary to put the temporal variable alone bc the intercept will be suppressed anyway)
 summary(mybird_rsf_mc_strava.visitors)
 
 set.seed(3)
 mybird_rsf_mc_strava_hab <- rsf.fit( telemetry_winter, 
                                      akde_winter,  
-                                     R = scaled_env_RL_list,
+                                     R = env_RL_list_selection,
                                      integrator = "MonteCarlo",   #Riemann = faster option but only for spatial variables (rasters); MonteCarlo = for spatial and temporal variables
-                                     formula = ~ elevation + square_elevation + leks + strava + 
+                                     formula = ~ elevation + squared_elevation + leks + strava + 
                                        Shrubs +
                                        Trees +
                                        Cliffs_water +
@@ -427,23 +426,29 @@ summary(mybird_rsf_mc_strava_hab)
 set.seed(3)
 mybird_rsf_mc_hab_snow <- rsf.fit( telemetry_winter, 
                                      akde_winter,  
-                                     R = scaled_env_RL_list,
+                                     R = env_RL_list_selection,
                                      integrator = "MonteCarlo",   #Riemann = faster option but only for spatial variables (rasters); MonteCarlo = for spatial and temporal variables
-                                     formula = ~ elevation + square_elevation + snow.depth +
-                                     Soils_low_vegetation +
-                                     Shrubs +
-                                     Trees +
-                                     Cliffs_water +
-                                     Buildings +
-                                     Soils_low_vegetation:snow.depth +
-                                     Shrubs:snow.depth +
-                                     Trees:snow.depth +
-                                     Cliffs_water:snow.depth +
-                                     Buildings:snow.depth) 
-summary(mybird_rsf_mc_hab_snow)
+                                     formula = ~ elevation + squared_elevation +
+                                     # strava*total.visitors.meribel +
+                                     Shrubs*snow.depth +
+                                     Trees*snow.depth +
+                                     Cliffs_water*snow.depth +
+                                     Buildings*snow.depth) 
 
 
-
+set.seed(3)
+mybird_rsf_all <- rsf.fit( telemetry_winter, 
+                                   akde_winter,  
+                                   R = env_RL_list_selection,
+                                   integrator = "MonteCarlo",   #Riemann = faster option but only for spatial variables (rasters); MonteCarlo = for spatial and temporal variables
+                                   formula = ~ elevation + squared_elevation +
+                                     leks +
+                                     Shrubs*snow.depth +
+                                     Trees*snow.depth +
+                                     Cliffs_water*snow.depth +
+                                     Buildings*snow.depth +
+                                     strava*total.visitors.meribel) 
+summary(mybird_rsf_all)
 
 
 
@@ -456,7 +461,7 @@ mybird_rsf_mc <- rsf.fit(telemetry_winter,
                          akde_winter,  
                          R = env_RL_list_cropped_rsf,
                          integrator = "MonteCarlo",   #Riemann = faster option but only for spatial variables (rasters); MonteCarlo = for spatial and temporal variables
-                         formula = ~ elevation + square_elevation + leks + strava:total.visitors.meribel + carto_habitats_winter:snow.depth) 
+                         formula = ~ elevation + squared_elevation + leks + strava:total.visitors.meribel + carto_habitats_winter:snow.depth) 
 
 
 
@@ -478,7 +483,7 @@ summary(mybird_rsf_riemann)
 # bc we have a lot of info, lot of uncertainties
 # values depend on units
 
-env_RL_list_cropped_rsf2 = list(env_RL_list_cropped[["elevation"]],env_RL_list_cropped[["square_elevation"]],env_RL_list_cropped[["leks"]],env_RL_list_cropped[["strava"]])
+env_RL_list_cropped_rsf2 = list(env_RL_list_cropped[["elevation"]],env_RL_list_cropped[["squared_elevation"]],env_RL_list_cropped[["leks"]],env_RL_list_cropped[["strava"]])
 names(env_RL_list_cropped_rsf2) <- c("elevation","square_elevation","leks", "strava")
 
 
