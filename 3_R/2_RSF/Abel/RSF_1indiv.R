@@ -25,7 +25,7 @@ library(plotly)
 library(mapview)
 library(units)
 library(lubridate)
-library(moveVis)
+# library(moveVis)
 library(terra)
 library(future.apply)
 library(tidyterra)
@@ -351,9 +351,9 @@ terra::plot(add=TRUE,UD_mybird_spatial)
 ### 3.4.1_Expected results of the RSF ----
 #********************************************************************
 #birds 1,2,6,8 have an home range for "hiver1"
-# source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/plot_check_RSF_results.R")
-# plot_check_RSF_res(telemetry_winter,akde_winter,"habitats",analysis_object="study_area",writeplot=TRUE)
-# plot_check_RSF_res(telemetry_winter,akde_winter,"strava",analysis_object="study_area",data_visu="continuous",writeplot=TRUE)
+source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/RSF/plot_check_RSF_results.R")
+plot_check_RSF_res(telemetry_winter,akde_winter,"habitats",analysis_object="study_area",writeplot=TRUE)
+plot_check_RSF_res(telemetry_winter,akde_winter,"strava",analysis_object="study_area",data_visu="continuous",writeplot=TRUE)
 #********************************************************************
 
 
@@ -362,6 +362,7 @@ terra::plot(add=TRUE,UD_mybird_spatial)
 
 # Selection of the rasters to use in the RSF
 env_RL_list_selection <- scaled_env_RL_list[!names(scaled_env_RL_list) %in% "slope"]
+env_RL_list_selection <- env_RL_list[!names(env_RL_list) %in% "slope"]
 
 
 ### RSF function 
@@ -381,14 +382,29 @@ for (i in seq_along(env_RL_list_selection)) {
   plot_layers(env_RL_list_selection[[i]]) # Call the function
 }
 
+set.seed(3)
+mybird_rsf <- rsf.fit(l_telemetry_winter[["Daisy"]][[1]],
+                      l_akde_winter[["Daisy"]][[1]],
+                      R = scaled_env_RL_list_selection,
+                      integrator = "MonteCarlo",   #Riemann = faster option but only for spatial variables (rasters); MonteCarlo = for spatial and temporal variables
+                      formula = ~ elevation + squared_elevation + strava + 
+                                  strava:total.visitors.std +
+                                  leks +
+                                  Shrubs +
+                                  Trees +
+                                  Cliffs_water +
+                                  Buildings )
+summary(mybird_rsf)
+# negative effect of strava
 
-# set.seed(3)
-# mybird_rsf_mc_strava <- rsf.fit(telemetry_winter, 
-#                                 akde_winter,  
-#                                 R = env_RL_list_cropped_rsf,
-#                                 integrator = "MonteCarlo",   #Riemann = faster option but only for spatial variables (rasters); MonteCarlo = for spatial and temporal variables
-#                                 formula = ~ elevation + squared_elevation + leks + strava + carto_habitats_winter) 
-# summary(mybird_rsf_mc_strava)
+
+set.seed(3)
+mybird_rsf_mc_strava <- rsf.fit(telemetry_winter,
+                                akde_winter,
+                                R = env_RL_list_cropped,
+                                integrator = "MonteCarlo",   #Riemann = faster option but only for spatial variables (rasters); MonteCarlo = for spatial and temporal variables
+                                formula = ~ elevation + elevation^2 + leks + strava + carto_habitats_winter)
+summary(mybird_rsf_mc_strava)
 # negative effect of strava
 
 

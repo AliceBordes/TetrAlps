@@ -198,8 +198,8 @@ for(bg in seq_along(unique(birds_sample_bg_winter$animal.ID)))
   # Prompting the user for input in R
   resp1 <- readline(prompt = "Valley: ")
   resp1 <- case_when(
-    resp1 == "1" ~ "Les Allues",      # If input is "1", set resp1 to "Les Allues"
-    resp1 == "2" ~ "Courchevel",      # If input is "2", set resp1 to "Courchevel"
+    resp1 == "1" ~ "Courchevel",      # If input is "1", set resp1 to "Les Allues"
+    resp1 == "2" ~ "Les Allues",      # If input is "2", set resp1 to "Courchevel"
     resp1 == "3" ~ "Les Belleville",  # If input is "3", set resp1 to "Les Belleville"
     TRUE ~ "Unknown Valley"           # Default case for any other input
   )
@@ -218,6 +218,7 @@ for(bg in seq_along(unique(birds_sample_bg_winter$animal.ID)))
   dt_resorts <- rbind(dt_resorts, dt_resorts_to_bind)
 }
 write.csv2(dt_resorts, file = file.path(base,"Tetralps","2_Data","bg_winter_assign_valley_resort.csv"), row.names = FALSE)
+dt_resorts <- read.csv2(file.path(base,"Tetralps","2_Data","bg_winter_assign_valley_resort.csv"))
 
 birds_bg_dt <- left_join(birds_bg_dt, dt_resorts, by = c("animal.ID" = "animal")) # ; summary_res <- birds_bg_dt %>% group_by(animal.ID, valley, resort)  %>% summarise(count = n(), .groups = "drop") 
 
@@ -226,4 +227,10 @@ birds_bg_dt <- left_join(birds_bg_dt, dt_resorts, by = c("animal.ID" = "animal")
 
 write.csv(birds_bg_dt, file = file.path(base,"Tetralps","2_Data","data_bg_pretelemetry_2024_10.csv"), row.names=FALSE)
 #********************************************************************
+
+
+
+
+
+
 

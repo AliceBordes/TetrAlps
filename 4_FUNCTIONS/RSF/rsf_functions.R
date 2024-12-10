@@ -51,7 +51,6 @@ tele_akde <- function(data,
                       outputfolder = file.path(base, "Tetralps", "3_R", "0_Heavy_saved_models", "birds_3V"),
                       write = FALSE)
 {
-  
   if(!isFALSE(birds_vect))
   {
     data <- data %>% filter(animal.ID %in% birds_vect)
@@ -72,30 +71,15 @@ tele_akde <- function(data,
     if ("hiver" %in% unique(birds_sample_bg_pretele$saison)) {
       b <- b + 1
       
-      # Add visitor and snow depth data
-      birds_sample_bg_pretele <- birds_sample_bg_pretele %>% 
-        mutate(Date = as.Date(timestamp)) %>%
-        left_join(visitor_meribel %>% dplyr::select(Date, Total_std), by = "Date") %>%
-        rename(total.visitors.meribel = Total_std) %>%
-        left_join(snow_meribel %>% dplyr::select(Date, snow.depth_std), by = "Date") %>%
-        rename(snow.depth = snow.depth_std)
-      
       # Create telemetry data
       telemetry <- as.telemetry(birds_sample_bg_pretele, projection = "EPSG:2154",
                                 keep = c("saison", "saison2", "period_jour", "animal.sex", 
-                                         "animal.life.stage", "total.visitors.meribel", "snow.depth"))
+                                         "animal.life.stage", "total.visitors", "snow.depth", "total.visitors.std", "snow.depth.std"))
       ctmm::projection(telemetry) <- "EPSG:2154"
       
       # Filter telemetry data for winter season
       telemetry_winter <- telemetry[telemetry$saison == season, ]
-      telemetry_winter$snow.depth <- scale(telemetry_winter$snow.depth)
-      telemetry_winter$total.visitors.meribel <- scale(telemetry_winter$total.visitors.meribel)
-      
-      
-    
-      
-      
-      
+
       
       # If subset_category is "all", do not split by category
       if(subset_category != "all") {
@@ -157,11 +141,19 @@ tele_akde <- function(data,
   
   if(write == TRUE)
   {
+    if(subset_category == "all")
+    {
+      season_title = season
+    }else
+    {
+      season_title = subset_category
+    }
+    
     # Saving the models
-    save(l_telemetry_winter, file = file.path(outputfolder, paste0("multipl_telemetry_winter_",subset_category , ".Rdata")))
-    save(l_guess_winter, file = file.path(outputfolder, paste0("multipl_guess_winter_",subset_category , ".Rdata")))
-    save(l_fit_winter, file = file.path(outputfolder, paste0("multipl_fit_winter_",subset_category , ".Rdata")))
-    save(l_akde_winter, file = file.path(outputfolder, paste0("multipl_akde_winter_",subset_category , ".Rdata")))
+    save(l_telemetry_winter, file = file.path(outputfolder, paste0("multipl_telemetry_winter_",season_title , ".Rdata")))
+    save(l_guess_winter, file = file.path(outputfolder, paste0("multipl_guess_winter_",season_title , ".Rdata")))
+    save(l_fit_winter, file = file.path(outputfolder, paste0("multipl_fit_winter_",season_title , ".Rdata")))
+    save(l_akde_winter, file = file.path(outputfolder, paste0("multipl_akde_winter_",season_title , ".Rdata")))
   }
     
   return()
@@ -301,54 +293,181 @@ overlap_winter <- function(telemetry_list,
 
 # Function to apply RSF on multiple birds
 #********************************************************************  
+#' RSF_birds <- function(telemetry_list, 
+#'                       akde_list,
+#'                       env_raster_list,
+#'                       outputfolder = file.path(base, "Tetralps", "3_R", "0_Heavy_saved_models", "birds_3V"),
+#'                       write = TRUE)
+#' {
+#'   warning("The arguments telemetry_list and akde_list must have a unique element in their nested list.")
+#'   
+#' 
+#'   sum_rsf_multipl <- list()
+#'   
+#'   for(bg in seq_along(telemetry_list))
+#'   {
+#'     # to calculate the time elapsed
+#'     start_time <- proc.time()
+#'     
+#'     print(names(telemetry_list)[bg])
+#'     
+#'     ### Setting the limit of the study area for the bird
+#'     # calculating the 99% HR
+#'     r_mybird_akde_99 <- SpatialPolygonsDataFrame.UD(akde_list[[bg]][[1]],level.UD=.99,level=.95) # UD area at 99% with a 95% confidence level for the magnitude of the above area
+#'     
+#'     # calculating the mcp 
+#'     subset_df <- telemetry_list[[bg]][[1]][, c("x", "y")]
+#'     class(subset_df) <- "data.frame"
+#'     coordinates(subset_df) <- ~x + y # Perform the Minimum Convex Polygon calculation
+#'     mcp_result <- mcp(subset_df, percent = 100) # Create a SpatialPoints object
+#'     
+#'     max(ext(r_mybird_akde_99),ext(mcp_result))
+#'     min(ext(r_mybird_akde_99),ext(mcp_result))
+#'     
+#'     e_mybird <- c(min(ext(r_mybird_akde_99),ext(mcp_result))[1],
+#'                   max(ext(r_mybird_akde_99),ext(mcp_result))[1],
+#'                   min(ext(r_mybird_akde_99),ext(mcp_result))[2],
+#'                   max(ext(r_mybird_akde_99),ext(mcp_result))[2])
+#'     
+#'     plot(e_mybird[1:2],e_mybird[3:4],type="n", main = paste0(names(telemetry_list)[bg], "'s home range and mcp"))
+#'     terra::plot(mcp_result,add=T) ; terra::plot(telemetry_list[[bg]][[1]],add=T) # plot results to check
+#'     terra::plot(r_mybird_akde_99,add=T, border="blue")
+#'     
+#'     # readline("Look at the plot. If it is ok enter whatever you want to next.")
+#'     
+#'     ### Crop the environment stack around the bird of interest
+#'     #' cropping the stack environment to the extent of the bird data locations *2
+#'     env_RL_list_cropped <- lapply(env_raster_list, function(raster) {
+#'       terra::crop(raster, extent(e_mybird)*2)
+#'     })
+#'     
+#'     
+#'     ### RSF function 
+#'     #' The integrator = "Riemann" option is much faster
+#'     set.seed(3)
+#'     mybird_rsf_mc_strava <- rsf.fit(telemetry_list[[bg]][[1]], 
+#'                                     akde_list[[bg]][[1]],  
+#'                                     R = env_RL_list_cropped,
+#'                                     integrator = "MonteCarlo",   #Riemann = faster option but only for spatial variables (rasters); MonteCarlo = for spatial and temporal variables
+#'                                     formula = ~ elevation + squared_elevation + strava + 
+#'                                       strava:total.visitors.std +
+#'                                       leks +
+#'                                       Shrubs +
+#'                                       Trees +
+#'                                       Cliffs_water +
+#'                                       Buildings 
+#'                                       # Shrubs:snow.depth +
+#'                                       # Trees:snow.depth +
+#'                                       # Cliffs_water:snow.depth +
+#'                                       # Buildings:snow.depth
+#'                                     )
+#'     
+#'     sum_rsf <- summary(mybird_rsf_mc_strava)
+#'     
+#'     sum_rsf_multipl[[bg]] <- sum_rsf
+#'     
+#'     
+#'     # Calculate elapsed time
+#'     end_time <- proc.time()
+#'     execution_time <- end_time - start_time
+#'     print(execution_time)
+#'     
+#'   } # end for bg
+#'   names(sum_rsf_multipl) <- names(telemetry_list)
+#'   
+#'   if(write == TRUE)
+#'   {
+#'     # Get the name of the object
+#'     obj_name <- deparse(substitute(telemetry_list))
+#'     
+#'     if(str_contains(obj_name, "_"))
+#'     {
+#'       # Replace ":" (not allowed name format for a file) with "_"
+#'       clean_name <- gsub(":", "_", obj_name)
+#'     }
+#'     
+#'     save(sum_rsf_multipl, file = file.path(outputfolder, "RSF_results", paste0(clean_name,".Rdata")))
+#'   }
+#'   
+#'   
+#'   
+#'   
+#'   
+#'   return(sum_rsf_multipl)
+#' }
+#' 
+#' 
+#' 
+#' 
+
+
+
+
+
+
+
+
+
 RSF_birds <- function(telemetry_list, 
                       akde_list,
                       env_raster_list,
+                      grid = "individual",
                       outputfolder = file.path(base, "Tetralps", "3_R", "0_Heavy_saved_models", "birds_3V"),
                       write = TRUE)
 {
-  warning("The arguments telemetry_list and akde_list must be unested lists.")
-  
-  start_time <- proc.time()
-  
-  
+  warning("The arguments telemetry_list and akde_list must have a unique element in their nested list.")
+
   sum_rsf_multipl <- list()
   
-  for(bg in seq_along(akde_list))
+  for(bg in seq_along(telemetry_list))
   {
+    # to calculate the time elapsed
+    start_time <- proc.time()
     
-    ### Setting the limit of the study area for the bird
-    # calculating the 99% HR
-    r_mybird_akde_99 <- SpatialPolygonsDataFrame.UD(akde_list[[bg]][[1]],level.UD=.99,level=.95) # UD area at 99% with a 95% confidence level for the magnitude of the above area
-    
-    # calculating the mcp 
-    subset_df <- telemetry_list[[bg]][[1]][, c("x", "y")]
-    class(subset_df) <- "data.frame"
-    coordinates(subset_df) <- ~x + y # Perform the Minimum Convex Polygon calculation
-    mcp_result <- mcp(subset_df, percent = 100) # Create a SpatialPoints object
+    print(names(telemetry_list)[bg])
     
     
-    max(ext(r_mybird_akde_99),ext(mcp_result))
-    min(ext(r_mybird_akde_99),ext(mcp_result))
-    
-    e_mybird <- c(min(ext(r_mybird_akde_99),ext(mcp_result))[1],
-                  max(ext(r_mybird_akde_99),ext(mcp_result))[1],
-                  min(ext(r_mybird_akde_99),ext(mcp_result))[2],
-                  max(ext(r_mybird_akde_99),ext(mcp_result))[2])
-    
-    plot(e_mybird[1:2],e_mybird[3:4],type="n")
-    terra::plot(mcp_result,add=T) ; terra::plot(telemetry_list[[bg]][[1]],add=T) # plot results to check
-    terra::plot(r_mybird_akde_99,add=T, border="blue")
-    
-    # readline("Look at the plot. If it is ok enter whatever you want to next.")
-    
-    ### Crop the environment stack around the bird of interest
-    #' cropping the stack environment to the extent of the bird data locations *2
-    env_RL_list_cropped <- lapply(env_raster_list, function(raster) {
-      terra::crop(raster, extent(e_mybird)*2)
-    })
+    #### Size of the integration grid 
+    if(grid == "full") # needed to perform a meta model
+    {
+      e_mybird <- extent(scaled_env_RL_list[[1]])
+    }
     
     
+    
+    if(grid == "individual")
+    {
+      ### Setting the limit of the study area for the bird
+      # calculating the 99% HR
+      r_mybird_akde_99 <- SpatialPolygonsDataFrame.UD(akde_list[[bg]][[1]],level.UD=.99,level=.95) # UD area at 99% with a 95% confidence level for the magnitude of the above area
+      
+      # calculating the mcp 
+      subset_df <- telemetry_list[[bg]][[1]][, c("x", "y")]
+      class(subset_df) <- "data.frame"
+      coordinates(subset_df) <- ~x + y # Perform the Minimum Convex Polygon calculation
+      mcp_result <- mcp(subset_df, percent = 100) # Create a SpatialPoints object
+      
+      max(ext(r_mybird_akde_99),ext(mcp_result))
+      min(ext(r_mybird_akde_99),ext(mcp_result))
+      
+      e_mybird <- c(min(ext(r_mybird_akde_99),ext(mcp_result))[1],
+                    max(ext(r_mybird_akde_99),ext(mcp_result))[1],
+                    min(ext(r_mybird_akde_99),ext(mcp_result))[2],
+                    max(ext(r_mybird_akde_99),ext(mcp_result))[2])
+      
+      plot(e_mybird[1:2],e_mybird[3:4],type="n", main = paste0(names(telemetry_list)[bg], "'s home range and mcp"))
+      terra::plot(mcp_result,add=T) ; terra::plot(telemetry_list[[bg]][[1]],add=T) # plot results to check
+      terra::plot(r_mybird_akde_99,add=T, border="blue")
+      
+    }
+    
+          
+      ### Crop the environment stack around the bird of interest
+      #' cropping the stack environment to the extent of the bird data locations *2
+      env_RL_list_cropped <- lapply(env_raster_list, function(raster) {
+        terra::crop(raster, extent(e_mybird)*2)
+      })
+      
     
     ### RSF function 
     #' The integrator = "Riemann" option is much faster
@@ -358,17 +477,29 @@ RSF_birds <- function(telemetry_list,
                                     R = env_RL_list_cropped,
                                     integrator = "MonteCarlo",   #Riemann = faster option but only for spatial variables (rasters); MonteCarlo = for spatial and temporal variables
                                     formula = ~ elevation + squared_elevation + strava + 
-                                      # leks +
+                                      strava:total.visitors.std +
+                                      leks +
                                       Shrubs +
                                       Trees +
                                       Cliffs_water +
-                                      Buildings)
+                                      Buildings 
+                                    # Shrubs:snow.depth +
+                                    # Trees:snow.depth +
+                                    # Cliffs_water:snow.depth +
+                                    # Buildings:snow.depth
+    )
     
-    sum_rsf <- summary(mybird_rsf_mc_strava)
+    # sum_rsf <- summary(mybird_rsf_mc_strava)
+    # sum_rsf_multipl[[bg]] <- sum_rsf
     
-    sum_rsf_multipl[[bg]] <- sum_rsf
+    sum_rsf_multipl[[bg]] <- mybird_rsf_mc_strava
     
-  }
+    # Calculate elapsed time
+    end_time <- proc.time()
+    execution_time <- end_time - start_time
+    print(execution_time)
+    
+  } # end for bg
   names(sum_rsf_multipl) <- names(telemetry_list)
   
   if(write == TRUE)
@@ -376,19 +507,19 @@ RSF_birds <- function(telemetry_list,
     # Get the name of the object
     obj_name <- deparse(substitute(telemetry_list))
     
-    # Replace ":" (not allowed name format for a file) with "_"
-    clean_name <- gsub(":", "_", obj_name)
+    if(str_contains(obj_name, "_"))
+    {
+      # Replace ":" (not allowed name format for a file) with "_"
+      clean_name <- gsub(":", "_", obj_name)
+    }
     
-    save(sum_rsf_multipl, file = file.path(outputfolder, "RSF_results", paste0(clean_name,".Rdata")))
+    # name for the chosen grid (by "individual" or "full" study area)
+    name_grid <- gsub('^"|"$', '', deparse(substitute(grid)))
+    
+    save(sum_rsf_multipl, file = file.path(outputfolder, "RSF_results", paste0(clean_name,"_", name_grid, ".Rdata")))
   }
   
   
-  
-  end_time <- proc.time()
-  
-  # Calculate elapsed time
-  execution_time <- end_time - start_time
-  print(execution_time)
   
   
   

@@ -24,7 +24,7 @@ library(plotly)
 library(mapview)
 library(units)
 library(lubridate)
-library(moveVis)
+# library(moveVis)
 library(terra)
 library(future.apply)
 library(tidyterra)
@@ -35,6 +35,11 @@ library(lubridate)
 library(openxlsx)
 library(tidyverse)
 library(dplyr)
+#********************************************************************
+
+# Loading functions ----
+#********************************************************************
+source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/Formatting_data/formatting_environment_data.R")
 #********************************************************************
 
 
@@ -58,8 +63,17 @@ crs(slope_3V) <- "EPSG:2154"
 slope_3V <- project(slope_3V, y = mnt_9, method = "bilinear") # resolution of slope_3V is set at 9m such as mnt_9
 
 # strava
-strava <- terra::rast(file.path(base, "Tetralps/2_DATA/strava/3Vallees/strava_3V_winter_sports_rgb.tif_single.tif"))
+strava <- terra::rast(file.path(base, "Tetralps/2_DATA/strava/3Vallees/strava_3V_winter_sports_rgb_single_3Vallees_25_06_2024.tif"))
+if(length(names(strava))!=1)
+{
+  strava <- strava::as_numeric(strava)
+}
 strava <- project(strava, y = mnt_9, method = "bilinear") # y = a raster to align on (avoid to use the function resample after), "EPSG:2154" can be specify if there is no argument y. pas besoin de mettre de focal (zone d'influence), method="belinear" advised for continuous raster
+#if strava = rgb with 4 layers : 
+# strava <- terra::rast(file.path(base, "Tetralps/2_DATA/strava/3Vallees/strava_winter_2024_10_03.tif"))
+# strava_rgb <- terra::plotRGB(strava)
+# strava_rgb <- terra::plot(strava::as_numeric(strava), col = viridis::magma(256))
+
 # resolution of strava is set artificially at 9m such as mnt_9, but the true resolution is 38.21851m
 
 # habitat cartography
@@ -154,337 +168,14 @@ snow_meribel <- read.xlsx("C:/Users/albordes/Documents/PhD/TetrAlps/1_RAW_DATA/e
 
     
 # Ski resort visitors
-        # Méribel Mottaret
-        meribel_formatting <- function(folderpath = file.path(base,"TetrAlps/1_RAW_DATA/human_traffic_in_ski_resorts/Meribel_mottaret_RM_Historique_des_passages_2017_22/"),sheetname = "Passage Détail", save = FALSE, folderoutpath = file.path(base,"TetrAlps/2_DATA/ski_resorts_visitor_numbers"))
-        {
-          resort_files <- list.files(path = folderpath,pattern = "^[^~$].*\\.xlsx$", full.names = TRUE) # function to exclude files that start with ~$ and keep those that finish with .xlsx
-          
-          list_dt <- list()
-          
-        for(file in seq_along(resort_files))
-          {
-          
-          data <- tryCatch(
-            {
-            read.xlsx(xlsxFile = resort_files[file], sheet = sheetname)
-            }, 
-            error = function(e) 
-              {
-              message("Error reading file: ", resort_files[file], "\n", e)
-              return(NULL)
-              })
-            
-            names(data)[1] <- "Mois" ; names(data)[2] <- "Jour"
-            data <- data %>% fill(Mois, .direction = "down") # `fill()` defaults to replacing missing data from top to bottom
-            data <- data %>% replace(is.na(.), 0) # assuming all the NA = 0 visitors
-            data <- data %>% mutate(Date = paste(Mois, Jour, sep = "-"))
-            data$Date <- as.Date(data$Date)
-            data <- data %>% dplyr::select(Date, everything()) %>% dplyr::select(-Mois) %>% dplyr::select(-Jour)
-            data <- data %>% mutate(Total = rowSums(dplyr::select(., where(is.numeric)), na.rm = TRUE))
-            
-            list_dt[[file]] <- data
-          }
-          # Assuming `list_dt` contains your data frames
-          merged_data <- bind_rows(list_dt)
-          
-          if(save == TRUE)
-          {
-            write.csv(merged_data, file = file.path(folderoutpath,"meribel_visitors.csv"), row.names = FALSE)
-          }
-            
-          return(merged_data)
-        }
-        
-        meribel_visitors <- meribel_formatting(save = TRUE)
-        
-        
-        
-        
-        
-        
-        
-        
-        # Courchevel
-        courchevel_formatting <- function(folderpath = file.path(base,"TetrAlps/1_RAW_DATA/human_traffic_in_ski_resorts/Courchevel_RM_Historique_des_passages_2017_22/"),sheetname = "Details", save = FALSE, folderoutpath = file.path(base,"TetrAlps/2_DATA/ski_resorts_visitor_numbers"))
-        {
-          resort_files <- list.files(path = folderpath,pattern = "^[^~$].*\\.xlsx$", full.names = TRUE) # function to exclude files that start with ~$ and keep those that finish with .xlsx
-          list_dt <- list()
-          
-          for(file in seq_along(resort_files))
-          {
-            year <- substr(resort_files[file],nchar(resort_files[file])-8,nchar(resort_files[file])-5)
-            data <- tryCatch(
-              {
-                read.xlsx(xlsxFile = resort_files[file], sheet = sheetname, startRow = 3)
-              }, 
-              error = function(e) 
-              {
-                message("Error reading file: ", resort_files[file], "\n", e)
-                return(NULL)
-              })
-            
-            names(data)[1] <- "Jour" ; names(data)[2] <- "Date"
-            data <- data %>% filter(Jour %in% c("lun.","mar.","mer.","jeu.","ven.","sam.","dim."))
-            data <- data %>% replace(is.na(.), 0) # assuming all the NA = 0 visitors
-            
-            data$Date <- excel_numeric_to_date(as.numeric(data$Date))
+meribel_visitors <- meribel_formatting(save = TRUE)
+courchevel_visitors <- courchevel_formatting(save = TRUE)
+valtho_visitors <- valtho_formatting(save = TRUE)
+menuires_visitors <- menuires_formatting(save = TRUE)
 
-            
-            # correct the year 
-            for(i in 1:nrow(data))
-            {
-              if(lubridate::month(data$Date[i]) < 11 && is.na(data$Date[i])==FALSE)
-              {
-                lubridate::year(data$Date[i]) <- as.numeric(year)
-              }
-             if(lubridate::month(data$Date[i]) > 10 && is.na(data$Date[i])==FALSE)
-              {
-                lubridate::year(data$Date[i]) <- as.numeric(year)-1
-              }
-              if(is.na(data$Date[i])==TRUE && lubridate::day(data$Date[i-1])==28 && lubridate::month(data$Date[i-1])==2)
-              {
-                data$Date[i] <- data$Date[i-1]+lubridate::days(1)
-              }
-            }
-            
-            data <- data %>% dplyr::select(.,-contains("otal"),-starts_with("X"))
-            # Convert all columns to numeric except for "Jour" and "Date"
-            data <- data %>% mutate(across(-c(Jour, Date), as.numeric))
-            data <- data %>% mutate(Total = rowSums(dplyr::select(., where(is.numeric)), na.rm = TRUE))
-            
-            
-            # View(data)
-            list_dt[[file]] <- data
-          }
-          # Merging data frames
-          merged_data <- bind_rows(list_dt)
-          
-          if(save == TRUE)
-          {
-            write.csv(merged_data, file = file.path(folderoutpath,"courchevel_visitors.csv"), row.names = FALSE)
-          }
-          
-          return(merged_data)
-        }
-        
-        courchevel_visitors <- courchevel_formatting(save = TRUE)
-        
-        
-        
-        
-        # ValThorens/Orelle
-        valtho_formatting <- function(folderpath = file.path(base,"TetrAlps/1_RAW_DATA/human_traffic_in_ski_resorts/ValThorens_Orelle_RM_Historique_des_passages_2017_22"), save = FALSE, folderoutpath = file.path(base,"TetrAlps/2_DATA/ski_resorts_visitor_numbers"))
-        {
-          resort_files <- paste0(folderpath,".xlsx") # function to exclude files that start with ~$ and keep those that finish with .xlsx
-          list_dt <- list()
-          
-          for(year in c(2017:2019,2021:2022))
-          {
-            data <- tryCatch(
-              {
-                read.xlsx(xlsxFile = resort_files, sheet = as.character(paste0(year,"-",year+1-2000)), startRow = 3)
-              }, 
-              error = function(e) 
-              {
-                message("Error reading file: ", resort_files, "\n", e)
-                return(NULL)
-              })
-            
-            data <- data[!grepl("otal", data[, 1]), ]
-            data <- data[,-c(1,3)]
-            
-            data <- as.data.frame(t(data))
-            
-            lift_names <- data[1,]
-            colnames(data) <- c("Date",lift_names[2:length(lift_names)])
-            data <- data[-1,]
-            
-            data <- data %>% replace(is.na(.), 0) # assuming all the NA = 0 visitors
-            data$Date <- excel_numeric_to_date(as.numeric(data$Date))
-            
-            # Convert all columns to numeric except for "Jour" and "Date"
-            data <- data %>% mutate(across(-c(Date), as.numeric))
-            data <- data %>% mutate(Total = rowSums(dplyr::select(., where(is.numeric)), na.rm = TRUE))
-            
-            # View(data)
-            list_dt[[year]] <- data
-          }
-          # Merging data frames
-          merged_data <- bind_rows(list_dt)
-
-          if(save == TRUE)
-          {
-            write.csv(merged_data, file = file.path(folderoutpath,"valtho_visitors.csv"), row.names = FALSE)
-          }
-          
-          return(merged_data)
-        }
-        
-        valtho_visitors <- valtho_formatting(save = TRUE)
-        
-        
-        # Les Ménuires
-        menuires_formatting <- function(folderpath = file.path(base,"TetrAlps/1_RAW_DATA/human_traffic_in_ski_resorts/Les_Menuires_RM_Historique_des_passages_2017_22"), save = FALSE, folderoutpath = file.path(base,"TetrAlps/2_DATA/ski_resorts_visitor_numbers"))
-        {
-          resort_files <- paste0(folderpath,".xlsx") # function to exclude files that start with ~$ and keep those that finish with .xlsx
-          list_dt <- list()
-          
-          for(year in c(2017:2019,2021:2023))
-          {
-            data <- tryCatch(
-              {
-                read.xlsx(xlsxFile = resort_files, sheet = as.character(paste0(year,"-",year+1)), startRow = 2)
-              }, 
-              error = function(e) 
-              {
-                message("Error reading file: ", resort_files, "\n", e)
-                return(NULL)
-              })
-            
-            print(year)
-            
-            if(names(data)[1]=="X1" && names(data)[2]=="X2")
-            {
-              # Concatenate X1 and X2
-              data <- data %>%
-                mutate(X1 = paste(X1, X2, sep = " "))
-              data <- data[,-2]
-              print(data$X1)
-              data <- data[!grepl("otal", data$X1), ]
-            }
-            
-            
-            data <- data[, !grepl("totaux", names(data))]
-            names(data)[1] <- "Date"
-            data <- data[, !grepl("X", names(data))]
-            data[1,] <- names(data)
-            data <- data %>% filter(if_any(everything(), ~ !is.na(.)))
-            
-            
-            if(any(duplicated(data$Date)))
-            {
-              duplicated_name <- unique(data$Date[duplicated(data$Date)])
-              print(duplicated_name)
-              
-              data <- data[!(data$Date == duplicated_name & !duplicated(data$Date)), ] # the first line with "Bruyères2" = total "Bruyères1" + "Bruyères2" so we delete this one
-            }
-            
-            row.names(data) <- data[,1]
-            data <- data[,-1]
-            
-
-
-            data <- as.data.frame(t(data))
-            data$Date <- excel_numeric_to_date(as.numeric(data$Date))
-            data <- data %>% replace(is.na(.), 0) # assuming all the NA = 0 visitors
-            
-            data <- data[, !grepl("otal", names(data))]
-
-            # Convert all columns to numeric except for "Jour" and "Date"
-            data <- data %>% mutate(across(-c(Date), as.numeric))
-            data <- data %>% mutate(Total = rowSums(dplyr::select(., where(is.numeric)), na.rm = TRUE))
-            
-            list_dt[[year]] <- data
-          }
-          # Merging data frames
-          merged_data <- bind_rows(list_dt)
-          merged_data <- merged_data[-nrow(merged_data),]
-          
-          if(save == TRUE)
-          {
-            write.csv(merged_data, file = file.path(folderoutpath,"valtho_visitors.csv"), row.names = FALSE)
-          }
-          
-          return(merged_data)
-        }
-        
-        menuires_visitors <- menuires_formatting(save = FALSE)
-
-        
-        
-        
-        
-        
-        
-        
-        
         
 ### Snow depth    
-  # Méribel      
-meribel_snow_formatting <- function(folderpath = file.path(base,"TetrAlps/1_RAW_DATA/environment/enneigement/meribel_meteo_france_neige.xlsx"),
-                                    folderoutpath = file.path(base,"TetrAlps/2_DATA/snow_depth"), save = FALSE)
-{
-  list_data <- list()
-  
-  for(year in c(2016:2022))
-  {
-    data <- tryCatch(
-      {
-        read.xlsx(xlsxFile = folderpath, sheet = as.character(paste0("Saison ",year,".",year+1)))
-      }, 
-      error = function(e) 
-      {
-        message("Error reading file: ", folderpath, "\n", e)
-        return(NULL)
-      })
-    colnames(data) <- c( "Date", "cumul.H.neige.cm", "Neige.fraiche.cm", "Cumul.neige.fraiche.avant.saison.cm")
-    # Fill NA values in the Date column with the value above
-    data <- data %>% fill(Date, .direction = "down")
-    data$Date <- excel_numeric_to_date(data$Date)
-    
-    list_data[[year-2015]] <- data
-  }
-  
-  snow_data <- do.call(rbind, list_data)
-  
-  if(save == TRUE)
-  {
-    write.csv(snow_data, file = file.path(folderoutpath,"meribel_snow_depth.csv"), row.names = FALSE)
-  }
-  
-    return(snow_data)
-    
-}
-
 snow_meribel <- meribel_snow_formatting(save = TRUE)
-
-  # Courchevel
-
-courchevel_snow_formatting <- function(folderpath = file.path(base,"TetrAlps/1_RAW_DATA/environment/enneigement/courchevel1850_hauteurdeneige_journaliere_2019_2023_13072023.xlsx"),
-                                       folderoutpath = file.path(base,"TetrAlps/2_DATA/snow_depth"), save = FALSE)
-{
-  list_data <- list()
-  
-  for(year in c(2019:2022))
-  {
-    data <- tryCatch(
-      {
-        read.xlsx(xlsxFile = folderpath, sheet = as.character(paste0("cumul ",year-2000,"-",year+1-2000)), startRow = 2)
-      }, 
-      error = function(e) 
-      {
-        message("Error reading file: ", folderpath, "\n", e)
-        return(NULL)
-      })
-    data <- data[,1:4]
-    colnames(data) <- c( "Date", "cumul.H.neige.cm", "Neige.fraiche.cm", "moyenne")
-    # Fill NA values in the Date column with the value above
-    data$Date <- excel_numeric_to_date(as.numeric(data$Date))
-    
-    list_data[[year-2018]] <- data
-  }
-  
-  snow_data <- do.call(rbind, list_data)
-  
-  if(save == TRUE)
-  {
-    write.csv(snow_data, file = file.path(folderoutpath,"courchevel_snow_depth.csv"), row.names = FALSE)
-  }
-  
-  return(snow_data)
-  
-}
-
 snow_courchevel <- courchevel_snow_formatting(save = TRUE)
 #********************************************************************
 
@@ -544,6 +235,9 @@ scaled_env_RL_list <- lapply(env_RL_list, function(raster) {
   }
 })
 
+
+# std_squared_elevation = std_elevation^2 and not scale(squared_elevation)
+scaled_env_RL_list[["squared_elevation"]] <- scaled_env_RL_list[["elevation"]]^2 
 
 
 #'Dealing with categorical raster 

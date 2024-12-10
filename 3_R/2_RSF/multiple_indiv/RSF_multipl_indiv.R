@@ -1,4 +1,4 @@
-#### PhD Tetralpes project ####
+## PhD Tetralpes project ##
 
 # Alice Bordes #
 
@@ -6,13 +6,11 @@
 
 # Description:
 
-# RSF on 1 indiv
+# RSF on multiple indiv
 
 
 
-#### 1_Loading objects ----
-
-### Loading libraries ---- 
+#### Loading libraries ----
 #********************************************************************
 library(move2)
 library(sf)
@@ -25,7 +23,7 @@ library(plotly)
 library(mapview)
 library(units)
 library(lubridate)
-library(moveVis)
+# library(moveVis)
 library(terra)
 library(future.apply)
 library(tidyterra)
@@ -67,26 +65,27 @@ load(file.path(base,"TetrAlps/3_R/0_Heavy_saved_models/environment_3V/scaled_env
 # Visitor numbers
 visitor_meribel <- read.csv2("C:/Users/albordes/Documents/PhD/TetrAlps/2_DATA/ski_resorts_visitor_numbers/meribel_visitors.csv", sep=",")
 visitor_meribel$Date <- as.Date(visitor_meribel$Date)
-visitor_meribel$Total_std <- scale(visitor_meribel$Total)
 
 visitor_valtho <- read.csv2("C:/Users/albordes/Documents/PhD/TetrAlps/2_DATA/ski_resorts_visitor_numbers/valtho_visitors.csv", sep=",")
 visitor_valtho$Date <- as.Date(visitor_valtho$Date)
-visitor_valtho$Total_std <- scale(visitor_valtho$Total)
 
 visitor_courch <- read.csv2("C:/Users/albordes/Documents/PhD/TetrAlps/2_DATA/ski_resorts_visitor_numbers/courchevel_visitors.csv", sep=",")
 visitor_courch$Date <- as.Date(visitor_courch$Date)
-visitor_courch$Total_std <- scale(visitor_courch$Total)
+
+visitor_menui <- read.csv2("C:/Users/albordes/Documents/PhD/TetrAlps/2_DATA/ski_resorts_visitor_numbers/menuires_visitors.csv", sep=",")
+visitor_menui$Date <- as.Date(visitor_menui$Date)
+visitor_menui$Total <- as.integer(visitor_menui$Total)
 
 # Snow deph
 snow_meribel <- read.csv2("C:/Users/albordes/Documents/PhD/TetrAlps/2_DATA/snow_depth/meribel_snow_depth.csv", sep=",")
 snow_meribel$Date <- as.Date(snow_meribel$Date)
 snow_meribel <- snow_meribel %>% group_by(Date) %>% summarise(snow.depth = mean(cumul.H.neige.cm))
-snow_meribel$snow.depth_std <- as.vector(scale(snow_meribel$snow.depth))
+snow_meribel <- as.data.frame(snow_meribel)
 
 snow_courch <- read.csv2("C:/Users/albordes/Documents/PhD/TetrAlps/2_DATA/snow_depth/courchevel_snow_depth.csv", sep=",")
 snow_courch$Date <- as.Date(snow_courch$Date)
 snow_courch <- snow_courch %>% group_by(Date) %>% summarise(snow.depth = mean(cumul.H.neige.cm))
-snow_courch$snow.depth_std <- as.vector(scale(snow_courch$snow.depth))
+snow_courch <- as.data.frame(snow_courch)
 
 # ski resort identification
 ski_lift_traffic_3V <- st_read("C:/Users/albordes/Documents/PhD/TetrAlps/2_DATA/ski_lift_traffic_3V.gpkg")
@@ -115,8 +114,68 @@ season1 = "hiver"
 bird = "Fast"
 #********************************************************************
   
+
+
+### 1_Add visitor numbers and snow depth to birds_bg_dt ----
+#********************************************************************
+
+birds_sample_bg_pretele <- birds_bg_dt 
+birds_sample_bg_pretele$jour <- as.Date(birds_sample_bg_pretele$jour)
+
+# First, join both snow datasets
+birds_sample_bg_pretele2 <- birds_sample_bg_pretele %>%
+  left_join(snow_meribel %>% rename(snow.depth.meribel = snow.depth) %>% dplyr::select(Date, snow.depth.meribel), by = c("jour" = "Date")) %>%
+  left_join(snow_courch %>% rename(snow.depth.courchevel = snow.depth) %>% dplyr::select(Date, snow.depth.courchevel), by = c("jour" = "Date")) %>%
+  left_join(visitor_meribel %>% dplyr::select(Date, Total) %>% rename(total.visitors.meribel = Total), by = c("jour" = "Date")) %>%
+  left_join(visitor_courch %>% dplyr::select(Date, Total) %>% rename(total.visitors.courch = Total), by = c("jour" = "Date")) %>%
+  left_join(visitor_valtho %>% dplyr::select(Date, Total) %>% rename(total.visitors.valtho = Total), by = c("jour" = "Date")) %>%
+  left_join(visitor_menui %>% dplyr::select(Date, Total) %>% rename(total.visitors.menui = Total), by = c("jour" = "Date")) %>%
+
+  # Use case_when to set snow.depth based on valley
+  mutate(snow.depth = case_when(
+    valley == "Courchevel" ~ snow.depth.courchevel,
+    valley == "Les Allues" ~ snow.depth.meribel,
+    valley == "Les Belleville" ~ snow.depth.meribel,
+    TRUE ~ NA_real_  # If valley is neither, set NA
+  ),
+  total.visitors = case_when(
+    resort == "Méribel" ~ total.visitors.meribel,
+    resort == "Méribel-Mottaret" ~ total.visitors.meribel,
+    resort == "Courchevel" ~ total.visitors.courch,
+    resort == "Les Ménuires" ~ total.visitors.menui,
+    TRUE ~ NA_real_
+  )) %>%
+
+  # Clean up by removing intermediary columns
+  dplyr::select(-total.visitors.meribel, -total.visitors.courch,-total.visitors.valtho,-total.visitors.menui, -snow.depth.meribel, -snow.depth.courchevel)
+
+
+#### Scaling snow and visitor data using  the data of each pair valley, resort for a given data
+# the scaling is not proceeded over the all pretelemtry dataframe because data are repeated for each GPS observation
+
+# creation of the data frame for scaling
+birds_sample_bg_pretele2_for_scale <- birds_sample_bg_pretele2 %>%
+  group_by(jour, valley, resort) %>%
+  summarise(
+    snow.depth = mean(snow.depth, na.rm = TRUE),
+    total.visitors = mean(total.visitors, na.rm = TRUE)
+    # .groups = "drop"  # Remove grouping after summarisation
+  ) 
+birds_sample_bg_pretele2_for_scale$snow.depth.std <- scale(birds_sample_bg_pretele2_for_scale$snow.depth)
+birds_sample_bg_pretele2_for_scale$total.visitors.std <- scale(birds_sample_bg_pretele2_for_scale$total.visitors)
+
+#bind all the info on a unique data frame pretelemetry
+birds_sample_bg_pretele_final <- left_join(birds_sample_bg_pretele2, 
+                 as.data.frame(birds_sample_bg_pretele2_for_scale) %>% dplyr::select(-snow.depth, -total.visitors),
+                 by = c("jour", "valley", "resort"))
+
+
+#********************************************************************
+
+
+
   
-### Data creation of telemetry, guess, fit and akde objects for rsf ----
+### 2_Data creation of telemetry, guess, fit and akde objects for rsf ----
 #********************************************************************
 #### Creation of a global telemetry object (for all birds)
 
@@ -139,8 +198,14 @@ head(filtered_birds_bg_dt)
 
 
 
-tele_akde(data = filtered_birds_bg_dt,
-          # birds_vect = names(l_telemetry_winterS),
+# tele_akde(data = filtered_birds_bg_dt,
+#           # birds_vect = names(l_telemetry_winterS),
+#           season = "hiver",
+#           subset_category = "all",
+#           outputfolder = file.path(base, "Tetralps", "3_R", "0_Heavy_saved_models", "birds_3V"),
+#           write = TRUE)
+
+tele_akde(data = birds_sample_bg_pretele_final,
           season = "hiver",
           subset_category = "all",
           outputfolder = file.path(base, "Tetralps", "3_R", "0_Heavy_saved_models", "birds_3V"),
@@ -148,39 +213,73 @@ tele_akde(data = filtered_birds_bg_dt,
 #********************************************************************  
 
 
-### Loading data for rsf ----
-#********************************************************************
-  load(file = file.path(base,"Tetralps","3_R","0_Heavy_saved_models","birds_3V","multipl_telemetry_winter_saison2.Rdata"))
-  load(file = file.path(base,"Tetralps","3_R","0_Heavy_saved_models","birds_3V","multipl_guess_winter_saison2.Rdata"))
-  load(file = file.path(base,"Tetralps","3_R","0_Heavy_saved_models","birds_3V","multipl_fit_winter_saison2.Rdata"))
-  load(file = file.path(base,"Tetralps","3_R","0_Heavy_saved_models","birds_3V","multipl_akde_winter_saison2.Rdata"))
-  
-  # load(file = file.path(base,"Tetralps","3_R","0_Heavy_saved_models","birds_3V","multipl_telemetry_winter_saison.Rdata"))
-  # load(file = file.path(base,"Tetralps","3_R","0_Heavy_saved_models","birds_3V","multipl_guess_winter_saison.Rdata"))
-  # load(file = file.path(base,"Tetralps","3_R","0_Heavy_saved_models","birds_3V","multipl_fit_winter_saison.Rdata"))
-  # load(file = file.path(base,"Tetralps","3_R","0_Heavy_saved_models","birds_3V","multipl_akde_winter_saison.Rdata"))
-#********************************************************************
 
-#********************************************************************  
-# Filter to keep only elements with nested lists of length > 1
-# l_telemetry_winterS <- Filter(function(x) length(x) > 1, l_telemetry_winter)
-#********************************************************************  
-  
-  
   
   
 
 
 #### 3_Home range estimation : Fitting an RSF for 1 bird ----
 #********************************************************************
+
+
+
+### Loading data for rsf ----
+#********************************************************************
+  # load(file = file.path(base,"Tetralps","3_R","0_Heavy_saved_models","birds_3V","old","multipl_telemetry_winter_saison2.Rdata"))
+  # load(file = file.path(base,"Tetralps","3_R","0_Heavy_saved_models","birds_3V","multipl_guess_winter_saison.Rdata"))
+  # load(file = file.path(base,"Tetralps","3_R","0_Heavy_saved_models","birds_3V","multipl_fit_winter_saison2.Rdata"))
+  # load(file = file.path(base,"Tetralps","3_R","0_Heavy_saved_models","birds_3V","multipl_akde_winter_saison2.Rdata"))
+  
+  load(file = file.path(base,"Tetralps","3_R","0_Heavy_saved_models","birds_3V","multipl_telemetry_winter_hiver.Rdata"))
+  load(file = file.path(base,"Tetralps","3_R","0_Heavy_saved_models","birds_3V","multipl_guess_winter_hiver.Rdata"))
+  load(file = file.path(base,"Tetralps","3_R","0_Heavy_saved_models","birds_3V","multipl_fit_winter_hiver.Rdata"))
+  load(file = file.path(base,"Tetralps","3_R","0_Heavy_saved_models","birds_3V","multipl_akde_winter_hiver.Rdata"))
+
+
+  # Filter the data set by the birds we can perform a rsf
+  covariates_NAN_cleaned <- function(data)
+  {
+    # Remove the birds with monitored during winter
+    list_multipl_winter <- sapply(l_telemetry_winter, function(x) length(unique(x[[1]][["saison2"]])))
+    list_multipl_winter <- list_multipl_winter[list_multipl_winter==1]
+    list_multipl_winter <- names(list_multipl_winter)
+    data <- data[names(data) %in% list_multipl_winter]
+    
+    # Remove the birds with NaN in total.visitors.std
+    list_no_NAN_visit <- sapply(data, function(x) any(is.na(x[[1]][["total.visitors.std"]])))
+    list_no_NAN_visit <- list_no_NAN_visit[!list_no_NAN_visit]
+    list_no_NAN_visit <- names(list_no_NAN_visit)
+    data <- data[names(data) %in% list_no_NAN_visit]
+    
+    # Remove the birds with NaN in snow.depth.std
+    # list_no_NAN_snow <- sapply(data, function(x) any(is.na(x[[1]][["snow.depth.std"]])))
+    # list_no_NAN_snow <- list_no_NAN_snow[!list_no_NAN_snow]
+    # list_no_NAN_snow <- names(list_no_NAN_snow)
+    # data <- data[names(data) %in% list_no_NAN_snow]
+    
+    
+    return(data)
+  }
+  
+  
+  l_telemetry_winter <- covariates_NAN_cleaned(l_telemetry_winter)
+  
+  l_akde_winter <- l_akde_winter[names(l_akde_winter) %in% names(l_telemetry_winter)]
+  l_guess_winter <- l_guess_winter[names(l_guess_winter) %in% names(l_telemetry_winter)]
+  l_fit_winter <- l_fit_winter[names(l_fit_winter) %in% names(l_telemetry_winter)]
+#********************************************************************  
+
+
+
+  
 ### Loading packages for RSF ----
-#+  results='hide', message=FALSE, warning=FALSE
-library(animove)
+#******************************************************************** 
+# library(animove)
 library(ctmm)
 library(sf)
 library(mvtnorm)
 library(terra)
-  
+#******************************************************************** 
 
 #### 3.1_Required assumptions to calculate and interprete an home range ----
 #*****
@@ -253,20 +352,23 @@ ggplot() +
 #********************************************************************
 
 # Selection of the rasters to use in the RSF
-scaled_env_RL_list_selection <-  scaled_env_RL_list[!(names(scaled_env_RL_list) %in% c("slope", "leks"))]
+scaled_env_RL_list_selection <-  scaled_env_RL_list[!(names(scaled_env_RL_list) %in% c("slope"))]
 # scaled_env_RL_list_selection <-  scaled_env_RL_list[c("elevation", "squared_elevation", "strava","leks")]
   
 
 system.time(
-RSF_results_multpl_birds <- RSF_birds(  l_telemetry_winter[1:25], 
-                                        l_akde_winter[1:25],
+RSF_results_multpl_birds <- RSF_birds(  l_telemetry_winter[3:10], 
+                                        l_akde_winter[3:10],
                                         scaled_env_RL_list_selection,
+                                        # grid = "full",
                                         outputfolder = file.path(base, "Tetralps", "3_R", "0_Heavy_saved_models", "birds_3V"),
                                         write = TRUE
                                         ) 
 )
 
-load(file = file.path(base, "Tetralps", "3_R", "0_Heavy_saved_models", "birds_3V", "RSF_results", paste0("l_telemetry_winter[1_25].Rdata")))
+
+load(file = file.path(base, "Tetralps", "3_R", "0_Heavy_saved_models", "birds_3V", "RSF_results", paste0("l_telemetry_winter.Rdata")))
+load(file = file.path(base, "Tetralps", "3_R", "0_Heavy_saved_models", "birds_3V", "RSF_results", paste0("l_telemetry_winter[1_2]_individual.Rdata")))
 #********************************************************************
 
 
@@ -295,14 +397,109 @@ for(bg in seq_along(RSF_results_multpl_birds))
 }
 
 
-ggplot(data = rsf_results_table %>% filter(covariates %in% c("strava", "Cliffs_water", "Trees", "Shrubs", "Buildings")), aes(y = covariates, x = est))+
+ggplot(data = rsf_results_table %>% filter(covariates %in% c("strava", "strava:total.visitors.std", "Cliffs_water", "Trees", "Shrubs", "Buildings")), aes(y = covariates, x = est))+
   geom_boxplot(aes(color = covariates), fill = alpha("grey", 0.2))+
   geom_jitter(color = alpha("black",0.6))+
-  theme(axis.text.x = element_text(hjust = 1),  panel.background = element_blank()) +
-  labs(y = "Covariates", x = "Estimates", title = "Estimated coeficients by covariate")+
-  geom_vline(xintercept = 0, linetype = "dashed")
+  labs(y = "Covariates", 
+       x = "Estimates", 
+       title = paste0("Results of the RSF performed on ", length(unique(rsf_results_table$bird)), " birds \n(estimated coefficients by covariate)"))+
+  geom_vline(xintercept = 0, linetype = "dashed")+
+  theme(axis.text.x = element_text(hjust = 1),  
+        panel.background = element_blank(),
+        plot.title = element_text(size = 18),
+        plot.subtitle = element_text(size = 14),
+        axis.title = element_text(size = 16),
+        axis.text = element_text(size = 13),
+        legend.title = element_text(size = 16),
+        legend.text = element_text(size = 12))
 
 #********************************************************************
 
 
+
+
+### 3.6_Predictions ----
+#********************************************************************
+par(mfrow = c(1,2))
+prediction <- simulate( l_akde_winter[[1]][[1]]@CTMM,
+                        l_telemetry_winter[[1]][[1]])
+plot(prediction)
+plot(l_telemetry_winter[[1]][[1]], col = "blue", add = TRUE)
+
+ggplot()+
+  geom_spatraster(data = terra::rast(scaled_env_RL_list_selection[["strava"]]))+
+  xlim(c(min(l_telemetry_winter[[1]][[1]][["x"]]-1000),
+           max(l_telemetry_winter[[1]][[1]][["x"]]+1000)))+
+  ylim(c(min(l_telemetry_winter[[1]][[1]][["y"]]-1000),
+         max(l_telemetry_winter[[1]][[1]][["y"]]+1000)))+
+  geom_point(aes(x = prediction[["x"]],
+                 y = prediction[["y"]]),
+             color = alpha("red", 0.2), size = 1)+
+  geom_point(aes(x = l_telemetry_winter[[1]][[1]][["x"]],
+                 y = l_telemetry_winter[[1]][[1]][["y"]]),
+             color = alpha("yellow",0.2), size = 1)
+  
+  
+
+prediction <- simulate( sum_rsf_multipl[[1]],
+                        l_telemetry_winter[[1]][[1]])
+plot(prediction)
+plot(l_telemetry_winter[[1]][[1]], col = "blue", add = TRUE)
+#********************************************************************
+
+
+
+
+
+### 4_Meta_RSF ----
+#********************************************************************
+
+### 4.1_Visualization of home ranges ----
+#********************************************************************
+
+# Unest the akde list
+l_akde_winter_meta <- sapply(l_akde_winter, `[[`, 1)
+# Plot AKDES
+plot(l_akde_winter_meta,
+     col.DF = pal,
+     col.level = pal,
+     col.grid = NA,
+     level = NA, 
+     main = paste0("Home ranges (", length(l_akde_winter_meta), " birds) (3 Vallées)"))
+
+
+
+# Mean buffalo home range "the old way":
+mean_area <- vector("numeric", length = length(l_akde_winter_meta))
+for(i in 1:length(l_akde_winter_meta))
+{ mean_area[i] <- summary(l_akde_winter_meta[[i]])$CI[2] }
+mean_area
+mean(mean_area) # classical method 
+sqrt(var(mean_area)/length(mean_area)) # Standard Error (SE)
+
+# Meta-analysis of buffalo home-range areas:
+## What is the mean home range area of an average individual:
+# account for propagation incertainties of indiv in the pop
+
+ctmm::meta(l_akde_winter_meta,
+            col = c(pal,"black"), 
+            verbose = TRUE, # verbose output with CIs
+            sort = TRUE) 
+## model selection: Dirac-delta > inverse-Gaussian
+
+
+# Population density: -----------------------------------------------------
+
+# this is a straight mean of the individual densities that doesn't model population variance
+help("mean.UD")
+# note the 'sample' argument for correct CIs
+
+# extract the ctmm objets from the akde list of UD objects
+l_ctmm_winter_meta <- lapply(l_akde_winter_meta, function(ud) ud@CTMM)
+l_telemetry_winter_meta <- lapply(l_telemetry_winter, function(x) x[["all"]])
+
+# straight mean - for a population of 6 buffalo
+ctmm_meta <- mean(l_ctmm_winter_meta,sample=FALSE)
+summary(ctmm_meta)
+#********************************************************************
 
