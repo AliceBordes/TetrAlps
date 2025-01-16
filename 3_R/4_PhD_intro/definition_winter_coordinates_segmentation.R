@@ -308,17 +308,50 @@ depth.ws <- WindowSweep(bird_dt, variable = "location.long", time.var = "study.l
 ### 5_Looking at the overlap between the different winters encountered by 1 bird ----
 #********************************************************************
 
+# If we take a larger period for winter season 
+        # Ensure `jour` is a Date object
+        birds_bg_dt <- birds_bg_dt %>%
+          mutate(jour = as.Date(jour)) # Ensure `jour` is in Date format
+        
+        # Add "Day of the Year" (`yday`) and a custom filter for the range
+        filtered_birds_bg_dt <- birds_bg_dt %>%
+          mutate(
+            month_day = format(jour, "%m-%d"), # Optional: For debugging or reference
+            # yday = yday(jour)                 # Extract the day of the year
+          ) %>%
+          filter(
+            (month(jour) == 11 & day(jour) >= 15) |   # After November 15
+              (month(jour) <= 4 & !(month(jour) == 4 & day(jour) > 15)) # Before April 15
+          )
+        
+        head(filtered_birds_bg_dt)
+
+
+
+
+# Creation of the telemetry, guess, fit and akde lists
+tele_akde(data = filtered_birds_bg_dt,
+          # birds_vect = names(l_telemetry_winterS),
+          season = "hiver",
+          subset_category = "all",
+          outputfolder = file.path(base, "Tetralps", "3_R", "0_Heavy_saved_models", "birds_3V"),
+          write = FALSE)
+#load()
+
+
+
+
 # Selection of the birds with multiple winters
 # birds_multipl_winters <- c("Alpha","Caramel","Dalton","Dario","Donald","Dynamite","Dyonisos","Eros","Fast","Fleau","Foliedouce")
-l_telemetry_winter_multipl_win <- l_telemetry_winter[birds_multipl_winters] 
-l_fit_winter_multipl_win <- l_fit_winter[birds_multipl_winters] 
-
-dt_overlap_synthesis <- overlap_winter(telemetry_list = l_telemetry_winter_multipl_win, 
-                                       fit_list = l_fit_winter_multipl_win, 
-                                       overlap_type = "multiple winters")
-dt_overlap_synthesis$animal <- as.factor(dt_overlap_synthesis$animal)
- 
-label_close_to_pts <- jitter(scale((as.numeric(factor(dt_overlap_synthesis$animal )))))
+        l_telemetry_winter_multipl_win <- l_telemetry_winter[birds_multipl_winters] 
+        l_fit_winter_multipl_win <- l_fit_winter[birds_multipl_winters] 
+        
+        dt_overlap_synthesis <- overlap_winter(telemetry_list = l_telemetry_winter_multipl_win, 
+                                               fit_list = l_fit_winter_multipl_win, 
+                                               overlap_type = "multiple winters")
+        dt_overlap_synthesis$animal <- as.factor(dt_overlap_synthesis$animal)
+         
+        label_close_to_pts <- jitter(scale((as.numeric(factor(dt_overlap_synthesis$animal )))))
 
 ggplot(data = dt_overlap_synthesis, aes(y = estimated_overlap))+
   geom_boxplot(fill = alpha("lightgreen", 0.4), width=max(abs(label_close_to_pts))*2)+

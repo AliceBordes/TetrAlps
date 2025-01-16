@@ -53,6 +53,10 @@ meribel_formatting <- function(folderpath = file.path(base,"TetrAlps","1_RAW_DAT
   # Assuming `list_dt` contains your data frames
   merged_data <- bind_rows(list_dt)
   
+  # Replace all NA by 0 (the NA are relative to unbuilt or definitively closed ski lift) 
+  merged_data[is.na(merged_data)] <- 0
+  View(merged_data)
+  
   if(save == TRUE)
   {
     write.csv(merged_data, file = file.path(folderoutpath,"meribel_visitors.csv"), row.names = FALSE)
@@ -124,6 +128,10 @@ courchevel_formatting <- function(folderpath = file.path(base,"TetrAlps","1_RAW_
   # Merging data frames
   merged_data <- bind_rows(list_dt)
   
+  # Replace all NA by 0 (the NA are relative to unbuilt or definitively closed ski lift) 
+  merged_data[is.na(merged_data)] <- 0
+  View(merged_data)
+  
   if(save == TRUE)
   {
     write.csv(merged_data, file = file.path(folderoutpath,"courchevel_visitors.csv"), row.names = FALSE)
@@ -177,6 +185,10 @@ valtho_formatting <- function(folderpath = file.path(base,"TetrAlps","1_RAW_DATA
   }
   # Merging data frames
   merged_data <- bind_rows(list_dt)
+  
+  # Replace all NA by 0 (the NA are relative to unbuilt or definitively closed ski lift) 
+  merged_data[is.na(merged_data)] <- 0
+  View(merged_data)
   
   if(save == TRUE)
   {
@@ -301,6 +313,8 @@ menuires_formatting <- function(folderpath = file.path(base,"TetrAlps/1_RAW_DATA
   merged_data <- bind_rows(list_dt)
   merged_data <- merged_data[-nrow(merged_data),]
   
+  # Replace all NA by 0 (the NA are relative to unbuilt or definitively closed ski lift) 
+  merged_data[is.na(merged_data)] <- 0
   View(merged_data)
   
   if(save == TRUE)
@@ -346,6 +360,7 @@ meribel_snow_formatting <- function(folderpath = file.path(base,"TetrAlps/1_RAW_
   }
   
   snow_data <- do.call(rbind, list_data)
+  
   
   if(save == TRUE)
   {
@@ -591,9 +606,6 @@ cleaning_visitor_data <- function(data)
       )
   }
   
-  
-  
-  
   return(merged_data)
 }
 #********************************************************************
@@ -668,3 +680,154 @@ mean_visitor_plot <- function(list_of_data, season_to_compare1, season_to_compar
   return(wide_data_all_resorts)
 }
 #********************************************************************
+
+
+
+
+
+
+# Function that assign the total.visitor.number and the snow.depth for each bird, according to its ski_resort and valley assignment and the date, and then standardized them
+#********************************************************************
+assigning_visitors_depth <- function(data)
+{
+  birds_sample_bg_pretele <- data 
+  birds_sample_bg_pretele$jour <- as.Date(birds_sample_bg_pretele$jour)
+  
+  # First, join both snow datasets
+  birds_sample_bg_pretele2 <- birds_sample_bg_pretele %>%
+    left_join(snow_meribel %>% rename(snow.depth.meribel = snow.depth) %>% dplyr::select(Date, snow.depth.meribel), by = c("jour" = "Date")) %>%
+    left_join(snow_courch %>% rename(snow.depth.courchevel = snow.depth) %>% dplyr::select(Date, snow.depth.courchevel), by = c("jour" = "Date")) %>%
+    left_join(visitor_meribel %>% dplyr::select(Date, Total) %>% rename(total.visitors.meribel = Total), by = c("jour" = "Date")) %>%
+    left_join(visitor_courch %>% dplyr::select(Date, Total) %>% rename(total.visitors.courch = Total), by = c("jour" = "Date")) %>%
+    left_join(visitor_valtho %>% dplyr::select(Date, Total) %>% rename(total.visitors.valtho = Total), by = c("jour" = "Date")) %>%
+    left_join(visitor_menui %>% dplyr::select(Date, Total) %>% rename(total.visitors.menui = Total), by = c("jour" = "Date")) %>%
+    
+    # Use case_when to set snow.depth based on valley
+    mutate(snow.depth = case_when(
+      valley == "Courchevel" ~ snow.depth.courchevel,
+      valley == "Les Allues" ~ snow.depth.meribel,
+      valley == "Les Belleville" ~ snow.depth.meribel,
+      TRUE ~ NA_real_  # If valley is neither, set NA
+    ),
+    total.visitors = case_when(
+      resort == "Méribel" ~ total.visitors.meribel,
+      resort == "Méribel-Mottaret" ~ total.visitors.meribel,
+      resort == "Courchevel" ~ total.visitors.courch,
+      resort == "Les Ménuires" ~ total.visitors.menui,
+      resort == "Val Thorens-Orelle" ~ total.visitors.valtho,
+      TRUE ~ NA_real_
+    )) %>%
+    
+    # Clean up by removing intermediary columns
+    dplyr::select(-total.visitors.meribel, -total.visitors.courch,-total.visitors.valtho,-total.visitors.menui, -total.visitors.valtho, -snow.depth.meribel, -snow.depth.courchevel)
+  
+  
+  # Assign 0 visitors to each day of the covid period : winter 2020_2021
+  birds_sample_bg_pretele2$total.visitors[birds_sample_bg_pretele2$jour >= as.Date("2020-11-01") & birds_sample_bg_pretele2$jour <= as.Date("2021-05-01")] <- 0
+  
+  View(birds_sample_bg_pretele2)
+  
+  
+  #### Scaling snow and visitor data using  the data of each pair valley, resort for a given data
+  # the scaling is not proceeded over the all pretelemtry dataframe because data are repeated for each GPS observation
+  
+  # creation of the data frame for scaling
+  birds_sample_bg_pretele2_for_scale <- birds_sample_bg_pretele2 %>%
+    group_by(jour, valley, resort) %>%
+    summarise(
+      snow.depth = mean(snow.depth, na.rm = TRUE),
+      total.visitors = mean(total.visitors, na.rm = TRUE)
+      # .groups = "drop"  # Remove grouping after summarisation
+    ) 
+  birds_sample_bg_pretele2_for_scale$snow.depth.std <- scale(birds_sample_bg_pretele2_for_scale$snow.depth)
+  birds_sample_bg_pretele2_for_scale$total.visitors.std <- scale(birds_sample_bg_pretele2_for_scale$total.visitors)
+  
+  #bind all the info on a unique data frame pretelemetry
+  birds_sample_bg_pretele_fv <- left_join(birds_sample_bg_pretele2, 
+                                          as.data.frame(birds_sample_bg_pretele2_for_scale) %>% dplyr::select(-snow.depth, -total.visitors),
+                                          by = c("jour", "valley", "resort"))
+  
+  
+  return(birds_sample_bg_pretele_fv)
+}
+#********************************************************************
+
+
+
+
+# Function to clean NaN in visitor.number and snow.depth, required to perform an rsf
+#********************************************************************
+# Filter the data set by the birds we can perform a rsf
+covariates_NAN_cleaned <- function(data)
+{
+  # Remove the birds monitored during multiple winter
+  list_multipl_winter <- sapply(data, function(x) length(unique(x[[1]][["saison2"]])))
+  print(list_multipl_winter)
+  
+  # names_birds_multiple_winter <- names(list_multipl_winter[list_multipl_winter>1])
+  # print("Birds monitored during mutiple winters:")
+  # print(names_birds_multiple_winter)
+  
+  # list_multipl_winter <- list_multipl_winter[list_multipl_winter==1]
+  # list_multipl_winter <- names(list_multipl_winter)
+  # data <- data[names(data) %in% list_multipl_winter]
+
+  # Remove the birds with NaN in total.visitors.std
+  list_no_NAN_visit <- sapply(data, function(x) any(is.na(x[[1]][["total.visitors.std"]])))
+  list_no_NAN_visit <- list_no_NAN_visit[!list_no_NAN_visit]
+  list_no_NAN_visit <- names(list_no_NAN_visit)
+  data <- data[names(data) %in% list_no_NAN_visit]
+
+  # Remove the birds with NaN in snow.depth.std
+  # list_no_NAN_snow <- sapply(data, function(x) any(is.na(x[[1]][["snow.depth.std"]])))
+  # list_no_NAN_snow <- list_no_NAN_snow[!list_no_NAN_snow]
+  # list_no_NAN_snow <- names(list_no_NAN_snow)
+  # data <- data[names(data) %in% list_no_NAN_snow]
+
+
+  return(data)
+}
+#********************************************************************
+
+
+# Function to transform the nested list in a unnested list of animal_1, animal_2... when monitored during several winters
+#********************************************************************
+
+list_of_one <- function(data)
+{
+  
+  # Create an empty list to store the new data
+  l_telemetry_winter_suffix <- list(list())
+  
+  # Loop through each animal
+  for (animal in names(data)) {
+    
+    # Get the seasons for that animal (e.g., hiver1, hiver2, etc.)
+    seasons <- names(data[[animal]])  # This gives "hiver1", "hiver2", etc.
+    
+    # Loop through each season and create a new key in the list
+    for (i in seq_along(seasons)) {
+      season <- seasons[i]  # Current season (e.g., "hiver1")
+      
+      # Create a dynamic name for the season
+      if (i == 1) {
+        # For the first season, keep the original animal name
+        season_key <- animal
+      } else {
+        # For subsequent seasons, append "_2", "_3", etc.
+        season_key <- paste0(animal, "_", i)
+      }
+      
+      # Store the data for that season under the new key
+      l_telemetry_winter_suffix[[season_key]][["all"]] <- data[[animal]][[season]]
+    }
+  }
+  
+
+data <- l_telemetry_winter_suffix
+
+return(data)
+
+}
+#********************************************************************
+

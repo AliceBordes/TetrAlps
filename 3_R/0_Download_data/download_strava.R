@@ -35,7 +35,7 @@ setwd(file.path("C:/Users/albordes/Documents/PhD/TetrAlps/2_DATA/strava"))
 #' object. The projection of the SpatExtent must be specified in argument
 #' projwin_srs.
 #' @param sport Strava sport. One of e.g. "all", "ride", "run", "water",
-#' "winter". For a complete list, see strava:::strava_activities.
+#' "winter". For a complete list, see strava::strava_activities.
 #' @param destfile Name of outputfile
 #' @param projwin_srs Projection of zone (default: EPSG:3857)
 #' @param tilematrix Which zoom level to choose (between 0 and 12)
@@ -56,7 +56,7 @@ download_strava_heatmap <- function(zone, sport = "all",
                               ".tif"))
   
   
-  stopifnot(sport %in% strava:::strava_activities)
+  stopifnot(sport %in% strava::strava_activities)
   stopifnot(is.null(tilematrix) || tilematrix %in% c(0:12))
   if(inherits(zone, "SpatExtent")) {
     ulx <- zone[1]
@@ -97,7 +97,7 @@ e_Bauges <- c(946999.6-1000, 955999.7 +1000, 6513999.6-1000, 6522999.7+1000)
 e_Valcenis <- c(998999.6-1000, 1014999.7+1000, 6467999.6-1000, 6476999.7+1000)
 #*************************************************************************************
 
-# export the strava rasters
+# export the strava rasters winter sports
 #*************************************************************************************
 download_strava_heatmap(zone=ext(e_3Vallees),sport="winter",projwin_srs="+init=epsg:2154")
 download_strava_heatmap(zone=ext(e_Foret_blanche),sport="winter",projwin_srs="+init=epsg:2154")
@@ -105,4 +105,15 @@ download_strava_heatmap(zone=ext(e_Les_arcs),sport="winter",projwin_srs="+init=e
 download_strava_heatmap(zone=ext(e_Bauges),sport="winter",projwin_srs="+init=epsg:2154")
 download_strava_heatmap(zone=ext(e_Valcenis),sport="winter",projwin_srs="+init=epsg:2154")
 #*************************************************************************************
+
+
+# export the strava rasters sport_BackcountrySki
+#*************************************************************************************
+download_strava_heatmap(zone=ext(e_3Vallees),sport="sport_BackcountrySki",projwin_srs="+init=epsg:2154")
+download_strava_heatmap(zone=ext(e_Foret_blanche),sport="sport_BackcountrySki",projwin_srs="+init=epsg:2154")
+download_strava_heatmap(zone=ext(e_Les_arcs),sport="sport_BackcountrySki",projwin_srs="+init=epsg:2154")
+download_strava_heatmap(zone=ext(e_Bauges),sport="sport_BackcountrySki",projwin_srs="+init=epsg:2154")
+download_strava_heatmap(zone=ext(e_Valcenis),sport="sport_BackcountrySki",projwin_srs="+init=epsg:2154")
+#*************************************************************************************
+
 

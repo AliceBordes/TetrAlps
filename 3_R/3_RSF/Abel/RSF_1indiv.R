@@ -183,7 +183,7 @@ akde_winter <- akde(telemetry_winter,
 ### 1_Data visualization ----
 #********************************************************************
 ### We read in this dataset downloaded from Movebank directly as a move2 object
-bg <- vroom::vroom(file.path(base,"Tetralps/2_DATA/data_bg_pretelemetry.csv")) # with vroom package, timestamps get recognized, are assumed to be in UTC
+bg <- vroom::vroom(file.path(base,"Tetralps/2_DATA/data_bg_pretelemetry_2024_10.csv")) # with vroom package, timestamps get recognized, are assumed to be in UTC
 
 # now create a move2 object from a data.frame
 bg_move2 <- mt_as_move2(bg, 
@@ -195,8 +195,28 @@ bg_move2 <- mt_as_move2(bg,
 
 
 #### basic plots colored by individual (with ggplot2)
-birds_sample_bg <- bg_move2 %>% filter(animal.ID %in% c("Fangio"))%>%filter(saison %in% c(season1))
+animal = "Ferie"
+birds_sample_bg <- bg_move2 %>% filter(animal.ID %in% c(animal)) %>%filter(saison2 %in% c("hiver1"))
 
+# telemetry points and trajectories by season
+ggplot()+ 
+  geom_sf(data = mt_track_lines(birds_sample_bg))+
+  geom_sf(data = birds_sample_bg, aes(color = saison), size = 1)+ # to transform data into lines
+  scale_color_manual(values = c("hiver" = "blue", 
+                                "ete" = "deeppink", 
+                                "printemps" = "lightgreen", 
+                                "automne" = "orange"))
+
+
+# strava in background
+UD_mybird_spatial <- st_as_sf(SpatialPolygonsDataFrame.UD(l_akde_winter[[animal]][["all"]],level.UD=.95,level=.95))
+ggplot()+
+  geom_spatraster(data = crop(rast(env_RL_list[["strava"]]), ext(st_bbox(UD_mybird_spatial))*3))+
+  geom_sf(data = birds_sample_bg, aes(geometry = geometry) , color = "red", size = 1)+ # to transform data into lines
+  labs(title = animal)
+
+
+# animal location in the ski domain
 ggplot() + theme_void() +
   ggtitle("Black grouse GPS-tagged in the 3 Vallées region (Nothern Alps)")+
   geom_spatvector(data = borders_3V_vect,fill = NA, aes(color = NOM))+

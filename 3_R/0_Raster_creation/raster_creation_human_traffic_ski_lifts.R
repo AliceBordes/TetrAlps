@@ -78,7 +78,7 @@ borders_3V_vect <- terra::vect(file.path(base,"TetrAlps","1_RAW_DATA","borders_3
 # 3V winter trails (osm)
 osm_winter <- terra::vect(file.path(base,"TetrAlps","2_DATA", "osm_ski_piste.gpkg"))
 osm_winter <- project(osm_winter, "epsg:2154")
-osm_winter_sf <- as_sf(osm_winter)
+# osm_winter_sf <- as_sf(osm_winter)
 
 
 # 3V ski cables from Open street Map
@@ -240,7 +240,7 @@ plot(add=TRUE, borders_3V_vect)
 #*************
 #### Settings
 # season_of_interest = unique(ski_lift_visitor_nb$ski_season)
-season_of_interest = "2017_2018"
+season_of_interest = "2023_2024"
 ####
 
 
