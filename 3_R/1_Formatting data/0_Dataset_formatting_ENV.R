@@ -51,6 +51,12 @@ base <- "C:/Users/albordes/Documents/PhD"
 
 # Loading rasters ----
 #********************************************************************
+### GRID
+
+grid_10m <- terra::rast(terra::vect(file.path(base, "Tetralps","1_RAW_DATA","grid_10m.gpkg")))
+res(grid_10m) <- 10
+
+
 ### RASTERS
 
 # elevation
@@ -63,6 +69,17 @@ crs(slope_3V) <- "EPSG:2154"
 # strava
 strava_without_aerial <- terra::rast(file.path(base,"TetrAlps","2_DATA","environmental_raster","r_strava_without_aerial_cables.gpkg"))
 
+strava_backcountry <- terra::rast(file.path(base, "Tetralps/2_DATA/strava/3Vallees/strava_sport_BackcountrySki_2025_01_09.tif"))
+if(length(names(strava_backcountry))!=1)
+{
+  strava_backcountry <- strava::as_numeric(strava_backcountry)
+}
+
+strava <- terra::rast(file.path(base, "Tetralps/2_DATA/strava/3Vallees/strava_3V_winter_sports_rgb_single_3Vallees_25_06_2024.tif"))
+if(length(names(strava))!=1)
+{
+  strava <- strava::as_numeric(strava)
+}
 #if strava = rgb with 4 layers : 
 # strava <- terra::rast(file.path(base, "Tetralps/2_DATA/strava/3Vallees/strava_winter_2024_10_03.tif"))
 # strava_rgb <- terra::plotRGB(strava)
@@ -97,15 +114,25 @@ r_Cliffs <- terra::rast(file.path(base,paste0("TetrAlps/2_DATA/environmental_ras
 # Predation : Corentin the fox (probability of presence over the area)
 # fox_Corentin_sakde <- terra::rast(file.path(base,"TetrAlps/2_DATA/fox_Corentin_simple_akde_PMF.tif")) # simple akde over a period of 7 months
 
+# 1.1_Creating backcountry ski raster for the model ----
 
-# 1.4_Ski resort visitors ----
-meribel_visitors <- meribel_formatting(save = TRUE)
+lm_backcountry <- lm(values(strava_backcountry) ~ values(strava))
+summary(lm_backcountry)
+sqrt(summary(lm_backcountry)$adj.r.squared)
+
+values(strava_backcountry) <- lm_backcountry$residuals
+
+terra::plot(strava_backcountry,main="strava_backcountry residuals")
+
+
+# 1.2_Ski resort visitors ----
+meribel_mottaret_visitors <- meribel_mottaret_formatting(save = TRUE)
 courchevel_visitors <- courchevel_formatting(save = TRUE)
 valtho_visitors <- valtho_formatting(save = TRUE)
 menuires_visitors <- menuires_formatting(save = TRUE)
 
         
-# 1.5_Snow depth    
+# 1.3_Snow depth    
 snow_meribel <- meribel_snow_formatting(save = TRUE)
 snow_courchevel <- courchevel_snow_formatting(save = TRUE)
 #********************************************************************
@@ -120,29 +147,37 @@ snow_courchevel <- courchevel_snow_formatting(save = TRUE)
 
 # numeric rasters
 mnt_10 <- aggregate(mnt, fact = 10, fun = "mean")
+mnt_10 <- project(mnt_10, y = grid_10m, "bilinear")
 # if project(y = mnt_10) --> all projection will be aggregated at 10m such as mnt_10
-slope_3V_10 <- project(slope_3V, y = mnt_10, method = "bilinear") # resolution of slope_3V is set at 9m such as mnt_9
-strava_10 <- project(strava, y = mnt_10, method = "bilinear") # y = a raster to align on (avoid to use the function resample after), "EPSG:2154" can be specify if there is no argument y. pas besoin de mettre de focal (zone d'influence), method="belinear" advised for continuous raster
-strava_without_aerial_10 <- project(strava_without_aerial, y = mnt_10, method = "bilinear") # y = a raster to align on (avoid to use the function resample after), "EPSG:2154" can be specify if there is no argument y. pas besoin de mettre de focal (zone d'influence), method="belinear" advised for continuous raster
-r_leks_dist_10 <- project(r_leks_dist, y = mnt_10, method = "bilinear")
+slope_3V_10 <- project(slope_3V, y = grid_10m, method = "bilinear") # resolution of slope_3V is set at 9m such as mnt_9
+strava_without_aerial_10 <- project(strava_without_aerial, y = grid_10m, method = "bilinear") # y = a raster to align on (avoid to use the function resample after), "EPSG:2154" can be specify if there is no argument y. pas besoin de mettre de focal (zone d'influence), method="belinear" advised for continuous raster
+strava_backcountry_10 <- project(strava_backcountry, y = grid_10m, method = "bilinear") 
+r_leks_dist_10 <- project(r_leks_dist, y = grid_10m, method = "bilinear")
+r_Trees <- project(r_Trees, y = grid_10m, method = "bilinear")
+r_Shrubs <- project(r_Shrubs, y = grid_10m, method = "bilinear")
+r_Buildings <- project(r_Buildings, y = grid_10m, method = "bilinear")
+r_Cliffs <- project(r_Cliffs, y = grid_10m, method = "bilinear")
 
 # categorical rasters
-carto_habitats_3V_winter_10 <- project(carto_habitats_3V_winter, y = mnt_10, method = "near")
+carto_habitats_3V_winter_10 <- project(carto_habitats_3V_winter, y = grid_10m, method = "near")
 
 
 # Changing names
 mnt_10_squared <- mnt_10^2
 names(mnt_10_squared) <- "squared_elevation"
 names(mnt_10) <- "elevation"
-names(strava_without_aerial_10) <- "strava"
+names(strava_without_aerial_10) <- "strava_winter_sports"
+names(strava_backcountry_10) <- "strava_backcountry"
 names(slope_3V_10) <- "slope"
 names(carto_habitats_3V_winter_10) <- "carto_habitats_winter"
 names(r_leks_dist_10) <- "leks"
+
 
 #' stacking it all in an env layer 
 envir_stack <- c(mnt_10,
                  mnt_10_squared,
                  strava_without_aerial_10,
+                 strava_backcountry_10,
                  slope_3V_10,
                  carto_habitats_3V_winter_10,
                  r_leks_dist_10)
@@ -193,9 +228,9 @@ scaled_env_RL_list[["squared_elevation"]] <- scaled_env_RL_list[["elevation"]]^2
 
 #' stacking it all in an env layer 
 envir_stack2 <- c(r_Trees,
-                 r_Shrubs,
-                 r_Buildings,
-                 r_Cliffs)
+                  r_Shrubs,
+                  r_Buildings,
+                  r_Cliffs)
 
 scaled_habitats_list <- lapply(envir_stack2,raster::raster)
 names(scaled_habitats_list) <- sub("scaled_bin_", "", names(envir_stack2))
@@ -263,10 +298,38 @@ terra::plot(env_RL_list[["elevation"]],main="elevation")
 terra::plot(rast_resid,main="elevation residuals")
 terra::plot(env_RL_list[["strava"]],main="strava")
 terra::plot(rast_resid2,main="strava residuals")
+
 # " elevation_9 is underestimated at the south (green part of the graph elevation_9 residuals) and overestimated in the north when using strava as linear predictor
 # "strava is underestimated where the strava intensity is high (green part of the graph strava residuals) and overestimated where strava intensity is low when using elevation_9 as linear predictor
 # But this is barely relevant as the correlation between elevation_9 and Strava is really weak.
 
+# Now we want to know if strava and strava_backcountry provide the same info 
+lm1<-lm(values(strava) ~ values(strava_backcountry))
+summary(lm1)
+sqrt(summary(lm1)$adj.r.squared)
+# Yes! the correlation between both is 80%!
+
+# but we can rather put the residuals of strava_backcountry ~ strava in the model = what is not not well explained by strava 
+lm2<-lm(values(strava_backcountry) ~ values(strava))
+summary(lm2)
+sqrt(summary(lm2)$adj.r.squared)
+
+rast_resid <- strava
+values(rast_resid) <- lm1$residuals
+rast_resid2 <- strava_backcountry
+values(rast_resid2) <- lm2$residuals 
+
+par(mfrow=c(2,2))
+terra::plot(strava,main="strava")
+terra::plot(rast_resid,main="strava residuals")
+terra::plot(strava_backcountry,main="strava_backcountry")
+terra::plot(rast_resid2,main="strava_backcountry residuals")
+
+# the model over estimates backcountry ski trails relative to strava  --> so this raster is intersting as a predictor of backcountry ski 
+# check the correlation between strava and backcountry ski
+lm_resid<-lm(values(strava) ~ values(rast_resid2))
+summary(lm_resid)
+sqrt(summary(lm_resid)$adj.r.squared) # equivalent to Pearson coefficient 
 
 
 # 4.3_Collinearity between a continuous raster and a factorial raster

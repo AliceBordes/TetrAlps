@@ -15,7 +15,7 @@
 #********************************************************************
 # Ski resort visitors
 # Méribel Mottaret
-meribel_formatting <- function(folderpath = file.path(base,"TetrAlps","1_RAW_DATA","human_traffic_in_ski_resorts","Meribel_mottaret_RM_Historique_des_passages_2017_22/"),sheetname = "Passage Détail", save = FALSE, folderoutpath = file.path(base,"TetrAlps/2_DATA/ski_resorts_visitor_numbers"))
+meribel_mottaret_formatting <- function(folderpath = file.path(base,"TetrAlps","1_RAW_DATA","human_traffic_in_ski_resorts","Meribel_mottaret_RM_Historique_des_passages_2017_22/"),sheetname = "Passage Détail", save = FALSE, folderoutpath = file.path(base,"TetrAlps/2_DATA/ski_resorts_visitor_numbers"))
 {
   resort_files <- list.files(path = folderpath,pattern = "^[^~$].*\\.xlsx$", full.names = TRUE) # function to exclude files that start with ~$ and keep those that finish with .xlsx
   
@@ -739,14 +739,13 @@ assigning_visitors_depth <- function(data)
       total.visitors = mean(total.visitors, na.rm = TRUE)
       # .groups = "drop"  # Remove grouping after summarisation
     ) 
-  birds_sample_bg_pretele2_for_scale$snow.depth.std <- scale(birds_sample_bg_pretele2_for_scale$snow.depth)
-  birds_sample_bg_pretele2_for_scale$total.visitors.std <- scale(birds_sample_bg_pretele2_for_scale$total.visitors)
+  birds_sample_bg_pretele2_for_scale$snow.depth.std <- as.numeric(scale(birds_sample_bg_pretele2_for_scale$snow.depth))
+  birds_sample_bg_pretele2_for_scale$total.visitors.std <- as.numeric(scale(birds_sample_bg_pretele2_for_scale$total.visitors))
   
   #bind all the info on a unique data frame pretelemetry
   birds_sample_bg_pretele_fv <- left_join(birds_sample_bg_pretele2, 
-                                          as.data.frame(birds_sample_bg_pretele2_for_scale) %>% dplyr::select(-snow.depth, -total.visitors),
+                                          birds_sample_bg_pretele2_for_scale %>% dplyr::select(-snow.depth, -total.visitors),
                                           by = c("jour", "valley", "resort"))
-  
   
   return(birds_sample_bg_pretele_fv)
 }
@@ -819,15 +818,101 @@ list_of_one <- function(data)
       }
       
       # Store the data for that season under the new key
-      l_telemetry_winter_suffix[[season_key]][["all"]] <- data[[animal]][[season]]
+      l_telemetry_winter_suffix[[season_key]][["winter"]] <- data[[animal]][[season]]
     }
   }
   
-
+  
 data <- l_telemetry_winter_suffix
+
+# Remove elements with length 0
+data <- data[lapply(data, length) != 0]
 
 return(data)
 
 }
 #********************************************************************
+
+
+
+
+
+
+# Function for the creation of a variable fact.visitor.nb and a variable for ski lift opening hours in the telemetry list object
+#*******************************************************************
+add_variables_visit_open <- function(data) 
+{
+  
+  # Combine into a single data frame with animal names added
+  data <- data %>% filter(saison=="hiver") %>% mutate("time" = strftime(timestamp, format="%H:%M:%S"))
+  
+  data$sl_open <- ifelse(
+    hms(data$time) > hms("08:30:00") & hms(data$time) < hms("18:00:00"),
+    1,
+    0
+  )
+  
+  # Extract numeric vector for non-zero visitors
+  # data2 <- data %>%
+  #   filter(total.visitors != 0) %>%
+  #   distinct(jour) %>%
+  #   dplyr::select(jour,total.visitors)
+  # 
+  vect_visitors <- data %>%
+    filter(!is.na(data$total.visitors) & data$total.visitors != 0) %>%
+    distinct(jour, total.visitors)
+  
+  # Identify quantile breaks excluding zero visitors
+  quantile_breaks <- quantile(
+    vect_visitors$total.visitors,
+    probs = seq(0, 1, length.out = 5),
+    na.rm = TRUE
+  )
+  
+  print(quantile_breaks)
+  
+  # Add 'visitor_breaks' column
+  data$visitor_breaks <- cut(
+    data$total.visitors,
+    breaks = c(0, quantile_breaks),  # Include 0 in the breaks
+    # breaks = c(min(data$total.visitors), quantile_breaks),
+    include.lowest = TRUE,
+    labels = c("Null", "Low", "Medium", "High", "Very_high"),
+    right = TRUE  # To ensure intervals are right-inclusive
+  )
+  
+  # Handle NA values by explicitly making them a separate factor level
+  data$visitor_breaks <- fct_explicit_na(data$visitor_breaks, na_level = "NA")
+  
+  # Create one-hot encoded columns
+  binary_m_visit_breaks <- model.matrix(~ visitor_breaks - 1, data = data)
+  binary_m_visit_breaks <- as.data.frame(binary_m_visit_breaks)
+  data <- cbind(data, binary_m_visit_breaks)
+  
+  
+  
+  # Plot data distribution of visitors with and without 0
+  
+  # Filter out NA and infinite values before computing min and creating the boxplot
+  cleaned_data <- data[!is.na(data$total.visitors.std) & is.finite(data$total.visitors.std), ]
+  
+  par(mfrow = c(1,2))
+  
+  boxplot(cleaned_data$total.visitors.std)
+  text(y = boxplot.stats(cleaned_data$total.visitors.std)$stats, labels = round(boxplot.stats(cleaned_data$total.visitors.std)$stats,2), x = 1.3, pos = 2) 
+  text(y = boxplot.stats(cleaned_data$total.visitors.std)$stats, labels = boxplot.stats(cleaned_data$total.visitors)$stats, x = 1.35, pos = 4)
+  title("Visitors distribution")
+  
+  # Now, create the boxplot excluding the minimum value
+  boxplot(cleaned_data[cleaned_data$total.visitors.std != min(cleaned_data$total.visitors.std), "total.visitors.std"])
+  text(y = boxplot.stats(cleaned_data[cleaned_data$total.visitors.std != min(cleaned_data$total.visitors.std), "total.visitors.std"])$stats, labels = round(boxplot.stats(cleaned_data[cleaned_data$total.visitors.std != min(cleaned_data$total.visitors.std), "total.visitors.std"])$stats,2), x = 1.3, pos = 2) 
+  text(y = boxplot.stats(cleaned_data[cleaned_data$total.visitors.std != min(cleaned_data$total.visitors.std), "total.visitors.std"])$stats, labels = boxplot.stats(cleaned_data[cleaned_data$total.visitors.std != min(cleaned_data$total.visitors.std), "total.visitors"])$stats, x = 1.35, pos = 4)
+  title("Visitors distribution exluding null values")
+  
+  return(data)
+  
+}
+#*******************************************************************
+
+
 

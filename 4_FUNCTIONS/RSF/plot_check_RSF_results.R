@@ -6,11 +6,11 @@
 
 # Description:
 
-# Plot check_results RSF_function
 
+
+
+# Function to check results of the RSF_function (plot use VS availiability)
 #*************************************************************
-
-
 plot_check_RSF_res<-function(telemetry_data,akde_data,raster,analysis_object,data_visu="discrete",writeplot=FALSE)
 {
 
@@ -719,4 +719,222 @@ plot_check_RSF_res<-function(telemetry_data,akde_data,raster,analysis_object,dat
   return()
   
 }
+
+
+
+
+
+
+
+
+
+
+
+
+# Function to formate RSF results
+#*************************************************************
+rsf_result_table <- function(data_rsf_results)
+{
+  RSF_results_multpl_birds <- lapply(data_rsf_results, summary)
+  
+  rsf_results_table <- data.frame()
+  for(bg in seq_along(RSF_results_multpl_birds))
+  {
+    rsf_results_dt <- as.data.frame(RSF_results_multpl_birds[[bg]]$CI) 
+    rsf_results_dt$covariates <- row.names(rsf_results_dt) 
+    rsf_results_dt$bird <- names(RSF_results_multpl_birds)[[bg]] 
+    rsf_results_dt <- rsf_results_dt %>%
+      mutate(
+        covariates = sapply(strsplit(covariates, " "), `[[`, 1), # Split the string at spaces
+        covariates = case_when(
+          covariates == "area" ~ "area (km^2)",
+          covariates == "τ[position]" ~ "τ[position] (days)",
+          covariates == "diffusion" ~ "diffusion (ha/day)",
+          TRUE ~ covariates # This ensures that any values in covariates that do not match the specified conditions remain unchanged.
+        )
+      )
+    # bind the summary of the different birds
+    rsf_results_table <- rbind(rsf_results_table, rsf_results_dt)
+  }
+  
+  
+  
+  
+  # Identify outliers
+  is_outlier <- function(x) {
+    x %in% boxplot.stats(x, coef = 5)$out # coef = no more than this value * the length of the box away from the box.
+  }
+  # dt_out<- rsf_results_table %>% filter(covariates %in% c("sl_open:Cliffs"))
+  # is_outlier(dt_out$est)
+  # dt_out[is_outlier(dt_out$est),"bird"]
+  
+  
+  
+  
+  # create a table to save outliers' info
+  dt_outliers <- data.frame("covariate" = character(), "predictor" = character(), stringsAsFactors = FALSE)
+  
+  
+  # create a new result table with outliers removed
+  out_rsf_results_table <- rsf_results_table 
+  model_covar <- unique(rsf_results_table$covariates)[1:(length(unique(rsf_results_table$covariates))-6)]
+  
+  for(covar in seq_along(model_covar))
+  {
+    dt_out<- rsf_results_table %>% filter(covariates %in% c(model_covar[covar]))
+    
+    bird_name_out <- dt_out[is_outlier(dt_out$est),"bird"] 
+    
+    # If outliers are found, add the covariate and corresponding bird names to dt_outliers
+    if(length(bird_name_out) > 0) {
+      # Create a data frame to append to dt_outliers
+      temp_outliers <- data.frame(
+        covariate = rep(model_covar[covar], length(bird_name_out)),
+        predictor = bird_name_out,
+        stringsAsFactors = FALSE
+      )
+      
+      # Append to dt_outliers
+      dt_outliers <- rbind(dt_outliers, temp_outliers)
+      
+      # Update the main results table, setting 'est' to NA for outliers
+      out_rsf_results_table[out_rsf_results_table$covariates == model_covar[covar] & 
+                              out_rsf_results_table$bird %in% bird_name_out, "est"] <- NA
+    }
+  }
+  print(dt_outliers)
+  print(model_covar)
+
+  
+  
+  l_result_table <- list(rsf_results_table, out_rsf_results_table) 
+  names(l_result_table) <- c("raw_results", "removed_outliers")
+  
+  return(l_result_table)
+  
+}
+
+
+
+
+
+
+
+# Function to plot RSF results (points)
+#*************************************************************
+
+
+points_plot_rsf <- function(data_table, 
+                            list_excluded_covariables,
+                            boxplot_by_group = FALSE,
+                            outputfolder = file.path(base, "Tetralps", "5_OUTPUTS", "RSF", "rsf.fit_results", model),
+                            write = TRUE,
+                            group = "none") {  # Add group parameter to control the group selection
+  
+  
+  model_covar <- unique(data_table[[1]]$covariates)[1:(length(unique(rsf_results_table$covariates))-6)]
+  
+  
+  gg_points_rsf <- list()
+  
+  for(i in 1:length(data_table)) {
+    
+    # Prepare the dataframe, adding period based on covid
+    data_table[[i]]$period <- ifelse(data_table[[i]]$bird %in% covid, 
+                                     "covid_period", 
+                                     "normal_period")
+    
+    # Filter covariates to plot
+    data_table[[i]] = data_table[[i]] %>% filter(covariates %in% model_covar[!model_covar %in% list_excluded_covariables])
+    
+    
+    # Create the base ggplot
+    gg_points_rsf[[i]] <- ggplot(data = data_table[[i]], 
+                            aes(y = covariates, x = est)) +
+      
+      geom_vline(xintercept = 0, linetype = "dashed") +
+      labs(y = "Covariates", 
+           x = "Estimates", 
+           title = paste0("Results of the RSF performed on ", length(unique(data_table[[i]]$bird)), " birds \n(estimated coefficients by covariate)")) +
+      theme(axis.text.x = element_text(hjust = 1),  
+            panel.background = element_blank(),
+            plot.title = element_text(size = 28),
+            plot.subtitle = element_text(size = 26),
+            axis.title = element_text(size = 26),
+            axis.text = element_text(size = 24),
+            legend.title = element_text(size = 26),
+            legend.text = element_text(size = 24))
+    
+    # Add conditional layers based on the group type
+    if(group == "none") {
+      # If no grouping is applied, all birds are black
+      gg_points_rsf[[i]] <- gg_points_rsf[[i]] + 
+        geom_boxplot(aes(color = covariates), fill = alpha("grey", 0.2), notch = TRUE) +
+        new_scale_color() +
+        geom_jitter(color = "black", size = 3, alpha = 0.6)
+    }
+    
+    if(group == "covid" & boxplot_by_group == FALSE) {
+      gg_points_rsf[[i]] <- gg_points_rsf[[i]] + 
+        geom_boxplot(aes(color = covariates), fill = alpha("grey", 0.2), notch = TRUE) +
+        new_scale_color() +
+        geom_jitter(aes(color = ifelse(bird %in% covid, "Monitored during covid", "Others")), 
+                    size = 3, alpha = 0.6) +
+        scale_color_manual(name = "Bird groups", 
+                           values = c("Monitored during covid" = "red", "Others" = "black"),
+                           labels = c("Monitored during covid" = "Monitored during covid", "Others" = "Monitored out covid"))
+    }
+    
+    if(group == "covid" & boxplot_by_group == TRUE) {
+      gg_points_rsf[[i]] <- gg_points_rsf[[i]] + 
+        geom_boxplot(aes(color = covariates, fill = factor(period)), 
+                     alpha = 0.2, 
+                     position = position_dodge(width = 0.8),
+                     notch = TRUE) +
+        scale_fill_manual(name = "Bird groups",
+                          values = c("covid_period" = "red", "normal_period" = "grey"),
+                          labels = c("covid_period" = "Monitored during covid", "normal_period" = "Monitored out covid"))
+    }
+    
+    
+    if(group == "sex") {
+      gg_points_rsf[[i]] <- gg_points_rsf[[i]] + 
+        geom_boxplot(aes(color = covariates), fill = alpha("grey", 0.2), notch = TRUE) +
+        new_scale_color() +
+        geom_jitter(aes(color = ifelse(bird %in% females, "Female", "Male")), 
+                    size = 3, alpha = 0.6) +
+        scale_color_manual(name = "Bird groups", 
+                           values = c("Female" = "deeppink", "Male" = "turquoise"),
+                           labels = c("females" = "Female", "males" = "Male"))
+    }
+    
+  }
+  
+  # Save the plot
+  if(write == TRUE & group == "none") {
+    ggsave(gg_points_rsf[[1]], 
+           file = file.path(outputfolder, paste0("rsf_points_", names(data_table)[1],"_",group,".jpeg")),
+           width = 25, height = 15, units = "in")
+    ggsave(gg_points_rsf[[2]], 
+           file = file.path(outputfolder, paste0("rsf_points_", names(data_table)[2],"_",group,".jpeg")),
+           width = 25, height = 15, units = "in")
+    
+  }
+  if(write == TRUE & group != "none") {
+    ggsave(gg_points_rsf[[2]], 
+           file = file.path(outputfolder, paste0("rsf_points_", names(data_table)[2],"_",group,if(boxplot_by_group == TRUE){"_box"},".jpeg")),
+           width = 25, height = 15, units = "in")
+  }
+  
+  # Return the last ggplot object (for checking or further manipulation)
+  return()
+}
+
+
+#*************************************************************
+
+
+
+
+
 

@@ -14,6 +14,11 @@
 #********************************************************************
 library(terra)
 library(sf)
+library(ggplot2)
+library(tidyterra)
+library(ggnewscale)
+library(gridExtra)
+library(grid)
 #********************************************************************
 
 ### Settings
@@ -23,35 +28,49 @@ base <- "C:/Users/albordes/Documents/PhD"
 
 ### Loading data ----
 #********************************************************************
-carto_habitats_3V_winter <- terra::rast(file.path(base,"TetrAlps", "2_DATA", "environmental_raster", "carto_habitats_3V_winter.tif"))
+### RASTER
+
+# habitat cartography
+carto_habitats_3V_winter <- terra::rast(file.path(base,"TetrAlps", "2_DATA", "environmental_raster", "carto_habitats_3V_winter_7classes_tree.tif"))
+# r_Trees <- terra::rast(file.path(base,paste0("TetrAlps/2_DATA/environmental_raster/scaled_bin_Trees.tif")))
+
+# Geoservices cartography
+soil_cover_geoservices <- terra::rast(file.path(base, "TetrAlps","1_RAW_DATA","environment","habitats","OCS_GE_soil_cover_2019_winter.tif"))
+crs(soil_cover_geoservices) <- crs(carto_habitats_3V_winter)
+
+### VECTORS
+
+# 3V borders 
+borders_3V_vect <- st_read(file.path(base,"Tetralps/1_RAW_DATA/borders_3V.gpkg"))
+borders_3V_vect <- terra::vect(file.path(base,"Tetralps/1_RAW_DATA/borders_3V.gpkg"))
 #********************************************************************
 
 
 # Creating the soil_cover raster ----
 #********************************************************************
 # Loading the gpkg
-soil_cover_geoservices <- st_read(file.path(base, "TetrAlps","1_RAW_DATA","environment","habitats","OCS_GE_soil_cover_2019.gpkg"))
-
-
-bbox <- st_bbox(soil_cover_geoservices)
-resolution <- 1  # Set your desired resolution (in CRS units)
-rast <- rast(xmin = bbox$xmin, xmax = bbox$xmax, 
-             ymin = bbox$ymin, ymax = bbox$ymax, 
-             resolution = resolution, crs = crs(soil_cover_geoservices))
-
-# Loading the winter legend
-soil_cover_geoservices$LEGEND_WINTER <- as.factor(soil_cover_geoservices$LEGEND_WINTER)
-
-# Creating the new raster
-soil_cover_geoservices_r <- rasterize(vect(soil_cover_geoservices), rast, field = "LEGEND_WINTER")
-writeRaster(soil_cover_geoservices_r, file = file.path(base, "TetrAlps","1_RAW_DATA","environment","habitats","OCS_GE_soil_cover_2019_winter.tif"), overwrite=TRUE)
+# soil_cover_geoservices <- st_read(file.path(base, "TetrAlps","1_RAW_DATA","environment","habitats","OCS_GE_soil_cover_2019.gpkg"))
+# 
+# 
+# bbox <- st_bbox(soil_cover_geoservices)
+# resolution <- 1  # Set your desired resolution (in CRS units)
+# rast <- rast(xmin = bbox$xmin, xmax = bbox$xmax,
+#              ymin = bbox$ymin, ymax = bbox$ymax,
+#              resolution = resolution, crs = crs(soil_cover_geoservices))
+# 
+# # Loading the winter legend
+# soil_cover_geoservices$LEGEND_WINTER <- as.factor(soil_cover_geoservices$LEGEND_WINTER)
+# 
+# # Creating the new raster
+# soil_cover_geoservices_r <- rasterize(vect(soil_cover_geoservices), rast, field = "LEGEND_WINTER")
+# 
+# # 0 = 1 = Deciduous_trees 2 = 3 = 4 = 5 = 
+# 
+# writeRaster(soil_cover_geoservices_r, file = file.path(base, "TetrAlps","1_RAW_DATA","environment","habitats","OCS_GE_soil_cover_2019_winter.tif"), overwrite=TRUE)
 #********************************************************************
 
 # 1_Visualization soil cover ----
 #********************************************************************
-soil_cover_geoservices <- terra::rast(file.path(base, "TetrAlps","1_RAW_DATA","environment","habitats","OCS_GE_soil_cover_2019_winter.tif"))
-soil_cover_geoservices <- project(soil_cover_geoservices, y = mnt_9, method = "near")
-
 terra::plot(soil_cover_geoservices, main = "Winter categories of habitats based on the soil cover from geoservices")
 terra::plot(borders_3V_vect, add=TRUE)
 #********************************************************************
@@ -61,7 +80,7 @@ terra::plot(borders_3V_vect, add=TRUE)
 carto_cl <- carto_habitats_3V_winter
 
 ggplot()+
-  geom_spatraster(data = carto_habitats_3V_winter_n)+
+  geom_spatraster(data = carto_cl)+
   scale_fill_manual(name = "Habitat classes",
                       values = c(
                         "Soils_low_vegetation"="#CCCCCC",
@@ -94,44 +113,44 @@ ggplot() +
                   fill = NA)+
   ggtitle("From Geoservices")
 
-
 # Aligned the rasters
-soil_cover_geoservices_aligned <- resample(soil_cover_geoservices, carto_cl, method = "near")
+soil_cover_geoservices_aligned <- resample(soil_cover_geoservices, carto_cl) 
+# Check alignment
+compareGeom(carto_cl, soil_cover_geoservices_aligned)
 
 # Get unique categories from both rasters
-unique(soil_cover_geoservices_aligned)
+levels(soil_cover_geoservices)[[1]]$LEGEND_WINTER
 
 # Initialize a data frame to store results
-cat_match <- data.frame(Categories_Cl = c(unique(carto_cl)$Label,
+cat_match <- data.frame(Categories_Cl = c(levels(carto_cl)[[1]]$Label,
+                                          
                                           "Deciduous_trees",
                                           "Resinous_trees",
-                                          "Unclassified_trees",
-                                          "Shrubs", 
-                                          "Shrubs", 
-                                          "Shrubs",
+                                          
                                           "Unclassified_trees",
                                           "Unclassified_trees",
+                                          
                                           "Deciduous_trees",
                                           "Resinous_trees"), 
                         Categories_Geoservices = c( "Soils_low_vegetation",
                                                     "Shrubs_and_Low_ligneous",
+                                                    "Mixted_trees",
                                                     "Deciduous_trees",
                                                     "Resinous_trees",
                                                     "NA",
                                                     "Buildings",
+                                                    
                                                     "Mixted_trees",
                                                     "Mixted_trees",
-                                                    "Mixted_trees",
-                                                    "Mixted_trees",
-                                                    "Mixted_trees",
+                                                    
                                                     "Deciduous_trees",
                                                     "Resinous_trees",
-                                                    "Deciduous_trees",
-                                                    "Resinous_trees",
+                                                    
                                                     "Resinous_trees",
                                                     "Deciduous_trees"), 
                         PercentMatch = NA)
-cat_match <- cat_match[-5,]
+# Remove rows where 'Categories_Cl' equals "Cliffs"
+cat_match <- cat_match[cat_match$Categories_Cl != "Cliffs", ]
 
 # Loop through each category
 for (cat in 1:nrow(cat_match)) {
@@ -140,10 +159,10 @@ for (cat in 1:nrow(cat_match)) {
     mask2 <- soil_cover_geoservices_aligned == cat_match$Categories_Geoservices[cat]
     
     # Calculate the total number of pixels for the category in raster1
-    total_pixels <- global(mask1, "sum", na.rm = TRUE)[1]
+    total_pixels <- terra::global(mask1, "sum", na.rm = TRUE)[1]
     
     # Calculate the number of matching pixels in both rasters
-    matching_pixels <- global(mask1 & mask2, "sum", na.rm = TRUE)[1]
+    matching_pixels <- terra::global(mask1 & mask2, "sum", na.rm = TRUE)[1]
     
     # Calculate the percentage match
     percent_match <- round((matching_pixels / total_pixels) * 100,1)
@@ -240,12 +259,12 @@ level_mapping <- data.frame(
   ID = 1:7,
   Label = c(
     "Soils_low_vegetation", # Class 1 ok
-    "Shrubs",               # Class 2 ok 
+    "Deciduous_trees",      # Class 2 ok 
     "Resinous_trees",       # Class 3 ok
-    "Deciduous_trees",      # Class 4 ok
-    "Cliffs",               # Class 5 ok
-    "Buildings",            # Class 6 ok
-    "Mixed_trees"          # Class 7 ok
+    "Mixed_trees",          # Class 4 ok
+    "Shrubs",               # Class 5 ok
+    "Cliffs",               # Class 6 ok
+    "Buildings"             # Class 7 ok
   )
 )
 
@@ -254,8 +273,8 @@ levels(carto_cl_modified) <- list(level_mapping)
 
 
 ggplot() +
-  geom_spatraster(data = carto_cl_modified)  +
-  # geom_spatraster(data = terra::crop(carto_cl_modified, ext(970000,973000,6479500, 6481000)))+
+  # geom_spatraster(data = carto_cl_modified)  +
+  geom_spatraster(data = terra::crop(carto_cl_modified, ext(970000,973000,6479500, 6481000)))+
   scale_fill_manual(
     name = "Habitat classes",
     values = c(

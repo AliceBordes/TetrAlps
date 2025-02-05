@@ -27,6 +27,12 @@ base <- "C:/Users/albordes/Documents/PhD"
 
 # Loading rasters ----
 #********************************************************************
+### GRID
+
+grid_10m <- terra::rast(terra::vect(file.path(base, "Tetralps","1_RAW_DATA","grid_10m.gpkg")))
+res(grid_10m) <- 10
+
+
 ### RASTERS
 
 # habitat cartography
@@ -44,7 +50,7 @@ carto_habitats_3V_winter <- terra::rast(file.path(base, "TetrAlps","2_DATA","env
 # In this case, multiple dummy variables would be created to represent each level of the variable, and only one dummy variable would take on a value of 1 for each observation.
 
 # Align the rasters carto_habitats_3V_winter and mnt
-carto_habitats_3V_winter <- project(carto_habitats_3V_winter, y = mnt, method = "near")
+# carto_habitats_3V_winter <- project(carto_habitats_3V_winter, y = mnt, method = "near")
 carto_habitats_3V_winter <- raster::raster(carto_habitats_3V_winter)
 terra::crs(carto_habitats_3V_winter) <- "EPSG:2154"
 

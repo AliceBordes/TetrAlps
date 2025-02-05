@@ -2,11 +2,11 @@
 
 # Alice Bordes #
 
-# September 2024 #
+# January 2025 #
 
 # Description:
 
-# RSF on multiple indiv
+# RSF results
 
 
 
@@ -41,66 +41,34 @@ library(parallel)
 library(meta)
 library(doParallel)
 library(rempsyc)
-library(forcats) 
 detectCores()
+
+base <- "C:/Users/albordes/Documents/PhD"
 #********************************************************************
 
-
-### Settings ----
-#********************************************************************
-base<-"C:/Users/albordes/Documents/PhD"
-#********************************************************************
 
 # Loading data ----
 #********************************************************************
 ### DATASET
 birds_bg_dt<-read.csv2(file.path(base,"Tetralps/2_DATA/data_bg_pretelemetry_2024_10.csv"),sep=",") #upload the file from a csv, not a move2 object
-
-### VECTORS
-
-# 3V borders 
-borders_3V_vect <- st_read(file.path(base,"Tetralps/1_RAW_DATA/3V/borders_3V.gpkg"))
-borders_3V_vect <- terra::vect(file.path(base,"Tetralps/1_RAW_DATA/3V/borders_3V.gpkg"))
-
-# Environment stack
-load(file.path(base,"TetrAlps/3_R/0_Heavy_saved_models/environment_3V/env_RL_list.RData"))
-load(file.path(base,"TetrAlps/3_R/0_Heavy_saved_models/environment_3V/scaled_env_RL_list.RData"))
-
-# scaled_env_RL_list_new <- scaled_env_RL_list
-# load(file.path(base,"TetrAlps_old/3_R/0_Heavy_saved_models/environment_3V/scaled_env_RL_list.RData"))
-# scaled_env_RL_list_old <- scaled_env_RL_list
-
-# Visitor numbers
-visitor_meribel <- read.csv2("C:/Users/albordes/Documents/PhD/TetrAlps/2_DATA/ski_resorts_visitor_numbers/meribel_visitors.csv", sep=",")
-visitor_meribel$Date <- as.Date(visitor_meribel$Date)
-
-visitor_valtho <- read.csv2("C:/Users/albordes/Documents/PhD/TetrAlps/2_DATA/ski_resorts_visitor_numbers/valtho_visitors.csv", sep=",")
-visitor_valtho$Date <- as.Date(visitor_valtho$Date)
-
-visitor_courch <- read.csv2("C:/Users/albordes/Documents/PhD/TetrAlps/2_DATA/ski_resorts_visitor_numbers/courchevel_visitors.csv", sep=",")
-visitor_courch$Date <- as.Date(visitor_courch$Date)
-
-visitor_menui <- read.csv2("C:/Users/albordes/Documents/PhD/TetrAlps/2_DATA/ski_resorts_visitor_numbers/menuires_visitors.csv", sep=",")
-visitor_menui$Date <- as.Date(visitor_menui$Date)
-visitor_menui$Total <- as.integer(visitor_menui$Total)
-
-# Snow deph
-snow_meribel <- read.csv2("C:/Users/albordes/Documents/PhD/TetrAlps/2_DATA/snow_depth/meribel_snow_depth.csv", sep=",")
-snow_meribel$Date <- as.Date(snow_meribel$Date)
-snow_meribel <- snow_meribel %>% group_by(Date) %>% summarise(snow.depth = mean(cumul.H.neige.cm))
-snow_meribel <- as.data.frame(snow_meribel)
-
-snow_courch <- read.csv2("C:/Users/albordes/Documents/PhD/TetrAlps/2_DATA/snow_depth/courchevel_snow_depth.csv", sep=",")
-snow_courch$Date <- as.Date(snow_courch$Date)
-snow_courch <- snow_courch %>% group_by(Date) %>% summarise(snow.depth = mean(cumul.H.neige.cm))
-snow_courch <- as.data.frame(snow_courch)
-
-# ski resort identification
-ski_lift_traffic_3V <- st_read("C:/Users/albordes/Documents/PhD/TetrAlps/2_DATA/ski_lift_traffic_3V.gpkg")
-dt_resorts <- read.csv2(file.path(base,"Tetralps","2_Data","bg_winter_assign_valley_resort.csv"))
 #********************************************************************
 
 
+### Settings ----
+#********************************************************************
+model <- "rsf_59birds_individual_2025_01_30_06h06min"
+
+covid <- c("Caramel_2", "Daisy","Dalton","Dameur","Dario","Darkvador","Darwin","Dede","Destroy","Diot","Djal","Django","Donald","Durite","Dynamite","Dyonisos")
+females <- unique((birds_bg_dt %>% filter(animal.sex == "femelle"))$animal.ID)
+males <- unique((birds_bg_dt %>% filter(animal.sex == "male"))$animal.ID)
+#********************************************************************
+
+
+
+# Loading model data ----
+#********************************************************************
+load(file = file.path(base, "Tetralps", "5_OUTPUTS", "RSF", "rsf.fit_results", model, paste0(model, ".Rdata")))
+#********************************************************************
 
 ### Loading functions ----
 #********************************************************************
@@ -116,308 +84,49 @@ source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/Formatting_data/for
 
 
 
-### 1.1_Add visitor numbers and snow depth to birds_bg_dt ----
-#********************************************************************
-birds_bg_dt <- assigning_visitors_depth(birds_bg_dt)
+### 1_Vizualising RSF results for multiple birds ----
 #********************************************************************
 
-### 1.2_Creation of a variable fact.visitor.nb and a variable for ski lift opening hours ----
+### 1.1_Formatting RSF results for multiple birds ----
 #********************************************************************
-birds_bg_dt <- add_variables_visit_open(birds_bg_dt)
-#********************************************************************
-
+l_dt_results <- rsf_result_table(sum_rsf_multipl)
+  # nb of outliers : sum(is.na(l_dt_results[[2]]$est))
   
-# ### 2_Data telemetry, guess, fit and akde objects for rsf ----
-# #********************************************************************
 
-### 2.1_Data creation of telemetry, guess, fit and akde objects for rsf ----
-#********************************************************************
-tele_akde(data = birds_bg_dt,
-          # birds_vect = c("Alpha", "Caramel", "Dalton","Dario","Donald","Dynamite","Dyonisos","Ecolo","Eros","Fast","Ficelle","Flambeur","Fleau","Foliedouce"),
-          season = "hiver",
-          subset_category = "saison2",
-          outputfolder = file.path(base, "Tetralps", "3_R", "0_Heavy_saved_models", "birds_3V"),
-          write = TRUE)
+# Supress Fiasco estimation for Buildings (outlier) 
+# rsf_results_table[rsf_results_table$covariates == "Buildings" & rsf_results_table$bird == "Fiasco", "est"] <- NA
+# rsf_results_table[rsf_results_table$covariates == "Buildings" & rsf_results_table$bird == "Dynamite_2", "est"] <- NA
+# rsf_results_table[rsf_results_table$covariates == "Cliffs" & rsf_results_table$bird == "Dameur", "est"] <- NA
 
-# tele_akde(data = bird_winter_outcovid,
-#           season = "hiver",
-#           subset_category = "saison",
-#           outputfolder = file.path(base, "Tetralps", "3_R", "0_Heavy_saved_models", "birds_3V"),
-#           write = TRUE)
-#********************************************************************
-
-
-### 2.2_Data Loading of telemetry, guess, fit and akde objects for rsf ----
-#********************************************************************
-# to run with telemetry, guess, fit, akde
-  # load(file = file.path(base,"Tetralps","3_R","0_Heavy_saved_models","birds_3V", "raw_lists", "multipl_akde_winter_hiver.Rdata"))
-  # l_akde_winter_singlew <- l_akde_winter
-  # load(file = file.path(base,"Tetralps","3_R","0_Heavy_saved_models","birds_3V", "raw_lists", "multipl_akde_winter_saison2.Rdata"))
-  # l_akde_winter <- c(l_akde_winter_singlew[!(names(l_akde_winter_singlew) %in% names(l_akde_winter))], list_of_one(l_akde_winter))
-  # # Identify elements with empty names
-  # unnamed_indices <- which(names(l_akde_winter) == "")
-  # # Remove these unnamed elements
-  # if (length(unnamed_indices) > 0) {
-  #   l_akde_winter <- l_akde_winter[-unnamed_indices]
-  # }
-  # save(l_akde_winter, file = file.path(base,"Tetralps","3_R","0_Heavy_saved_models","birds_3V", "multipl_akde_winter.Rdata"))
-
-  
-# Load the outputs of tele_akde with visitor number as continuous variable
-load(file = file.path(base,"Tetralps","3_R","0_Heavy_saved_models","birds_3V", "multipl_telemetry_winter_saison2_2025_01_23.Rdata"))
-load(file = file.path(base,"Tetralps","3_R","0_Heavy_saved_models","birds_3V", "multipl_guess_winter_saison2_2025_01_23.Rdata"))
-load(file = file.path(base,"Tetralps","3_R","0_Heavy_saved_models","birds_3V", "multipl_fit_winter_saison2_2025_01_23.Rdata"))
-load(file = file.path(base,"Tetralps","3_R","0_Heavy_saved_models","birds_3V", "multipl_akde_winter_saison2_2025_01_23.Rdata"))
-
-l_telemetry_winter <- list_of_one(l_telemetry_winter)
-l_akde_winter <- list_of_one(l_akde_winter)
-l_guess_winter <- list_of_one(l_guess_winter)
-l_fit_winter <- list_of_one(l_fit_winter)
-
-  l_telemetry_winter <- covariates_NAN_cleaned(l_telemetry_winter)
-  
-  l_akde_winter <- l_akde_winter[names(l_akde_winter) %in% names(l_telemetry_winter)]
-  l_guess_winter <- l_guess_winter[names(l_guess_winter) %in% names(l_telemetry_winter)]
-  l_fit_winter <- l_fit_winter[names(l_fit_winter) %in% names(l_telemetry_winter)]
-#********************************************************************  
-
-### 2.3_Identifying bird monitored during covid ----
-#********************************************************************
-  # # Combine into a single data frame with animal names added
-  # combined_telemetry <- do.call(rbind, 
-  #                               lapply(names(l_telemetry_winter), function(bird_name) {
-  #                                 # For each bird, add the animal ID as a new column
-  #                                 bird_data <- do.call(rbind, l_telemetry_winter[[bird_name]])
-  #                                 bird_data$animal.ID <- bird_name  # Add the animal name as a new column
-  #                                 return(bird_data)
-  #                               })
-  # )
-  # combined_telemetry$Jour <- as.Date(as.POSIXct(combined_telemetry$timestamp))
-  # 
-  # # official lockdown Tuesday 17 March 2020 at 12:00 - Monday 3 May 2021 
-  # # On 4 December 2020, the Prime Minister banned public access to ski lifts in ski resorts, with the exception of professionals and children who are members of an association affiliated to the French Ski Federation.
-  # 
-  # covid <- combined_telemetry %>% filter(saison=="hiver") %>% filter(as.Date(Jour) < as.Date("2021-06-01")) %>% filter(as.Date(Jour) > as.Date("2020-10-01"))
-  # covid <- unique(covid$animal.ID)
-  # 
-  # deb_covid <- combined_telemetry %>% filter(saison=="hiver") %>% filter(as.Date(Jour) < as.Date("2020-06-01")) %>% filter(as.Date(Jour) > as.Date("2020-03-16"))
-  # deb_covid <- unique(deb_covid$animal.ID)
-  # 
-  # covid_all <- c(covid) #c(covid,"Calu", "Cesar", "Caramel" )
 #********************************************************************  
   
-  
-  
-#### 3_Home range estimation : Fitting an RSF for 1 bird ----
-#********************************************************************
-    
-### Loading packages for RSF ----
-#******************************************************************** 
-# library(animove)
-library(ctmm)
-library(sf)
-library(mvtnorm)
-library(terra)
-#******************************************************************** 
-
-#### 3.1_Required assumptions to calculate and interprete an home range ----
-#********************************************************************
-# The animal must show a resident behevior on the considered scale : 
-# "Finally, at larger scales, most animals will exhibit a tendency to remain in a defined region or ‘home range’". (Calabrese, 2016)
-# The variogram, or semivariogram, plots time lags on the x-axis for all pairs of observations
-# against their semi-variance (half of the variance for the distance each observation pair) on the y-axis. (Animove 2022)
-
-# Bird's VARIOGRAM
-bird_variogram(l_telemetry_winter, 
-               l_fit_winter,
-               # dt_hour = c(1, 6, 12), 
-               outputfolder = file.path(base, "Tetralps", "5_OUTPUTS","RSF","variograms"), 
-               write = TRUE)
-  
-  
-  
-bird_sampling_sche(telemetry_list = l_telemetry_winter, 
-                   outputfolder = file.path(base, "Tetralps", "5_OUTPUTS","RSF","sampling"), 
-                   write = TRUE)
-#********************************************************************
-  
 
 
-### 3.2_Visualization "raw" HR (without environmental effects) ----
-#********************************************************************
-bird = "Ferie"
-  
-UD_mybird_spatial <- SpatialPolygonsDataFrame.UD(l_akde_winter[[bird]][["hiver1"]],level.UD=.95,level=.95)
-UD_mybird_spatial2 <- SpatialPolygonsDataFrame.UD(l_akde_winter[[bird]][["hiver2"]],level.UD=.95,level=.95)
-
-# Create a data frame to map the "hiver1" and "hiver2" names
-legend_data <- rbind(
-  st_as_sf(UD_mybird_spatial) %>% mutate(winter = "hiver1"),
-  st_as_sf(UD_mybird_spatial2) %>% mutate(winter = "hiver2")
-)
-
-
-# Plot with the updated legend
-ggplot() +
-  theme_void() + theme(plot.title = element_text(size = 16), legend.text = element_text(size=12), legend.title = element_text(size=14)) +
-  ggtitle("Fast winter home ranges based on winter GPS locations in the 3 Vallées region (Northern Alps)") +
-
-  # Plot the vector borders with valley names
-  geom_spatvector(data = borders_3V_vect, fill = NA, aes(color = NOM)) +
-  scale_color_manual(values = c("Courchevel" = "darkgreen", "Les Allues" = "lightgreen", "Les Belleville" = "darkgrey")) +
-  labs(color = "Valley") +
-
-  # Start a new scale for the winter layers
-  new_scale_color() +
-  geom_sf(data = legend_data, aes(fill = winter), color = NA, alpha = 0.1) +
-
-  # Define the colors and labels for the winter legend
-  scale_fill_manual(name = "Winters",
-                    values = c("hiver1" = "blue", "hiver2" = "turquoise"),
-                    labels = c("hiver1" = "First winter", "hiver2" = "Second winter")) +
-
-  # Add borders for the winter regions
-  geom_sf(data = st_as_sf(UD_mybird_spatial), color = "blue", fill = NA) +
-  geom_sf(data = st_as_sf(UD_mybird_spatial2), color = "turquoise", fill = NA)
+### 1.2_Vizualising all effets (1 point = 1 indiv) ----
 #********************************************************************
 
+points_plot_rsf(l_dt_results,
+                group = "covid",
+                boxplot_by_group = FALSE,
+                list_excluded_covariables = c("elevation", "squared_elevation", "Buildings"))
+points_plot_rsf(l_dt_results,
+                group = "covid",
+                boxplot_by_group = TRUE,
+                list_excluded_covariables = c("elevation", "squared_elevation", "Buildings"))
+points_plot_rsf(l_dt_results,
+                group = "sex",
+                boxplot_by_group = FALSE,
+                list_excluded_covariables = c("elevation", "squared_elevation", "Buildings"))
+points_plot_rsf(l_dt_results,
+                group = "none",
+                boxplot_by_group = FALSE,
+                list_excluded_covariables = c("elevation", "squared_elevation"))
 
-### 3.3_Expected results of the RSF ----
-#********************************************************************
-#birds 1,2,6,8 have an home range for "hiver1"
-# source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/plot_check_RSF_results.R")
-# plot_check_RSF_res(telemetry_winter,akde_winter,"habitats",analysis_object="study_area",writeplot=TRUE)
-# plot_check_RSF_res(telemetry_winter,akde_winter,"strava",analysis_object="study_area",data_visu="continuous",writeplot=TRUE)
-#********************************************************************
-
-
-### 3.4_RSF ----
-#********************************************************************
-
-# Selection of the rasters to use in the RSF
-scaled_env_RL_list_selection <-  scaled_env_RL_list[!(names(scaled_env_RL_list) %in% c("slope", "leks"))]
-# scaled_env_RL_list_selection <-  scaled_env_RL_list[c("elevation", "squared_elevation", "strava","leks")]
-
-# Define the formula
-model_formula <- ~ elevation + 
-  squared_elevation + 
-  strava_winter_sports +
-  strava_winter_sports:sl_open +
-  strava_winter_sports:sl_open:total.visitors.std +
-  strava_winter_sports:total.visitors.std +
-  Shrubs +
-  Cliffs +
-  Buildings +
-  Trees 
-
-# Define the formula
-model_formula <- ~ elevation + 
-  squared_elevation + 
-  strava_winter_sports +
-  Shrubs +
-  Cliffs +
-  Trees 
-
-  # physico-climatic related variables
-    # ~ elevation +
-    # squared_elevation +
-
-  # human perturbations related variables
-    # strava +
-    # strava:sl_open +
-    # strava:visitor_breaksLow:sl_open +
-    # strava:visitor_breaksHigh:sl_open +
-    # strava:visitor_breaksVery_high:sl_open +
-    # strava:total.visitors.std +
-
-  # habitat-related variables and human perturbations related variables (Buildings)
-    # Shrubs +
-    # Cliffs +
-    # Buildings +
-    # Trees
-        # Deciduous_trees +
-        # Resinous_trees +
-        # Mixed_trees +
-    # Shrubs:sl_open +
-    # Cliffs:sl_open +
-    # Buildings:sl_open +
-    # Trees:sl_open
-    # Cliffs:total.visitors.std
- 
-system.time(
-RSF_results_multpl_birds <- RSF_birds(  #telemetry_list = l_telemetry_winter[!names(l_telemetry_winter)%in%covid_all], 
-                                        #akde_list = l_akde_winter[!names(l_akde_winter)%in%covid_all],
-                                        telemetry_list = l_telemetry_winter, 
-                                        akde_list = l_akde_winter,
-                                        env_raster_list = scaled_env_RL_list_selection,
-                                        rsf_formula = model_formula,
-                                        rsf_integrator = "Riemann", # "MonteCarlo", 
-                                        # grid = "full",
-                                        outputfolder = file.path(base, "TetrAlps", "5_OUTPUTS", "RSF", "rsf.fit_results"),
-                                        write = TRUE
-                                        ) 
-)
-
-
-
-# # to link the different samples : 
-#     load(file = file.path(base, "Tetralps", "5_OUTPUTS", "RSF", "rsf.fit_results", paste0("rsf[31_59]_individual_2025_01_15.Rdata")))
-#     sum_rsf_multipl3 <- sum_rsf_multipl
-#     sum_rsf_multipl <- c(sum_rsf_multipl1, sum_rsf_multipl2, sum_rsf_multipl3)
-#     # Identify elements with empty names
-#     unnamed_indices <- which(names(sum_rsf_multipl) == "")
-#     # Remove these unnamed elements
-#     if (length(unnamed_indices) > 0) {
-#       l_akde_winter <- l_akde_winter[-unnamed_indices]
-#     }
-#     save(sum_rsf_multipl, file = file.path(base, "Tetralps", "5_OUTPUTS", "RSF", "rsf.fit_results", paste0("rsf_59birds_individual_2025_01_15.Rdata")))
-
-
-
-
-# # debugging RSF_birds function
-# # Check for valid values in each raster
-# lapply(scaled_env_RL_list_selection, function(raster) {
-#   print(names(raster))
-#   hasValues(raster)
-# })
-
-#combine() to combine 2 nested lists
-
-# note : 
-# in summary(sum_rsf_multipl[[1]]) --> τ[position] (hours) = time to reach 63% of the variogram asympote (= autocorr between positions)
 #********************************************************************
 
 
 
-### 3.5_Identifying birds monitored during covid ----
-#********************************************************************
-# Combine into a single data frame with animal names added
-combined_telemetry <- do.call(rbind, 
-                              lapply(names(l_telemetry_winter), function(bird_name) {
-                                # For each bird, add the animal ID as a new column
-                                bird_data <- do.call(rbind, l_telemetry_winter[[bird_name]])
-                                bird_data$animal.ID <- bird_name  # Add the animal name as a new column
-                                return(bird_data)
-                              })
-)
-combined_telemetry$Jour <- as.Date(as.POSIXct(combined_telemetry$timestamp))
-
-# official lockdown Tuesday 17 March 2020 at 12:00 - Monday 3 May 2021 
-# On 4 December 2020, the Prime Minister banned public access to ski lifts in ski resorts, with the exception of professionals and children who are members of an association affiliated to the French Ski Federation.
-
-covid <- combined_telemetry %>% filter(saison=="hiver") %>% filter(as.Date(Jour) < as.Date("2021-06-01")) %>% filter(as.Date(Jour) > as.Date("2020-10-01"))
-covid <- unique(covid$animal.ID)
-
-deb_covid <- combined_telemetry %>% filter(saison=="hiver") %>% filter(as.Date(Jour) < as.Date("2020-06-01")) %>% filter(as.Date(Jour) > as.Date("2020-03-16"))
-deb_covid <- unique(deb_covid$animal.ID)
-
-covid_all <- c(covid) #c(covid,"Calu", "Cesar", "Caramel" )
-#********************************************************************
-
-
-
-### 3.6_Visualizing visitor number time serie
+### 3.6_Visualizing temporal predictors ----
 #********************************************************************
 birds_bg_dt_J <- birds_bg_dt %>%
   filter(saison == "hiver") %>%
@@ -491,6 +200,7 @@ text(y = round(fivenum(birds_bg_dt_J$total.visitors.std),2)[c(1,3,5)], labels = 
 
 
 
+
 ### 3.6_Suitability map and range distribution ---- # NOT WORKING
 #********************************************************************
 #' A suitability map
@@ -526,7 +236,7 @@ suitability_bird <- ctmm::suitability(sum_rsf_multipl[[1]],
 suitability_bird <- ctmm::suitability(sum_rsf_multipl[[1]],
                                       R = scaled_env_RL_list_selection,
                                       grid = crop(scaled_env_RL_list_selection[[1]], extent(e_mybird)*2))
- 
+
 #' raster::plot(suitability_bird)
 #' 
 #' #' Range distribution (includes the ranging behaviour)
@@ -867,9 +577,9 @@ sqrt(var(mean_area)/length(mean_area)) # Standard Error (SE)
 # account for propagation incertainties of indiv in the pop
 
 ctmm::meta(l_akde_winter_meta,
-            col = c(pal,"black"),
-            verbose = TRUE, # verbose output with CIs
-            sort = TRUE) 
+           col = c(pal,"black"),
+           verbose = TRUE, # verbose output with CIs
+           sort = TRUE) 
 ## model selection: Dirac-delta > inverse-Gaussian
 
 

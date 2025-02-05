@@ -65,6 +65,14 @@ tot_dt <- tot_dt[-1,]
 tot_dt <- tot_dt[order(tot_dt$Date),]
 
 
+# Visualization of the variable distribution 
+boxplot(combined_telemetry$total.visitors.std) 
+text(y = boxplot.stats(combined_telemetry$total.visitors.std)$stats, labels = round(boxplot.stats(combined_telemetry$total.visitors.std)$stats,2), x = 1.3, pos = 2) 
+text(y = boxplot.stats(combined_telemetry$total.visitors.std)$stats, labels = boxplot.stats(combined_telemetry$total.visitors)$stats, x = 1.35, pos = 4)
+##
+
+
+
 # 2_Plot
 
 # Select which labels to display (e.g., every 5th index)

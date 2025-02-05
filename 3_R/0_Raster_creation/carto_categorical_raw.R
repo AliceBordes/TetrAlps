@@ -55,28 +55,29 @@ carto_habitats_3V_winter <- classify(carto_habitats_3V_winter, cbind(100, 1)) #U
 carto_habitats_3V_winter <- classify(carto_habitats_3V_winter, cbind(40, 2)) #Shrubs
 
 carto_habitats_3V_winter <- classify(carto_habitats_3V_winter, cbind(50, 3)) #Unclassified trees
-carto_habitats_3V_winter <- classify(carto_habitats_3V_winter, cbind(51, 3)) #Deciduous trees
-carto_habitats_3V_winter <- classify(carto_habitats_3V_winter, cbind(52, 3)) #Resinous trees
+carto_habitats_3V_winter <- classify(carto_habitats_3V_winter, cbind(51, 4)) #Deciduous trees
+carto_habitats_3V_winter <- classify(carto_habitats_3V_winter, cbind(52, 5)) #Resinous trees
 
-carto_habitats_3V_winter <- classify(carto_habitats_3V_winter, cbind(23, 4)) #Cliff
+carto_habitats_3V_winter <- classify(carto_habitats_3V_winter, cbind(23, 6)) #Cliff
 
-carto_habitats_3V_winter <- classify(carto_habitats_3V_winter, cbind(60, 5)) #Buildings
+carto_habitats_3V_winter <- classify(carto_habitats_3V_winter, cbind(60, 7)) #Buildings
 
 
 carto_habitats_3V_winter <- as.factor(carto_habitats_3V_winter)
 
 # Renaming categories
 levels(carto_habitats_3V_winter) <- data.frame(
-  ID = c(1, 2, 3, 4, 5),
+  ID = c(1, 2, 3, 4, 5, 6, 7),
   Label = c(
     "Soils_low_vegetation",
     "Shrubs",
-    # "Deciduous_trees",
-    # "Resinous_trees",
-    "Trees",
+    "Unclassified_trees",
+    "Deciduous_trees",
+    "Resinous_trees",
+    # "Trees",
     "Cliffs",
     "Buildings"
-    # "Unclassified_trees"
+    
   )
 )
 
@@ -86,7 +87,8 @@ is.factor(carto_habitats_3V_winter)
 
 
 
-writeRaster(carto_habitats_3V_winter, filename = file.path(base,"TetrAlps", "2_DATA", "environmental_raster", "carto_habitats_3V_winter_5classes_tree.tif"), overwrite=TRUE)
+writeRaster(carto_habitats_3V_winter, filename = file.path(base,"TetrAlps", "2_DATA", "environmental_raster", "carto_habitats_3V_winter_7classes_tree.tif"), overwrite=TRUE)
 #********************************************************************
+
 
 

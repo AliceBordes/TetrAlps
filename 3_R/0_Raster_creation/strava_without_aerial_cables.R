@@ -61,6 +61,11 @@ if(length(names(strava))!=1)
   strava <- strava::as_numeric(strava)
 }
 
+strava_backcountry <- terra::rast(file.path(base, "Tetralps/2_DATA/strava/3Vallees/strava_sport_BackcountrySki_2025_01_09.tif"))
+if(length(names(strava_backcountry))!=1)
+{
+  strava_backcountry <- strava::as_numeric(strava_backcountry)
+}
 #if strava = rgb with 4 layers : 
 # strava <- terra::rast(file.path(base, "Tetralps/2_DATA/strava/3Vallees/strava_winter_2024_10_03.tif"))
 # strava_rgb <- terra::plotRGB(strava)
