@@ -983,6 +983,7 @@ points_plot_rsf <- function(data_table,
 
 metamodel <- function(raw_results,
                       remove_outliers = FALSE,
+                      group = 1,
                       coefficient = 1.5,
                       outputfolder = file.path(base, "Tetralps", "5_OUTPUTS", "RSF", "rsf.fit_results", model))
 {
@@ -1008,13 +1009,24 @@ metamodel <- function(raw_results,
       }else{
         ok <- rep(TRUE,length(rsf_beta[x, ])) # keep outliers for each variable
       }
+      
       meta_df <- metagen(TE = rsf_beta[x, ok],  # beta estimates
                          seTE = sqrt(rsf_var[x, ok]), # var estimates
                          studlab = names(raw_results)[ok]) # labels
-      metareg(meta_df, ~1)
-      # metareg(meta_df, ~period) ->
+      
+      print(meta_df)
+      metareg(meta_df, ~group)
+      
+      # # Meta-regression with covid group
+      # 
+      # # Créer une variable indicatrice pour le groupe COVID
+      # covid_indicator <- ifelse(names(sum_rsf_multipl) %in% covid, 1, 0)
+      # meta_df$data$covid_indicator <- covid_indicator[ok] 
+      # 
+      # metareg(meta_df, ~ covid_indicator)
+      
     })
-    
+    print(meta_models)
     meta_model_coef <- data.frame(t(sapply(meta_models, 
                                            function(x) c("coef" = x$beta[1], 
                                                          "se" = x$se, 
@@ -1023,6 +1035,8 @@ metamodel <- function(raw_results,
                                                          "ci.ub" = x$ci.ub,
                                                          "tau" = sqrt(x$tau2)))))
     rownames(meta_model_coef) <- names(raw_results[[1]]$beta)
+    
+    print(meta_model_coef)
     write.csv(meta_model_coef, file.path(outputfolder,paste0("metamodel",if(remove_outliers == TRUE){"_out_removed"},".csv")))
     
     
@@ -1043,7 +1057,7 @@ metamodel <- function(raw_results,
                                    note = c(
                                      "* p < .05, ** p < .01, *** p < .001"
                                    ))
-    flextable::save_as_docx(meta_model_table, path = file.path(outputfolder,"rsf_meta_results.docx"))
+    flextable::save_as_docx(meta_model_table, path = file.path(outputfolder,paste0("rsf_meta_results",if(remove_outliers == TRUE){"_out_removed"},if(group != 1){paste0("_",group)},".docx")))
     
     
     

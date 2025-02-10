@@ -51,6 +51,20 @@ base <- "C:/Users/albordes/Documents/PhD"
 #********************************************************************
 ### DATASET
 birds_bg_dt<-read.csv2(file.path(base,"Tetralps/2_DATA/data_bg_pretelemetry_2024_10.csv"),sep=",") #upload the file from a csv, not a move2 object
+
+# Visitor numbers
+visitor_meribel <- read.csv2("C:/Users/albordes/Documents/PhD/TetrAlps/2_DATA/ski_resorts_visitor_numbers/meribel_visitors.csv", sep=",")
+visitor_meribel$Date <- as.Date(visitor_meribel$Date)
+
+visitor_valtho <- read.csv2("C:/Users/albordes/Documents/PhD/TetrAlps/2_DATA/ski_resorts_visitor_numbers/valtho_visitors.csv", sep=",")
+visitor_valtho$Date <- as.Date(visitor_valtho$Date)
+
+visitor_courch <- read.csv2("C:/Users/albordes/Documents/PhD/TetrAlps/2_DATA/ski_resorts_visitor_numbers/courchevel_visitors.csv", sep=",")
+visitor_courch$Date <- as.Date(visitor_courch$Date)
+
+visitor_menui <- read.csv2("C:/Users/albordes/Documents/PhD/TetrAlps/2_DATA/ski_resorts_visitor_numbers/menuires_visitors.csv", sep=",")
+visitor_menui$Date <- as.Date(visitor_menui$Date)
+visitor_menui$Total <- as.integer(visitor_menui$Total)
 #********************************************************************
 
 
@@ -147,8 +161,14 @@ points_plot_rsf(l_dt_results,
 
 
 
-### 3.6_Visualizing temporal predictors ----
-#********************************************************************
+
+
+
+
+#*
+#*
+#*
+#*
 birds_bg_dt_J <- birds_bg_dt %>%
   filter(saison == "hiver") %>%
   distinct(jour, resort, .keep_all = TRUE) %>% 
