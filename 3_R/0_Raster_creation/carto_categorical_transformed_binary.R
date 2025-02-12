@@ -84,8 +84,8 @@ for (class in classes[!(is.nan(classes) | is.na(classes))]) {
   
   carto_habitats_winter_binary <- aggregate(carto_habitats_winter_binary, fact = 10, fun = "mean")
   
-  terra::writeRaster(carto_habitats_winter_binary, 
-                     filename = file.path(base,paste0("TetrAlps/2_DATA/environmental_raster/scaled_bin_",new_name,".tif")), 
+  terra::writeRaster(carto_habitats_winter_binary,
+                     filename = file.path(base,paste0("TetrAlps/2_DATA/environmental_raster/scaled_bin_",new_name,".tif")),
                      overwrite = TRUE)
   
   # Add the binary raster to the list

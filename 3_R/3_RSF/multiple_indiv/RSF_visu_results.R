@@ -46,6 +46,18 @@ detectCores()
 base <- "C:/Users/albordes/Documents/PhD"
 #********************************************************************
 
+### Loading functions ----
+#********************************************************************
+source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/my_telemetry_transfo_data.R")
+source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/Homerange_visu/mean_size_area.R")
+source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/Homerange_visu/visu_home_range.R")
+source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/Homerange_visu/distance_home_range_capture_site.R")
+source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/Homerange_visu/multi_graph_home_range.R")
+source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/RSF/plot_check_RSF_results.R")
+source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/RSF/rsf_functions.R")
+source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/Formatting_data/formatting_environment_data.R")
+#********************************************************************
+
 
 # Loading data ----
 #********************************************************************
@@ -70,11 +82,11 @@ visitor_menui$Total <- as.integer(visitor_menui$Total)
 
 ### Settings ----
 #********************************************************************
-model <- "rsf_59birds_individual_2025_02_04_14h50min"
-
 covid <- c("Caramel_2", "Daisy","Dalton","Dameur","Dario","Darkvador","Darwin","Dede","Destroy","Diot","Djal","Django","Donald","Durite","Dynamite","Dyonisos")
 females <- unique((birds_bg_dt %>% filter(animal.sex == "femelle"))$animal.ID)
 males <- unique((birds_bg_dt %>% filter(animal.sex == "male"))$animal.ID)
+
+model <- "rsf_59birds_individual_2025_01_30_06h06min"
 #********************************************************************
 
 
@@ -84,26 +96,13 @@ males <- unique((birds_bg_dt %>% filter(animal.sex == "male"))$animal.ID)
 load(file = file.path(base, "Tetralps", "5_OUTPUTS", "RSF", "rsf.fit_results", model, paste0(model, ".Rdata")))
 #********************************************************************
 
-### Loading functions ----
-#********************************************************************
-source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/my_telemetry_transfo_data.R")
-source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/Homerange_visu/mean_size_area.R")
-source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/Homerange_visu/visu_home_range.R")
-source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/Homerange_visu/distance_home_range_capture_site.R")
-source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/Homerange_visu/multi_graph_home_range.R")
-source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/RSF/plot_check_RSF_results.R")
-source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/RSF/rsf_functions.R")
-source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/Formatting_data/formatting_environment_data.R")
-#********************************************************************
-
-
 
 ### 1_Vizualising RSF results for multiple birds ----
 #********************************************************************
 
 ### 1.1_Formatting RSF results for multiple birds ----
 #********************************************************************
-l_dt_results <- rsf_result_table(sum_rsf_multipl, coefficient = 5)
+l_dt_results <- rsf_result_table(sum_rsf_multipl[!names(sum_rsf_multipl)%in%covid], coefficient = 5)
   # nb of outliers : sum(is.na(l_dt_results[[2]]$est))
   
 
@@ -118,10 +117,22 @@ l_dt_results <- rsf_result_table(sum_rsf_multipl, coefficient = 5)
 
 
 #********************************************************************
-rsf_meta <- metamodel(sum_rsf_multipl,
+rsf_meta <- metamodel(sum_rsf_multipl[!names(sum_rsf_multipl)%in%covid],
                       coefficient = 5,
-                      remove_outliers = TRUE,
+                      group = NULL,
+                      remove_outliers = FALSE,
                       outputfolder = file.path(base, "Tetralps", "5_OUTPUTS", "RSF", "rsf.fit_results", model))
+
+# Interpreting metagen() outputs 
+
+# 2 estimates : 
+    # Using a Common Effect Model
+    # - assumes the only variation is due to the sampling error 
+    # - assumes the studies (here individuals) with less variance have more weight
+    # ISSUE : relevant if the variance of all studies (individuals) are similar
+    # 
+    # Using a Random Effects Model (ESTIMATE WE KEPT)
+    # MORE RELEVANT FOR IF STRONG HETEROGENEITY OF THE VARIANCE OF ALL STUDIES (INDIVIDUALS)
 #********************************************************************
 
 

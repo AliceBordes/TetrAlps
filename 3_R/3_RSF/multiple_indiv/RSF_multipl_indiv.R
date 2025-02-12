@@ -48,13 +48,13 @@ detectCores()
 
 ### Settings ----
 #********************************************************************
-base<-"C:/Users/albordes/Documents/PhD"
+base <- "C:/Users/albordes/Documents/PhD"
 #********************************************************************
 
 # Loading data ----
 #********************************************************************
 ### DATASET
-birds_bg_dt<-read.csv2(file.path(base,"Tetralps/2_DATA/data_bg_pretelemetry_2024_10.csv"),sep=",") #upload the file from a csv, not a move2 object
+birds_bg_dt <- read.csv2(file.path(base,"Tetralps/2_DATA/data_bg_pretelemetry_2024_10.csv"),sep=",") #upload the file from a csv, not a move2 object
 
 ### VECTORS
 
@@ -64,7 +64,8 @@ borders_3V_vect <- terra::vect(file.path(base,"Tetralps/1_RAW_DATA/3V/borders_3V
 
 # Environment stack
 load(file.path(base,"TetrAlps/3_R/0_Heavy_saved_models/environment_3V/env_RL_list.RData"))
-load(file.path(base,"TetrAlps/3_R/0_Heavy_saved_models/environment_3V/scaled_env_RL_list.RData"))
+# load(file.path(base,"TetrAlps/3_R/0_Heavy_saved_models/environment_3V/scaled_env_RL_list.RData"))
+load(file.path(base,"TetrAlps/3_R/0_Heavy_saved_models/environment_3V/scaled_env_RL_list_10m_without_fractional_cover.RData"))
 
 # scaled_env_RL_list_new <- scaled_env_RL_list
 # load(file.path(base,"TetrAlps_old/3_R/0_Heavy_saved_models/environment_3V/scaled_env_RL_list.RData"))

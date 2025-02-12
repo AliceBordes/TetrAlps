@@ -15,7 +15,9 @@
 #********************************************************************
 # Ski resort visitors
 # Méribel Mottaret
-meribel_mottaret_formatting <- function(folderpath = file.path(base,"TetrAlps","1_RAW_DATA","human_traffic_in_ski_resorts","Meribel_mottaret_RM_Historique_des_passages_2017_22/"),sheetname = "Passage Détail", save = FALSE, folderoutpath = file.path(base,"TetrAlps/2_DATA/ski_resorts_visitor_numbers"))
+meribel_mottaret_formatting <- function(folderpath = file.path(base,"TetrAlps","1_RAW_DATA","3V","human_traffic_in_ski_resorts","Meribel_mottaret_RM_Historique_des_passages_2017_22/"),sheetname = "Passage Détail", 
+                                        save = FALSE, 
+                                        folderoutpath = file.path(base,"TetrAlps/2_DATA/ski_resorts_visitor_numbers"))
 {
   resort_files <- list.files(path = folderpath,pattern = "^[^~$].*\\.xlsx$", full.names = TRUE) # function to exclude files that start with ~$ and keep those that finish with .xlsx
   
@@ -70,7 +72,9 @@ meribel_mottaret_formatting <- function(folderpath = file.path(base,"TetrAlps","
 
 
 # Courchevel
-courchevel_formatting <- function(folderpath = file.path(base,"TetrAlps","1_RAW_DATA","human_traffic_in_ski_resorts","Courchevel_RM_Historique_des_passages_2017_22/"),sheetname = "Details", save = FALSE, folderoutpath = file.path(base,"TetrAlps/2_DATA/ski_resorts_visitor_numbers"))
+courchevel_formatting <- function(folderpath = file.path(base,"TetrAlps","1_RAW_DATA","3V","human_traffic_in_ski_resorts","Courchevel_RM_Historique_des_passages_2017_22/"),sheetname = "Details", 
+                                  save = FALSE, 
+                                  folderoutpath = file.path(base,"TetrAlps/2_DATA/ski_resorts_visitor_numbers"))
 {
   resort_files <- list.files(path = folderpath,pattern = "^[^~$].*\\.xlsx$", full.names = TRUE) # function to exclude files that start with ~$ and keep those that finish with .xlsx
   list_dt <- list()
@@ -144,7 +148,9 @@ courchevel_formatting <- function(folderpath = file.path(base,"TetrAlps","1_RAW_
 
 
 # ValThorens/Orelle
-valtho_formatting <- function(folderpath = file.path(base,"TetrAlps","1_RAW_DATA","human_traffic_in_ski_resorts","ValThorens_Orelle_RM_Historique_des_passages_2017_22"), save = FALSE, folderoutpath = file.path(base,"TetrAlps/2_DATA/ski_resorts_visitor_numbers"))
+valtho_formatting <- function(folderpath = file.path(base,"TetrAlps","1_RAW_DATA","3V","human_traffic_in_ski_resorts","ValThorens_Orelle_RM_Historique_des_passages_2017_22"), 
+                              save = FALSE, 
+                              folderoutpath = file.path(base,"TetrAlps/2_DATA/ski_resorts_visitor_numbers"))
 {
   resort_files <- paste0(folderpath,".xlsx") # function to exclude files that start with ~$ and keep those that finish with .xlsx
   list_dt <- list()
@@ -203,7 +209,9 @@ valtho_formatting <- function(folderpath = file.path(base,"TetrAlps","1_RAW_DATA
 
 
 # Les Ménuires
-menuires_formatting <- function(folderpath = file.path(base,"TetrAlps/1_RAW_DATA/human_traffic_in_ski_resorts/Les_Menuires_RM_Historique_des_passages_2017_22"), save = FALSE, folderoutpath = file.path(base,"TetrAlps/2_DATA/ski_resorts_visitor_numbers"))
+menuires_formatting <- function(folderpath = file.path(base,"TetrAlps","1_RAW_DATA","3V","human_traffic_in_ski_resorts","Les_Menuires_RM_Historique_des_passages_2017_22"), 
+                                save = FALSE, 
+                                folderoutpath = file.path(base,"TetrAlps","2_DATA","ski_resorts_visitor_numbers"))
 {
   resort_files <- paste0(folderpath,".xlsx") # function to exclude files that start with ~$ and keep those that finish with .xlsx
   list_dt <- list()
@@ -335,8 +343,8 @@ menuires_formatting <- function(folderpath = file.path(base,"TetrAlps/1_RAW_DATA
 #********************************************************************
 ### Snow depth    
 # Méribel      
-meribel_snow_formatting <- function(folderpath = file.path(base,"TetrAlps/1_RAW_DATA/environment/enneigement/meribel_meteo_france_neige.xlsx"),
-                                    folderoutpath = file.path(base,"TetrAlps/2_DATA/snow_depth"), save = FALSE)
+meribel_snow_formatting <- function(folderpath = file.path(base,"TetrAlps","1_RAW_DATA","3V","environment","enneigement","meribel_meteo_france_neige.xlsx"),
+                                    folderoutpath = file.path(base,"TetrAlps","2_DATA","snow_depth"), save = FALSE)
 {
   list_data <- list()
   
@@ -375,8 +383,8 @@ meribel_snow_formatting <- function(folderpath = file.path(base,"TetrAlps/1_RAW_
 
 # Courchevel
 
-courchevel_snow_formatting <- function(folderpath = file.path(base,"TetrAlps/1_RAW_DATA/environment/enneigement/courchevel1850_hauteurdeneige_journaliere_2019_2023_13072023.xlsx"),
-                                       folderoutpath = file.path(base,"TetrAlps/2_DATA/snow_depth"), save = FALSE)
+courchevel_snow_formatting <- function(folderpath = file.path(base,"TetrAlps","1_RAW_DATA","3V","environment","enneigement","courchevel1850_hauteurdeneige_journaliere_2019_2023_13072023.xlsx"),
+                                       folderoutpath = file.path(base,"TetrAlps","2_DATA","snow_depth"), save = FALSE)
 {
   list_data <- list()
   

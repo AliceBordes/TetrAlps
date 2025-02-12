@@ -232,6 +232,7 @@ envir_stack2 <- c(r_Trees,
                   r_Buildings,
                   r_Cliffs)
 
+
 scaled_habitats_list <- lapply(envir_stack2,raster::raster)
 names(scaled_habitats_list) <- sub("scaled_bin_", "", names(envir_stack2))
 
@@ -254,7 +255,7 @@ scaled_env_RL_list <- c(scaled_env_RL_list,scaled_habitats_list)
 # cat 5) Cliffs and water : Cliff, Natural pond, Artificial pond, Waterway, Unclassified
 
 
-save(scaled_env_RL_list,file=file.path(base,"TetrAlps/3_R/0_Heavy_saved_models/environment_3V/scaled_env_RL_list.RData"))
+save(scaled_env_RL_list,file=file.path(base,"TetrAlps/3_R/0_Heavy_saved_models/environment_3V/scaled_env_RL_list_10m_without_fractional_cover.RData"))
 load(file.path(base,"TetrAlps/3_R/0_Heavy_saved_models/environment_3V/scaled_env_RL_list.RData"))
 #********************************************************************
 

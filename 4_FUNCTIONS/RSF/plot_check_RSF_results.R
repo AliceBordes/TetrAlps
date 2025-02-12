@@ -983,7 +983,7 @@ points_plot_rsf <- function(data_table,
 
 metamodel <- function(raw_results,
                       remove_outliers = FALSE,
-                      group = 1,
+                      group = NULL,
                       coefficient = 1.5,
                       outputfolder = file.path(base, "Tetralps", "5_OUTPUTS", "RSF", "rsf.fit_results", model))
 {
@@ -991,76 +991,156 @@ metamodel <- function(raw_results,
     rsf_beta <- sapply(raw_results, "[[", "beta")
     # Retrieve variances estimates from the ctmm models for each bird
     rsf_var <- sapply(raw_results, function(x) diag(x[["COV"]])[1:nrow(rsf_beta)])
-    
-    
-    # Write results in a output file 
-    write.csv(cbind(as.data.frame(t(rsf_beta)), 
+
+
+    # Write results in a output file
+    write.csv(cbind(as.data.frame(t(rsf_beta)),
                     "any_outlier" = apply(apply(rsf_beta, 1, is_outlier), 1, any)),
                     # "strava_visit_outlier" = is_outlier(rsf_beta["strava:visitor.nb.std",], coefficient = coefficient)),
               file.path(outputfolder, "individual_parameters_metamodel.csv"))
-    
-    
+
+
     # Fixed effect and random effects meta-analysis based on estimates (e.g. log hazard ratios) and their standard errors. The inverse variance method is used for pooling.
     meta_models <- lapply(1:nrow(rsf_beta), function(x) {
 
-      if(remove_outliers == TRUE) 
+      if(remove_outliers == TRUE)
       {
         ok <- !is_outlier(rsf_beta[x, ]) # remove outliers for each variable
       }else{
-        ok <- rep(TRUE,length(rsf_beta[x, ])) # keep outliers for each variable
+        ok <- rep(TRUE,ncol(rsf_beta)) # keep outliers for each variable
       }
-      
+
       meta_df <- metagen(TE = rsf_beta[x, ok],  # beta estimates
                          seTE = sqrt(rsf_var[x, ok]), # var estimates
                          studlab = names(raw_results)[ok]) # labels
-      
+
+      print(rownames(rsf_beta)[x])
       print(meta_df)
-      metareg(meta_df, ~group)
       
-      # # Meta-regression with covid group
-      # 
-      # # Créer une variable indicatrice pour le groupe COVID
-      # covid_indicator <- ifelse(names(sum_rsf_multipl) %in% covid, 1, 0)
-      # meta_df$data$covid_indicator <- covid_indicator[ok] 
-      # 
-      # metareg(meta_df, ~ covid_indicator)
+      if(is.null(group))
+      {
+        metareg <- metareg(meta_df, ~1)
+      }
+
+      if(!is.null(group) && group == "covid")
+      {
+        # Meta-regression with covid group
+
+        # Creation of an indicator for covid
+        covid_indicator <- ifelse(names(raw_results) %in% covid, 1, 0)
+        meta_df$data$covid_indicator <- covid_indicator[ok]
+    
+
+        metareg <- metareg(meta_df, ~ covid_indicator)
+      }
       
+      if(!is.null(group) && group == "sex")
+      {
+        # Meta-regression with covid group
+        
+        # Creation of an indicator for covid
+        male_indicator <- ifelse(names(raw_results) %in% males, 1, 0)
+        meta_df$data$male_indicator <- male_indicator[ok]
+        
+        metareg <- metareg(meta_df, ~ male_indicator)
+      }
+
+      return(metareg)
     })
+    
+    
+    
     print(meta_models)
-    meta_model_coef <- data.frame(t(sapply(meta_models, 
-                                           function(x) c("coef" = x$beta[1], 
-                                                         "se" = x$se, 
-                                                         "pval" = x$pval,
-                                                         "ci.lb" = x$ci.lb,
-                                                         "ci.ub" = x$ci.ub,
-                                                         "tau" = sqrt(x$tau2)))))
+
+    meta_model_coef <- data.frame(t(sapply(meta_models, function(x) {
+      # Initialize output vector
+      result <- c(
+        "se" = x$se,
+        "tau" = sqrt(x$tau2)
+      )
+      
+      # Check if 'group' is NULL (simple meta-analysis)
+      if (is.null(group)) {
+        result <- c("coef_effect" = x$beta[1],
+                    "pval" = x$pval,
+                    "ci.lb" = x$ci.lb,
+                    "ci.ub" = x$ci.ub,
+                    result)
+      } else {
+        # Meta-regression case: two coefficients (intercept & group effect)
+        result <- c(
+          "intercept_effect" = x$beta[1],
+          "group_effect" = x$beta[2],
+          "pval_ref" = x$pval[1],
+          "pval_effect" = x$pval[2],
+          "ci.lb1" = x$ci.lb[1],
+          "ci.ub1" = x$ci.ub[1],
+          "ci.lb2" = x$ci.lb[2],
+          "ci.ub2" = x$ci.ub[2],
+          result
+        )
+      }
+      
+      return(result)
+    })))
+    
     rownames(meta_model_coef) <- names(raw_results[[1]]$beta)
-    
-    print(meta_model_coef)
+
     write.csv(meta_model_coef, file.path(outputfolder,paste0("metamodel",if(remove_outliers == TRUE){"_out_removed"},".csv")))
+
+
+    if (is.null(group)) {
+      
+      rsf_results_table_meta <- data.frame("covariates" = rownames(meta_model_coef),
+                                           "est" = meta_model_coef$coef_effect,
+                                           "p" = meta_model_coef$pval,
+                                           "low" = meta_model_coef$ci.lb, # lower bound of the conf interval = meta_model_coef$coef - 1.96*meta_model_coef$se
+                                           "high" = meta_model_coef$ci.ub,
+                                           "bird" = "Meta",
+                                           "period" = NA
+                                           )
+    } else {
+      
+      rsf_results_table_meta <- data.frame("covariates" = rownames(meta_model_coef),
+                                           "est_gr_ref" = meta_model_coef$intercept_effect,
+                                           "p_ref" = meta_model_coef$pval_ref,
+                                           "est_gr_effect" = meta_model_coef$group_effect,
+                                           "p_effect" = meta_model_coef$pval_effect,
+                                           "low_ref" = meta_model_coef$ci.lb1, # lower bound of the conf interval = meta_model_coef$coef - 1.96*meta_model_coef$se
+                                           "high_ref" = meta_model_coef$ci.ub1,
+                                           "low_effect" = meta_model_coef$ci.lb2, # lower bound of the conf interval = meta_model_coef$coef - 1.96*meta_model_coef$se
+                                           "high_effect" = meta_model_coef$ci.ub2,
+                                           "bird" = "Meta",
+                                           "period" = NA
+                                           )
+    }
     
-    
-    rsf_results_table_meta <- data.frame("covariates" = rownames(meta_model_coef), 
-                                     "est" = meta_model_coef$coef,
-                                     "low" = meta_model_coef$ci.lb, # lower bound of the conf interval = meta_model_coef$coef - 1.96*meta_model_coef$se
-                                     "high" = meta_model_coef$ci.ub, 
-                                     "bird" = "Meta", 
-                                     "period" = NA,
-                                     "pval" = meta_model_coef$pval)
-    
-    
-    ### Plot results of the satatistical test 
-    
-    meta_model_coef <- cbind(rownames(meta_model_coef),meta_model_coef)
-    names(meta_model_coef) <- c("rownames(meta_model_coef)" = "covariates", "coef" = "est", "se" = "se", "pval" = "p", "ci.lb" = "low", "ci.ub" = "high", "tau" = "tau")
-    meta_model_table <- nice_table(meta_model_coef %>% dplyr::select(-"tau", -"se"),
-                                   note = c(
-                                     "* p < .05, ** p < .01, *** p < .001"
-                                   ))
-    flextable::save_as_docx(meta_model_table, path = file.path(outputfolder,paste0("rsf_meta_results",if(remove_outliers == TRUE){"_out_removed"},if(group != 1){paste0("_",group)},".docx")))
-    
-    
-    
+
+    print(rsf_results_table_meta)
+
+    ### Plot results of the satatistical test
+
+      if (is.null(group)) {
+        meta_model_table <- nice_table(rsf_results_table_meta %>% dplyr::select(-"bird", -"period"),
+                                       note = c(
+                                         "* p < .05, ** p < .01, *** p < .001"
+                                       ))
+        }else{
+
+          meta_model_table <- nice_table(rsf_results_table_meta %>% dplyr::select(-"bird", -"period"),
+                                         col.format.p = c(3,5),
+                                         note = c(
+                                           "* p_ref < .05, ** p_ref < .01, *** p_ref < .001, * p_effect < .05, ** p_effect < .01, *** p_effect < .001" 
+                                         ))
+          
+        }
+      
+      
+      
+    flextable::save_as_docx(meta_model_table, path = file.path(outputfolder,paste0("rsf_meta_results",if(remove_outliers == TRUE){"_out_removed"},if(!is.null(group)){paste0("_",group)},".docx")))
+
+
+
     return(rsf_results_table_meta)
 }
 
@@ -1074,185 +1154,185 @@ metamodel <- function(raw_results,
 
 
 
-
-### 4_Metamodel ----
-#********************************************************************
-rsf_beta <- sapply(sum_rsf_multipl, "[[", "beta")
-rsf_var <- sapply(sum_rsf_multipl, function(x) diag(x[["COV"]])[1:nrow(rsf_beta)])
-
-is_outlier <- function(x) {
-  x %in% boxplot.stats(x)$out
-}
-
-write.csv(cbind(as.data.frame(t(rsf_beta)), 
-                "any_outlier" = apply(apply(rsf_beta, 1, is_outlier), 1, any),
-                "strava_visit_outlier" = is_outlier(rsf_beta["strava:total.visitors.std",])),
-          file.path(base, "Tetralps", "5_OUTPUTS", "RSF", "meta_model", "individual_parameters_metamodel=59birds_individual_2025_01_13.csv"))
-
-# Fixed effect and random effects meta-analysis based on estimates (e.g. log hazard ratios) and their standard errors. The inverse variance method is used for pooling.
-meta_models <- lapply(1:nrow(rsf_beta), function(x) {
-  ok <- !is_outlier(rsf_beta[x, ]) # remove outliers 
-  meta_df <- metagen(TE = rsf_beta[x, ok],  # beta estimates
-                     seTE = sqrt(rsf_var[x, ok]), # var estimates
-                     studlab = names(sum_rsf_multipl)[ok]) # labels
-  metareg(meta_df, ~1)
-  # metareg(meta_df, ~period) ->
-})
-
-meta_model_coef <- data.frame(t(sapply(meta_models, 
-                                       function(x) c("coef" = x$beta[1], 
-                                                     "se" = x$se, 
-                                                     "pval" = x$pval,
-                                                     "ci.lb" = x$ci.lb,
-                                                     "ci.ub" = x$ci.ub,
-                                                     "tau" = sqrt(x$tau2)))))
-rownames(meta_model_coef) <- names(sum_rsf_multipl[[1]]$beta)
-write.csv(meta_model_coef, file.path(base, "Tetralps", "5_OUTPUTS", "RSF", "meta_model","metamodel=59birds_individual_2025_01_13.csv"))
-
-
-
-rsf_results_table2 <- data.frame("covariates" = rownames(meta_model_coef), 
-                                 "est" = meta_model_coef$coef,
-                                 "low" = meta_model_coef$ci.lb, # lower bound of the conf interval = meta_model_coef$coef - 1.96*meta_model_coef$se
-                                 "high" = meta_model_coef$ci.ub, 
-                                 "bird" = "Meta", 
-                                 "period" = NA)
-
-rsf_results_table <- rbind(rsf_results_table, rsf_results_table2[, -which(colnames(rsf_results_table2) == "period")])
-
-
-
-# Filter the data for boxplot and Meta
-boxplot_data <- rsf_results_table %>% filter(!is.na(period))
-meta_data <- rsf_results_table %>% filter(bird == "Meta")
-
-
-# Supress Fiasco estimation for Buildings (outlier) 
-# rsf_results_table[rsf_results_table$covariates == "Buildings" & rsf_results_table$bird == "Fiasco", "est"] <- NA
-rsf_results_table[rsf_results_table$covariates == "Buildings" & rsf_results_table$bird == "Dynamite_2", "est"] <- NA
-rsf_results_table[rsf_results_table$covariates == "Cliffs" & rsf_results_table$bird == "Dameur", "est"] <- NA
-
-
-
-# Plot1
-
-ggplot(data = rsf_results_table %>% filter(covariates %in% c("strava","strava:total.visitors.std" , "Cliffs", "Trees", "Shrubs", "Buildings")), aes(y = covariates, x = est))+
-  # ggplot(data = rsf_results_table %>% filter(covariates %in% c("leks")), aes(y = covariates, x = est))+
-  geom_boxplot(aes(color = covariates), fill = alpha("grey", 0.2), notch = TRUE)+
-  new_scale_color()+
-  geom_jitter(color = alpha("black",0.6))+
-  scale_color_manual(
-    name = "Bird groups", # Legend title
-    values = c(
-      "Monitored during covid" = "red", # Group "covid_all" in black
-      "Others" = "black"        # Others in red
-    ),
-    labels = c("covid_all" = "Covid All Birds", "Other" = "Other Birds") # Custom labels
-  ) +
-  # geom_text(
-  #   aes(
-  #     label = bird,             # Add bird names as labels
-  #     color = ifelse(bird %in% covid_all, "covid_all", "Other")
-  #   ),
-  #   hjust = -0.2,               # Horizontal adjustment to move labels slightly
-  #   vjust = 0.5,                # Vertical adjustment to align with points
-  #   size = 4                    # Text size
-  # ) +
-  # Add blue segments for Meta estimates
-  geom_segment(data = meta_data %>% filter(covariates %in% c("strava", "strava:total.visitors.std" , "Cliffs", "Trees", "Shrubs", "Buildings")), 
-               aes(x = est, xend = est, y = as.numeric(as.factor(covariates)) - 0.4, yend = as.numeric(as.factor(covariates)) + 0.4, color = "Meta estimates"),
-               size = 1.2) +
-  # Manual color adjustments
-  scale_color_manual(values = c("Meta estimates" = "blue")) +
-  # Labels and theme adjustments
-  labs(y = "Covariates", 
-       x = "Estimates", 
-       title = paste0("Results of the RSF performed on ", length(unique(rsf_results_table$bird))-1, " birds \n(estimated coefficients by covariate)"),
-       color = NULL) +  # Remove "color" title from legend
-  geom_vline(xintercept = 0, linetype = "dashed") +
-  theme(axis.text.x = element_text(hjust = 1),  
-        panel.background = element_blank(),
-        plot.title = element_text(size = 22),
-        plot.subtitle = element_text(size = 20),
-        axis.title = element_text(size = 20),
-        axis.text = element_text(size = 20),
-        legend.title = element_text(size = 20),
-        legend.text = element_text(size = 18))
-
-
-
-
-
-# Plot2
-ggplot(data = boxplot_data %>% filter(covariates %in% c("strava", "strava:total.visitors.std", "Cliffs", "Trees", "Shrubs", "Buildings")), 
-       aes(y = covariates, x = est)) +
-  # Boxplot colored by covariates, grouped by period
-  geom_boxplot(aes(color = covariates, fill = factor(period)), 
-               alpha = 0.2, 
-               position = position_dodge(width = 0.8),
-               notch = TRUE) +
-  new_scale_color()+
-  # Add blue segments for Meta estimates
-  geom_segment(data = meta_data %>% filter(covariates %in% c("strava", "strava:total.visitors.std", "Cliffs", "Trees", "Shrubs", "Buildings")), 
-               aes(x = est, xend = est, y = as.numeric(as.factor(covariates)) - 0.4, yend = as.numeric(as.factor(covariates)) + 0.4, color = "Meta estimates"),
-               size = 1.2) +
-  # Manual fill and color adjustments
-  scale_fill_manual(name = "Period", values = c("red", "grey")) +
-  scale_color_manual(values = c("Meta estimates" = "blue")) +
-  # Labels and theme adjustments
-  labs(y = "Covariates", 
-       x = "Estimates", 
-       title = paste0("Results of the RSF performed on ", length(unique(rsf_results_table$bird))-1, " birds \n(estimated coefficients by covariate)"),
-       color = NULL) +  # Remove "color" title from legend
-  geom_vline(xintercept = 0, linetype = "dashed") +
-  theme(axis.text.x = element_text(hjust = 1),  
-        panel.background = element_blank(),
-        plot.title = element_text(size = 22),
-        plot.subtitle = element_text(size = 20),
-        axis.title = element_text(size = 20),
-        axis.text = element_text(size = 20),
-        legend.title = element_text(size = 20),
-        legend.text = element_text(size = 18))
-
-
-### Statistical test 
-
-meta_model_coef <- cbind(rownames(meta_model_coef),meta_model_coef)
-names(meta_model_coef) <- c("rownames(meta_model_coef)" = "covariates", "coef" = "est", "se" = "se", "pval" = "p", "ci.lb" = "low", "ci.ub" = "high", "tau" = "tau")
-meta_model_table <- nice_table(meta_model_coef %>% dplyr::select(-"tau", -"se"),
-                               note = c(
-                                 "* p < .05, ** p < .01, *** p < .001"
-                               ))
-flextable::save_as_docx(meta_model_table, path = file.path(base, "Tetralps", "5_OUTPUTS", "RSF", "meta_model","formatted_results_text" , "metamodel=59birds_individual_2025_01_13_formatted.docx"))
-
-
-
-
-#' ## High suitability thresholds
 #' 
-#' NOT WORKING 
-# home_ranges <- lapply(l_akde_rsf_winter_meta, SpatialPolygonsDataFrame.UD, 
-#                       level.UD = 0.95)
-
-sapply_suitability <- function(x, R) {
-  res <- future_lapply(x, ctmm::suitability, R = R, grid = R[[1]], 
-                       future.seed = TRUE)
-  res <- lapply(res, "[[", "est")
-  terra::rast(lapply(res, terra::rast))
-}
-
-suit_ref <- sapply_suitability(sum_rsf_multipl, scaled_env_RL_list_selection)
-
-
-median_in_mask <- function(x, y) {
-  median(terra::values(terra::mask(x, terra::vect(y)[1,])), na.rm = TRUE)
-}
-hisuit_threshold <- mapply(median_in_mask, as.list(suit_ref), home_ranges)
-#********************************************************************
-
-
-
-
-
-
-
+#' ### 4_Metamodel ----
+#' #********************************************************************
+#' rsf_beta <- sapply(sum_rsf_multipl, "[[", "beta")
+#' rsf_var <- sapply(sum_rsf_multipl, function(x) diag(x[["COV"]])[1:nrow(rsf_beta)])
+#' 
+#' is_outlier <- function(x) {
+#'   x %in% boxplot.stats(x)$out
+#' }
+#' 
+#' write.csv(cbind(as.data.frame(t(rsf_beta)), 
+#'                 "any_outlier" = apply(apply(rsf_beta, 1, is_outlier), 1, any),
+#'                 "strava_visit_outlier" = is_outlier(rsf_beta["strava:total.visitors.std",])),
+#'           file.path(base, "Tetralps", "5_OUTPUTS", "RSF", "meta_model", "individual_parameters_metamodel=59birds_individual_2025_01_13.csv"))
+#' 
+#' # Fixed effect and random effects meta-analysis based on estimates (e.g. log hazard ratios) and their standard errors. The inverse variance method is used for pooling.
+#' meta_models <- lapply(1:nrow(rsf_beta), function(x) {
+#'   ok <- !is_outlier(rsf_beta[x, ]) # remove outliers 
+#'   meta_df <- metagen(TE = rsf_beta[x, ok],  # beta estimates
+#'                      seTE = sqrt(rsf_var[x, ok]), # var estimates
+#'                      studlab = names(sum_rsf_multipl)[ok]) # labels
+#'   metareg(meta_df, ~1)
+#'   # metareg(meta_df, ~period) ->
+#' })
+#' 
+#' meta_model_coef <- data.frame(t(sapply(meta_models, 
+#'                                        function(x) c("coef" = x$beta[1], 
+#'                                                      "se" = x$se, 
+#'                                                      "pval" = x$pval,
+#'                                                      "ci.lb" = x$ci.lb,
+#'                                                      "ci.ub" = x$ci.ub,
+#'                                                      "tau" = sqrt(x$tau2)))))
+#' rownames(meta_model_coef) <- names(sum_rsf_multipl[[1]]$beta)
+#' write.csv(meta_model_coef, file.path(base, "Tetralps", "5_OUTPUTS", "RSF", "meta_model","metamodel=59birds_individual_2025_01_13.csv"))
+#' 
+#' 
+#' 
+#' rsf_results_table2 <- data.frame("covariates" = rownames(meta_model_coef), 
+#'                                  "est" = meta_model_coef$coef,
+#'                                  "low" = meta_model_coef$ci.lb, # lower bound of the conf interval = meta_model_coef$coef - 1.96*meta_model_coef$se
+#'                                  "high" = meta_model_coef$ci.ub, 
+#'                                  "bird" = "Meta", 
+#'                                  "period" = NA)
+#' 
+#' rsf_results_table <- rbind(rsf_results_table, rsf_results_table2[, -which(colnames(rsf_results_table2) == "period")])
+#' 
+#' 
+#' 
+#' # Filter the data for boxplot and Meta
+#' boxplot_data <- rsf_results_table %>% filter(!is.na(period))
+#' meta_data <- rsf_results_table %>% filter(bird == "Meta")
+#' 
+#' 
+#' # Supress Fiasco estimation for Buildings (outlier) 
+#' # rsf_results_table[rsf_results_table$covariates == "Buildings" & rsf_results_table$bird == "Fiasco", "est"] <- NA
+#' rsf_results_table[rsf_results_table$covariates == "Buildings" & rsf_results_table$bird == "Dynamite_2", "est"] <- NA
+#' rsf_results_table[rsf_results_table$covariates == "Cliffs" & rsf_results_table$bird == "Dameur", "est"] <- NA
+#' 
+#' 
+#' 
+#' # Plot1
+#' 
+#' ggplot(data = rsf_results_table %>% filter(covariates %in% c("strava","strava:total.visitors.std" , "Cliffs", "Trees", "Shrubs", "Buildings")), aes(y = covariates, x = est))+
+#'   # ggplot(data = rsf_results_table %>% filter(covariates %in% c("leks")), aes(y = covariates, x = est))+
+#'   geom_boxplot(aes(color = covariates), fill = alpha("grey", 0.2), notch = TRUE)+
+#'   new_scale_color()+
+#'   geom_jitter(color = alpha("black",0.6))+
+#'   scale_color_manual(
+#'     name = "Bird groups", # Legend title
+#'     values = c(
+#'       "Monitored during covid" = "red", # Group "covid_all" in black
+#'       "Others" = "black"        # Others in red
+#'     ),
+#'     labels = c("covid_all" = "Covid All Birds", "Other" = "Other Birds") # Custom labels
+#'   ) +
+#'   # geom_text(
+#'   #   aes(
+#'   #     label = bird,             # Add bird names as labels
+#'   #     color = ifelse(bird %in% covid_all, "covid_all", "Other")
+#'   #   ),
+#'   #   hjust = -0.2,               # Horizontal adjustment to move labels slightly
+#'   #   vjust = 0.5,                # Vertical adjustment to align with points
+#'   #   size = 4                    # Text size
+#'   # ) +
+#'   # Add blue segments for Meta estimates
+#'   geom_segment(data = meta_data %>% filter(covariates %in% c("strava", "strava:total.visitors.std" , "Cliffs", "Trees", "Shrubs", "Buildings")), 
+#'                aes(x = est, xend = est, y = as.numeric(as.factor(covariates)) - 0.4, yend = as.numeric(as.factor(covariates)) + 0.4, color = "Meta estimates"),
+#'                size = 1.2) +
+#'   # Manual color adjustments
+#'   scale_color_manual(values = c("Meta estimates" = "blue")) +
+#'   # Labels and theme adjustments
+#'   labs(y = "Covariates", 
+#'        x = "Estimates", 
+#'        title = paste0("Results of the RSF performed on ", length(unique(rsf_results_table$bird))-1, " birds \n(estimated coefficients by covariate)"),
+#'        color = NULL) +  # Remove "color" title from legend
+#'   geom_vline(xintercept = 0, linetype = "dashed") +
+#'   theme(axis.text.x = element_text(hjust = 1),  
+#'         panel.background = element_blank(),
+#'         plot.title = element_text(size = 22),
+#'         plot.subtitle = element_text(size = 20),
+#'         axis.title = element_text(size = 20),
+#'         axis.text = element_text(size = 20),
+#'         legend.title = element_text(size = 20),
+#'         legend.text = element_text(size = 18))
+#' 
+#' 
+#' 
+#' 
+#' 
+#' # Plot2
+#' ggplot(data = boxplot_data %>% filter(covariates %in% c("strava", "strava:total.visitors.std", "Cliffs", "Trees", "Shrubs", "Buildings")), 
+#'        aes(y = covariates, x = est)) +
+#'   # Boxplot colored by covariates, grouped by period
+#'   geom_boxplot(aes(color = covariates, fill = factor(period)), 
+#'                alpha = 0.2, 
+#'                position = position_dodge(width = 0.8),
+#'                notch = TRUE) +
+#'   new_scale_color()+
+#'   # Add blue segments for Meta estimates
+#'   geom_segment(data = meta_data %>% filter(covariates %in% c("strava", "strava:total.visitors.std", "Cliffs", "Trees", "Shrubs", "Buildings")), 
+#'                aes(x = est, xend = est, y = as.numeric(as.factor(covariates)) - 0.4, yend = as.numeric(as.factor(covariates)) + 0.4, color = "Meta estimates"),
+#'                size = 1.2) +
+#'   # Manual fill and color adjustments
+#'   scale_fill_manual(name = "Period", values = c("red", "grey")) +
+#'   scale_color_manual(values = c("Meta estimates" = "blue")) +
+#'   # Labels and theme adjustments
+#'   labs(y = "Covariates", 
+#'        x = "Estimates", 
+#'        title = paste0("Results of the RSF performed on ", length(unique(rsf_results_table$bird))-1, " birds \n(estimated coefficients by covariate)"),
+#'        color = NULL) +  # Remove "color" title from legend
+#'   geom_vline(xintercept = 0, linetype = "dashed") +
+#'   theme(axis.text.x = element_text(hjust = 1),  
+#'         panel.background = element_blank(),
+#'         plot.title = element_text(size = 22),
+#'         plot.subtitle = element_text(size = 20),
+#'         axis.title = element_text(size = 20),
+#'         axis.text = element_text(size = 20),
+#'         legend.title = element_text(size = 20),
+#'         legend.text = element_text(size = 18))
+#' 
+#' 
+#' ### Statistical test 
+#' 
+#' meta_model_coef <- cbind(rownames(meta_model_coef),meta_model_coef)
+#' names(meta_model_coef) <- c("rownames(meta_model_coef)" = "covariates", "coef" = "est", "se" = "se", "pval" = "p", "ci.lb" = "low", "ci.ub" = "high", "tau" = "tau")
+#' meta_model_table <- nice_table(meta_model_coef %>% dplyr::select(-"tau", -"se"),
+#'                                note = c(
+#'                                  "* p < .05, ** p < .01, *** p < .001"
+#'                                ))
+#' flextable::save_as_docx(meta_model_table, path = file.path(base, "Tetralps", "5_OUTPUTS", "RSF", "meta_model","formatted_results_text" , "metamodel=59birds_individual_2025_01_13_formatted.docx"))
+#' 
+#' 
+#' 
+#' 
+#' #' ## High suitability thresholds
+#' #' 
+#' #' NOT WORKING 
+#' # home_ranges <- lapply(l_akde_rsf_winter_meta, SpatialPolygonsDataFrame.UD, 
+#' #                       level.UD = 0.95)
+#' 
+#' sapply_suitability <- function(x, R) {
+#'   res <- future_lapply(x, ctmm::suitability, R = R, grid = R[[1]], 
+#'                        future.seed = TRUE)
+#'   res <- lapply(res, "[[", "est")
+#'   terra::rast(lapply(res, terra::rast))
+#' }
+#' 
+#' suit_ref <- sapply_suitability(sum_rsf_multipl, scaled_env_RL_list_selection)
+#' 
+#' 
+#' median_in_mask <- function(x, y) {
+#'   median(terra::values(terra::mask(x, terra::vect(y)[1,])), na.rm = TRUE)
+#' }
+#' hisuit_threshold <- mapply(median_in_mask, as.list(suit_ref), home_ranges)
+#' #********************************************************************
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
