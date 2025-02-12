@@ -867,16 +867,16 @@ points_plot_rsf <- function(data_table,
       gg_points_rsf[[i]] <- gg_points_rsf[[i]] + 
         geom_boxplot(aes(color = covariates), fill = alpha("grey", 0.2), notch = TRUE) +
         new_scale_color() +
-        geom_jitter(color = "black", size = 3, alpha = 0.6) +
+        geom_jitter(color = "#666666", size = 3, alpha = 0.6) +
         scale_color_manual(name = "Meta model", values = c("Meta estimates" = "blue")) +
         # Add blue segments for Meta estimates
-        geom_segment(data = meta_data %>% dplyr::select(!pval) %>% filter(covariates %in% model_covar[!model_covar %in% list_excluded_covariables]), 
+        geom_segment(data = meta_data %>% dplyr::select(!p) %>% filter(covariates %in% model_covar[!model_covar %in% list_excluded_covariables]), 
                      aes(x = est, xend = est, y = as.numeric(as.factor(covariates)) - 0.4, yend = as.numeric(as.factor(covariates)) + 0.4, color = "Meta estimates"),
                      size = 1.2) +
         # Manual color adjustments
         # Add a blue asterisk above the segment if pval < 0.05
-        geom_text(data = meta_data %>% filter(pval < 0.05 & covariates %in% model_covar[!model_covar %in% list_excluded_covariables]), 
-                  aes(x = est, y = as.numeric(as.factor(covariates)) + 0.3, label = "*"), 
+        geom_text(data = meta_data %>% filter(p < 0.05 & covariates %in% model_covar[!model_covar %in% list_excluded_covariables]), 
+                  aes(x = est, y = as.numeric(as.factor(covariates)) + 1.1, label = "*"), 
                   color = "blue", size = 12, vjust = -1)  # Adjust vjust to position the asterisk
     }
     
@@ -887,16 +887,16 @@ points_plot_rsf <- function(data_table,
         geom_jitter(aes(color = ifelse(bird %in% covid, "Monitored during covid", "Others")), 
                     size = 3, alpha = 0.6) +
         scale_color_manual(name = "Bird groups", 
-                           values = c("Monitored during covid" = "red", "Others" = "black"),
+                           values = c("Monitored during covid" = "red", "Others" = "#666666"),
                            labels = c("Monitored during covid" = "Monitored during covid", "Others" = "Monitored out covid")) +
         new_scale_color()+
         scale_color_manual(name = "Meta model", values = c("Meta estimates" = "blue")) +
         # Add blue segments for Meta estimates
-        geom_segment(data = meta_data %>% dplyr::select(!pval) %>% filter(covariates %in% model_covar[!model_covar %in% list_excluded_covariables]), 
+        geom_segment(data = meta_data %>% dplyr::select(!p_ref) %>% filter(covariates %in% model_covar[!model_covar %in% list_excluded_covariables]), 
                      aes(x = est, xend = est, y = as.numeric(as.factor(covariates)) - 0.4, yend = as.numeric(as.factor(covariates)) + 0.4, color = "Meta estimates"),
                      size = 1.2) +
         # Manual color adjustments
-        geom_text(data = meta_data %>% filter(pval < 0.05 & covariates %in% model_covar[!model_covar %in% list_excluded_covariables]), 
+        geom_text(data = meta_data %>% filter(p_ref < 0.05 & covariates %in% model_covar[!model_covar %in% list_excluded_covariables]), 
                   aes(x = est, y = as.numeric(as.factor(covariates)) + 0.3, label = "*"), 
                   color = "blue", size = 12, vjust = -1)  # Adjust vjust to position the asterisk
     }
@@ -913,11 +913,11 @@ points_plot_rsf <- function(data_table,
         new_scale_color()+
         scale_color_manual(name = "Meta model", values = c("Meta estimates" = "blue")) +
         # Add blue segments for Meta estimates
-        geom_segment(data = meta_data %>% dplyr::select(!pval) %>% filter(covariates %in% model_covar[!model_covar %in% list_excluded_covariables]), 
+        geom_segment(data = meta_data %>% dplyr::select(!p_ref) %>% filter(covariates %in% model_covar[!model_covar %in% list_excluded_covariables]), 
                      aes(x = est, xend = est, y = as.numeric(as.factor(covariates)) - 0.4, yend = as.numeric(as.factor(covariates)) + 0.4, color = "Meta estimates"),
                      size = 1.2) +
         # Manual color adjustments
-        geom_text(data = meta_data %>% filter(pval < 0.05 & covariates %in% model_covar[!model_covar %in% list_excluded_covariables]), 
+        geom_text(data = meta_data %>% filter(p_ref < 0.05 & covariates %in% model_covar[!model_covar %in% list_excluded_covariables]), 
                   aes(x = est, y = as.numeric(as.factor(covariates)) + 0.3, label = "*"), 
                   color = "blue", size = 12, vjust = -1)  # Adjust vjust to position the asterisk
     }
@@ -935,11 +935,11 @@ points_plot_rsf <- function(data_table,
         new_scale_color()+
         scale_color_manual(name = "Meta model", values = c("Meta estimates" = "blue")) +
         # Add blue segments for Meta estimates
-        geom_segment(data = meta_data %>% dplyr::select(!pval) %>% filter(covariates %in% model_covar[!model_covar %in% list_excluded_covariables]), 
+        geom_segment(data = meta_data %>% dplyr::select(!p_ref) %>% filter(covariates %in% model_covar[!model_covar %in% list_excluded_covariables]), 
                      aes(x = est, xend = est, y = as.numeric(as.factor(covariates)) - 0.4, yend = as.numeric(as.factor(covariates)) + 0.4, color = "Meta estimates"),
                      size = 1.2) +
         # Manual color adjustments
-        geom_text(data = meta_data %>% filter(pval < 0.05 & covariates %in% model_covar[!model_covar %in% list_excluded_covariables]), 
+        geom_text(data = meta_data %>% filter(p_ref < 0.05 & covariates %in% model_covar[!model_covar %in% list_excluded_covariables]), 
                   aes(x = est, y = as.numeric(as.factor(covariates)) + 0.3, label = "*"), 
                   color = "blue", size = 12, vjust = -1)  # Adjust vjust to position the asterisk
     }

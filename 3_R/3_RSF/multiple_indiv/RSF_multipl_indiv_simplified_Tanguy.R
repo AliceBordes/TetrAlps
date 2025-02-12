@@ -12,7 +12,7 @@
 
 #### Loading libraries ----
 #********************************************************************
-library(move2)
+# library(move2)
 library(sf)
 library(ggplot2)
 library(rnaturalearth) #needs rnaturalearthhires also installed
@@ -48,7 +48,8 @@ detectCores()
 
 ### Settings ----
 #********************************************************************
-base <- "C:/Users/albordes/Documents/PhD"
+base <- "C:/Users/albordes/Documents/PhD/TetrAlps"
+covid <- c("Caramel_2", "Daisy","Dalton","Dameur","Dario","Darkvador","Darwin","Dede","Destroy","Diot","Djal","Django","Donald","Durite","Dynamite","Dyonisos")
 #********************************************************************
 
 # Loading data ----
@@ -57,7 +58,7 @@ base <- "C:/Users/albordes/Documents/PhD"
 birds_bg_dt <- read.csv2(file.path(base,"2_DATA","data_bg_pretelemetry_2024_10.csv"),sep=",") #upload the file from a csv, not a move2 object
 
 ### ENV
-load(file.path(base,"TetrAlps/3_R/0_Heavy_saved_models/environment_3V/scaled_env_RL_list.RData"))
+load(file.path(base,"2_DATA","scaled_env_RL_list.RData"))
 
 # Visitor numbers
 visitor_meribel <- read.csv2(file.path(base,"2_DATA","ski_resorts_visitor_numbers","meribel_visitors.csv"), sep=",")
@@ -89,14 +90,14 @@ snow_courch <- as.data.frame(snow_courch)
 
 ### Loading functions ----
 #********************************************************************
-source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/my_telemetry_transfo_data.R")
-source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/Homerange_visu/mean_size_area.R")
-source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/Homerange_visu/visu_home_range.R")
-source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/Homerange_visu/distance_home_range_capture_site.R")
-source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/Homerange_visu/multi_graph_home_range.R")
-source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/RSF/plot_check_RSF_results.R")
-source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/RSF/rsf_functions.R")
-source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/Formatting_data/formatting_environment_data.R")
+source(file.path("4_FUNCTIONS","my_telemetry_transfo_data.R"))
+source(file.path("4_FUNCTIONS","Homerange_visu/mean_size_area.R"))
+source(file.path("4_FUNCTIONS","Homerange_visu/visu_home_range.R"))
+source(file.path("4_FUNCTIONS","Homerange_visu","distance_home_range_capture_site.R"))
+source(file.path("4_FUNCTIONS","Homerange_visu","multi_graph_home_range.R"))
+source(file.path("4_FUNCTIONS","RSF","plot_check_RSF_results.R"))
+source(file.path("4_FUNCTIONS","RSF","rsf_functions.R"))
+source(file.path("4_FUNCTIONS","Formatting_data/formatting_environment_data.R"))
 #********************************************************************
 
 
@@ -113,14 +114,24 @@ birds_bg_dt <- add_variables_visit_open(birds_bg_dt)
 
 
 
+#### 3_Home range estimation : Fitting an RSF for 1 bird ----
+#********************************************************************
 
+### Loading packages for RSF ----
+#******************************************************************** 
+# library(animove)
+library(ctmm)
+library(sf)
+library(mvtnorm)
+library(terra)
+#******************************************************************** 
 
 #********************************************************************
 # Load the outputs of tele_akde with visitor number as continuous variable
-load(file = file.path(base,"3_R","0_Heavy_saved_models","birds_3V", "multipl_telemetry_winter_saison2_2025_01_23.Rdata"))
-load(file = file.path(base,"3_R","0_Heavy_saved_models","birds_3V", "multipl_guess_winter_saison2_2025_01_23.Rdata"))
-load(file = file.path(base,"3_R","0_Heavy_saved_models","birds_3V", "multipl_fit_winter_saison2_2025_01_23.Rdata"))
-load(file = file.path(base,"3_R","0_Heavy_saved_models","birds_3V", "multipl_akde_winter_saison2_2025_01_23.Rdata"))
+load(file = file.path(base,"2_DATA", "multipl_telemetry_winter_saison2_2025_01_23.Rdata"))
+load(file = file.path(base,"2_DATA", "multipl_guess_winter_saison2_2025_01_23.Rdata"))
+load(file = file.path(base,"2_DATA", "multipl_fit_winter_saison2_2025_01_23.Rdata"))
+load(file = file.path(base,"2_DATA", "multipl_akde_winter_saison2_2025_01_23.Rdata"))
 
 l_telemetry_winter <- list_of_one(l_telemetry_winter)
 l_akde_winter <- list_of_one(l_akde_winter)
@@ -135,17 +146,7 @@ l_fit_winter <- l_fit_winter[names(l_fit_winter) %in% names(l_telemetry_winter)]
 #********************************************************************  
 
 
-#### 3_Home range estimation : Fitting an RSF for 1 bird ----
-#********************************************************************
 
-### Loading packages for RSF ----
-#******************************************************************** 
-# library(animove)
-library(ctmm)
-library(sf)
-library(mvtnorm)
-library(terra)
-#******************************************************************** 
 
 
 ### 3.4_RSF ----
@@ -154,6 +155,8 @@ library(terra)
 # Selection of the rasters to use in the RSF
 scaled_env_RL_list_selection <-  scaled_env_RL_list[!(names(scaled_env_RL_list) %in% c("slope", "leks"))]
 # scaled_env_RL_list_selection <-  scaled_env_RL_list[c("elevation", "squared_elevation", "strava","leks")]
+
+
 
 # Define the formula
 model_formula <- ~ elevation + 
@@ -164,56 +167,63 @@ model_formula <- ~ elevation +
   strava_winter_sports:total.visitors.std +
   Shrubs +
   Cliffs +
-  Buildings +
   Trees 
+
+system.time(try(
+  RSF_results_multpl_birds <- RSF_birds(  
+    telemetry_list = l_telemetry_winter[!names(l_telemetry_winter)%in%covid],
+    akde_list = l_akde_winter[!names(l_akde_winter)%in%covid],
+    clusters = 8,
+    # telemetry_list = l_telemetry_winter, 
+    # akde_list = l_akde_winter,
+    env_raster_list = scaled_env_RL_list_selection,
+    rsf_formula = model_formula,
+    rsf_integrator = "Riemann", # "MonteCarlo", 
+    # grid = "full",
+    outputfolder = file.path(base),
+    write = TRUE
+  ) ) # end try
+)
+
+
+
+
 
 # Define the formula
 model_formula <- ~ elevation + 
   squared_elevation + 
   strava_winter_sports +
-  Shrubs +
+  Cliffs:sl_open +
+  Cliffs:sl_open:total.visitors.std +
+  Cliffs:total.visitors.std +
   Cliffs +
+  Shrubs +
   Trees 
 
-# physico-climatic related variables
-# ~ elevation +
-# squared_elevation +
-
-# human perturbations related variables
-# strava +
-# strava:sl_open +
-# strava:visitor_breaksLow:sl_open +
-# strava:visitor_breaksHigh:sl_open +
-# strava:visitor_breaksVery_high:sl_open +
-# strava:total.visitors.std +
-
-# habitat-related variables and human perturbations related variables (Buildings)
-# Shrubs +
-# Cliffs +
-# Buildings +
-# Trees
-# Deciduous_trees +
-# Resinous_trees +
-# Mixed_trees +
-# Shrubs:sl_open +
-# Cliffs:sl_open +
-# Buildings:sl_open +
-# Trees:sl_open
-# Cliffs:total.visitors.std
-
 system.time(
-  RSF_results_multpl_birds <- RSF_birds(  #telemetry_list = l_telemetry_winter[!names(l_telemetry_winter)%in%covid_all], 
-    #akde_list = l_akde_winter[!names(l_akde_winter)%in%covid_all],
-    telemetry_list = l_telemetry_winter, 
-    akde_list = l_akde_winter,
+  try(
+  RSF_results_multpl_birds <- RSF_birds(  
+    telemetry_list = l_telemetry_winter[!names(l_telemetry_winter)%in%covid],
+    akde_list = l_akde_winter[!names(l_akde_winter)%in%covid],
+    clusters = 24,
+    # telemetry_list = l_telemetry_winter, 
+    # akde_list = l_akde_winter,
     env_raster_list = scaled_env_RL_list_selection,
     rsf_formula = model_formula,
     rsf_integrator = "Riemann", # "MonteCarlo", 
     # grid = "full",
-    outputfolder = file.path(base, "5_OUTPUTS", "RSF", "rsf.fit_results"),
+    outputfolder = file.path(base),
     write = TRUE
-  ) 
+  ) ) # end try
 )
+
+
+
+  
+
+
+
+
 #********************************************************************
 
 

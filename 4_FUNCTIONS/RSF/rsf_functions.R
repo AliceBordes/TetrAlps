@@ -48,7 +48,7 @@ tele_akde <- function(data,
                       birds_vect = FALSE, 
                       season = "hiver", 
                       subset_category = "saison2", 
-                      outputfolder = file.path(base, "Tetralps", "3_R", "0_Heavy_saved_models", "birds_3V"),
+                      outputfolder = file.path(base, "3_R", "0_Heavy_saved_models", "birds_3V"),
                       write = FALSE)
 {
   if(!isFALSE(birds_vect))
@@ -170,7 +170,7 @@ tele_akde <- function(data,
 #********************************************************************  
 
 bird_sampling_sche <- function(telemetry_list = l_telemetry_winter, 
-                               outputfolder = file.path(base, "Tetralps", "5_OUTPUTS","RSF","sampling"), 
+                               outputfolder = file.path(base, "5_OUTPUTS","RSF","sampling"), 
                                write = FALSE)
 {
   for(bg in seq_along(telemetry_list)) #l_telemetry_winter
@@ -217,7 +217,7 @@ bird_sampling_sche <- function(telemetry_list = l_telemetry_winter,
 bird_variogram <- function(telemetry_list = l_telemetry_winter, 
                            fit_list = l_fit_winter,
                            dt_hour = NULL, 
-                           outputfolder = file.path(base, "Tetralps", "5_OUTPUTS","RSF","variograms"), 
+                           outputfolder = file.path(base, "5_OUTPUTS","RSF","variograms"), 
                            write = FALSE)
 {
   for(bg in seq_along(telemetry_list)) #l_telemetry_winter
@@ -332,17 +332,18 @@ overlap_winter <- function(telemetry_list,
 #********************************************************************  
 RSF_birds <- function(telemetry_list, 
                       akde_list,
+                      clusters = 8,
                       env_raster_list,
                       rsf_formula,
                       rsf_integrator = "MonteCarlo",
                       grid = "individual",
-                      outputfolder = file.path(base, "Tetralps", "5_OUTPUTS", "RSF", "rsf.fit_results"),
+                      outputfolder = file.path(base, "5_OUTPUTS", "RSF", "rsf.fit_results"),
                       write = TRUE)
 {
   warning("The arguments telemetry_list and akde_list must have a unique element in their nested list.")
   
   # Create a parallel cluster
-  cl <- makeCluster(8)
+  cl <- makeCluster(clusters)
   registerDoParallel(cl)
   
   # Explicitly export required variables to the cluster
@@ -441,9 +442,7 @@ RSF_birds <- function(telemetry_list,
   
 
 
-
-
-
+  
 # Write README file
 readme_file <- file.path(outputfolder,
                          paste0(clean_name, "_", name_grid,"_", format(Sys.time(),"%Y_%m_%d_%Hh%Mmin")),

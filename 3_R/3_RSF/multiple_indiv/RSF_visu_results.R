@@ -43,19 +43,19 @@ library(doParallel)
 library(rempsyc)
 detectCores()
 
-base <- "C:/Users/albordes/Documents/PhD"
+base <- "C:/Users/albordes/Documents/PhD/TetrAlps"
 #********************************************************************
 
 ### Loading functions ----
 #********************************************************************
-source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/my_telemetry_transfo_data.R")
-source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/Homerange_visu/mean_size_area.R")
-source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/Homerange_visu/visu_home_range.R")
-source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/Homerange_visu/distance_home_range_capture_site.R")
-source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/Homerange_visu/multi_graph_home_range.R")
-source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/RSF/plot_check_RSF_results.R")
-source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/RSF/rsf_functions.R")
-source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/Formatting_data/formatting_environment_data.R")
+source(file.path("4_FUNCTIONS","my_telemetry_transfo_data.R"))
+source(file.path("4_FUNCTIONS","Homerange_visu/mean_size_area.R"))
+source(file.path("4_FUNCTIONS","Homerange_visu/visu_home_range.R"))
+source(file.path("4_FUNCTIONS","Homerange_visu","distance_home_range_capture_site.R"))
+source(file.path("4_FUNCTIONS","Homerange_visu","multi_graph_home_range.R"))
+source(file.path("4_FUNCTIONS","RSF","plot_check_RSF_results.R"))
+source(file.path("4_FUNCTIONS","RSF","rsf_functions.R"))
+source(file.path("4_FUNCTIONS","Formatting_data/formatting_environment_data.R"))
 #********************************************************************
 
 
@@ -86,7 +86,7 @@ covid <- c("Caramel_2", "Daisy","Dalton","Dameur","Dario","Darkvador","Darwin","
 females <- unique((birds_bg_dt %>% filter(animal.sex == "femelle"))$animal.ID)
 males <- unique((birds_bg_dt %>% filter(animal.sex == "male"))$animal.ID)
 
-model <- "rsf_59birds_individual_2025_01_30_06h06min"
+model <- "rsf_59birds_individual_2025_02_12_15h41min"
 #********************************************************************
 
 
@@ -162,8 +162,16 @@ points_plot_rsf(l_dt_results,
                 list_excluded_covariables = c("elevation", "squared_elevation"))
 
 #********************************************************************
-
-
+tryCatch(
+  {
+    b <- 2 + 6  # This line is fine
+    c <- 2 + 6a # This line has an error (undefined variable 'a')
+    d <- 6
+  },
+  error = function(e) {
+    print(paste("Error:", e$message))  # Handle the error
+  }
+)
 
 
 

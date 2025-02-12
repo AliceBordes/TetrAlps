@@ -12,7 +12,7 @@
 
 #### Loading libraries ----
 #********************************************************************
-library(move2)
+# library(move2)
 library(sf)
 library(ggplot2)
 library(rnaturalearth) #needs rnaturalearthhires also installed
@@ -49,6 +49,7 @@ detectCores()
 ### Settings ----
 #********************************************************************
 base <- "C:/Users/albordes/Documents/PhD/Tetralps"
+covid <- c("Caramel_2", "Daisy","Dalton","Dameur","Dario","Darkvador","Darwin","Dede","Destroy","Diot","Djal","Django","Donald","Durite","Dynamite","Dyonisos")
 #********************************************************************
 
 # Loading data ----
@@ -105,14 +106,14 @@ dt_resorts <- read.csv2(file.path(base,"2_Data","bg_winter_assign_valley_resort.
 
 ### Loading functions ----
 #********************************************************************
-source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/my_telemetry_transfo_data.R")
-source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/Homerange_visu/mean_size_area.R")
-source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/Homerange_visu/visu_home_range.R")
-source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/Homerange_visu/distance_home_range_capture_site.R")
-source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/Homerange_visu/multi_graph_home_range.R")
-source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/RSF/plot_check_RSF_results.R")
-source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/RSF/rsf_functions.R")
-source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/Formatting_data/formatting_environment_data.R")
+source(file.path("4_FUNCTIONS","my_telemetry_transfo_data.R"))
+source(file.path("4_FUNCTIONS","Homerange_visu/mean_size_area.R"))
+source(file.path("4_FUNCTIONS","Homerange_visu/visu_home_range.R"))
+source(file.path("4_FUNCTIONS","Homerange_visu","distance_home_range_capture_site.R"))
+source(file.path("4_FUNCTIONS","Homerange_visu","multi_graph_home_range.R"))
+source(file.path("4_FUNCTIONS","RSF","plot_check_RSF_results.R"))
+source(file.path("4_FUNCTIONS","RSF","rsf_functions.R"))
+source(file.path("4_FUNCTIONS","Formatting_data/formatting_environment_data.R"))
 #********************************************************************
 
 
