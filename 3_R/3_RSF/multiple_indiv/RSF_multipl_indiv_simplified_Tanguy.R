@@ -54,32 +54,32 @@ base <- "C:/Users/albordes/Documents/PhD"
 # Loading data ----
 #********************************************************************
 ### DATASET
-birds_bg_dt <- read.csv2(file.path(base,"Tetralps/2_DATA/RSF_model/data_bg_pretelemetry_2024_10.csv"),sep=",") #upload the file from a csv, not a move2 object
+birds_bg_dt <- read.csv2(file.path(base,"2_DATA","data_bg_pretelemetry_2024_10.csv"),sep=",") #upload the file from a csv, not a move2 object
 
 ### ENV
 load(file.path(base,"TetrAlps/3_R/0_Heavy_saved_models/environment_3V/scaled_env_RL_list.RData"))
 
 # Visitor numbers
-visitor_meribel <- read.csv2(base,"Tetralps/2_DATA/RSF_model/ski_resorts_visitor_numbers/meribel_visitors.csv", sep=",")
+visitor_meribel <- read.csv2(file.path(base,"2_DATA","ski_resorts_visitor_numbers","meribel_visitors.csv"), sep=",")
 visitor_meribel$Date <- as.Date(visitor_meribel$Date)
 
-visitor_valtho <- read.csv2(base,"Tetralps/2_DATA/RSF_model/ski_resorts_visitor_numbers/valtho_visitors.csv", sep=",")
+visitor_valtho <- read.csv2(file.path(base,"2_DATA","ski_resorts_visitor_numbers","valtho_visitors.csv"), sep=",")
 visitor_valtho$Date <- as.Date(visitor_valtho$Date)
 
-visitor_courch <- read.csv2(base,"Tetralps/2_DATA/RSF_model/ski_resorts_visitor_numbers/courchevel_visitors.csv", sep=",")
+visitor_courch <- read.csv2(file.path(base,"2_DATA","ski_resorts_visitor_numbers","courchevel_visitors.csv"), sep=",")
 visitor_courch$Date <- as.Date(visitor_courch$Date)
 
-visitor_menui <- read.csv2(base,"Tetralps/2_DATA/RSF_model/ski_resorts_visitor_numbers/menuires_visitors.csv", sep=",")
+visitor_menui <- read.csv2(file.path(base,"2_DATA","ski_resorts_visitor_numbers","menuires_visitors.csv"), sep=",")
 visitor_menui$Date <- as.Date(visitor_menui$Date)
 visitor_menui$Total <- as.integer(visitor_menui$Total)
 
 # Snow deph
-snow_meribel <- read.csv2(file.path(base,"Tetralps/2_DATA/RSF_model/snow_depth/meribel_snow_depth.csv"), sep=",")
+snow_meribel <- read.csv2(file.path(base,"2_DATA","snow_depth","meribel_snow_depth.csv"), sep=",")
 snow_meribel$Date <- as.Date(snow_meribel$Date)
 snow_meribel <- snow_meribel %>% group_by(Date) %>% summarise(snow.depth = mean(cumul.H.neige.cm))
 snow_meribel <- as.data.frame(snow_meribel)
 
-snow_courch <- read.csv2(file.path(base,"Tetralps/2_DATA/RSF_model/snow_depth/courchevel_snow_depth.csv"), sep=",")
+snow_courch <- read.csv2(file.path(base,"2_DATA","snow_depth","courchevel_snow_depth.csv"), sep=",")
 snow_courch$Date <- as.Date(snow_courch$Date)
 snow_courch <- snow_courch %>% group_by(Date) %>% summarise(snow.depth = mean(cumul.H.neige.cm))
 snow_courch <- as.data.frame(snow_courch)
@@ -117,10 +117,10 @@ birds_bg_dt <- add_variables_visit_open(birds_bg_dt)
 
 #********************************************************************
 # Load the outputs of tele_akde with visitor number as continuous variable
-load(file = file.path(base,"Tetralps","3_R","0_Heavy_saved_models","birds_3V", "multipl_telemetry_winter_saison2_2025_01_23.Rdata"))
-load(file = file.path(base,"Tetralps","3_R","0_Heavy_saved_models","birds_3V", "multipl_guess_winter_saison2_2025_01_23.Rdata"))
-load(file = file.path(base,"Tetralps","3_R","0_Heavy_saved_models","birds_3V", "multipl_fit_winter_saison2_2025_01_23.Rdata"))
-load(file = file.path(base,"Tetralps","3_R","0_Heavy_saved_models","birds_3V", "multipl_akde_winter_saison2_2025_01_23.Rdata"))
+load(file = file.path(base,"3_R","0_Heavy_saved_models","birds_3V", "multipl_telemetry_winter_saison2_2025_01_23.Rdata"))
+load(file = file.path(base,"3_R","0_Heavy_saved_models","birds_3V", "multipl_guess_winter_saison2_2025_01_23.Rdata"))
+load(file = file.path(base,"3_R","0_Heavy_saved_models","birds_3V", "multipl_fit_winter_saison2_2025_01_23.Rdata"))
+load(file = file.path(base,"3_R","0_Heavy_saved_models","birds_3V", "multipl_akde_winter_saison2_2025_01_23.Rdata"))
 
 l_telemetry_winter <- list_of_one(l_telemetry_winter)
 l_akde_winter <- list_of_one(l_akde_winter)
@@ -210,7 +210,7 @@ system.time(
     rsf_formula = model_formula,
     rsf_integrator = "Riemann", # "MonteCarlo", 
     # grid = "full",
-    outputfolder = file.path(base, "TetrAlps", "5_OUTPUTS", "RSF", "rsf.fit_results"),
+    outputfolder = file.path(base, "5_OUTPUTS", "RSF", "rsf.fit_results"),
     write = TRUE
   ) 
 )

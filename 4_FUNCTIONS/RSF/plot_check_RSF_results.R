@@ -713,7 +713,7 @@ plot_check_RSF_res<-function(telemetry_data,akde_data,raster,analysis_object,dat
   
   if(writeplot==TRUE)
   {
-    ggsave(path=paste0(base,"/TetrAlps/5_OUTPUTS/RSF/check_results/RSF_on_",raster),filename=paste0(telemetry_data@info$identity,"_RSF_on_",raster,"_",analysis_object,"_",data_visu,".jpg"),plot=g_bird,height =10 ,width =15)
+    ggsave(path=paste0(base,"/5_OUTPUTS/RSF/check_results/RSF_on_",raster),filename=paste0(telemetry_data@info$identity,"_RSF_on_",raster,"_",analysis_object,"_",data_visu,".jpg"),plot=g_bird,height =10 ,width =15)
   }
   
   return()
@@ -823,7 +823,7 @@ points_plot_rsf <- function(data_table,
                             list_excluded_covariables,
                             meta_data,
                             boxplot_by_group = FALSE,
-                            outputfolder = file.path(base, "Tetralps", "5_OUTPUTS", "RSF", "rsf.fit_results", model),
+                            outputfolder = file.path(base, "5_OUTPUTS", "RSF", "rsf.fit_results", model),
                             write = TRUE,
                             group = "none") {  # Add group parameter to control the group selection
   
@@ -985,7 +985,7 @@ metamodel <- function(raw_results,
                       remove_outliers = FALSE,
                       group = NULL,
                       coefficient = 1.5,
-                      outputfolder = file.path(base, "Tetralps", "5_OUTPUTS", "RSF", "rsf.fit_results", model))
+                      outputfolder = file.path(base, "5_OUTPUTS", "RSF", "rsf.fit_results", model))
 {
     # Retrieve beta estimates from the ctmm models for each bird
     rsf_beta <- sapply(raw_results, "[[", "beta")
@@ -1167,7 +1167,7 @@ metamodel <- function(raw_results,
 #' write.csv(cbind(as.data.frame(t(rsf_beta)), 
 #'                 "any_outlier" = apply(apply(rsf_beta, 1, is_outlier), 1, any),
 #'                 "strava_visit_outlier" = is_outlier(rsf_beta["strava:total.visitors.std",])),
-#'           file.path(base, "Tetralps", "5_OUTPUTS", "RSF", "meta_model", "individual_parameters_metamodel=59birds_individual_2025_01_13.csv"))
+#'           file.path(base, "5_OUTPUTS", "RSF", "meta_model", "individual_parameters_metamodel=59birds_individual_2025_01_13.csv"))
 #' 
 #' # Fixed effect and random effects meta-analysis based on estimates (e.g. log hazard ratios) and their standard errors. The inverse variance method is used for pooling.
 #' meta_models <- lapply(1:nrow(rsf_beta), function(x) {
@@ -1187,7 +1187,7 @@ metamodel <- function(raw_results,
 #'                                                      "ci.ub" = x$ci.ub,
 #'                                                      "tau" = sqrt(x$tau2)))))
 #' rownames(meta_model_coef) <- names(sum_rsf_multipl[[1]]$beta)
-#' write.csv(meta_model_coef, file.path(base, "Tetralps", "5_OUTPUTS", "RSF", "meta_model","metamodel=59birds_individual_2025_01_13.csv"))
+#' write.csv(meta_model_coef, file.path(base, "5_OUTPUTS", "RSF", "meta_model","metamodel=59birds_individual_2025_01_13.csv"))
 #' 
 #' 
 #' 
@@ -1303,7 +1303,7 @@ metamodel <- function(raw_results,
 #'                                note = c(
 #'                                  "* p < .05, ** p < .01, *** p < .001"
 #'                                ))
-#' flextable::save_as_docx(meta_model_table, path = file.path(base, "Tetralps", "5_OUTPUTS", "RSF", "meta_model","formatted_results_text" , "metamodel=59birds_individual_2025_01_13_formatted.docx"))
+#' flextable::save_as_docx(meta_model_table, path = file.path(base, "5_OUTPUTS", "RSF", "meta_model","formatted_results_text" , "metamodel=59birds_individual_2025_01_13_formatted.docx"))
 #' 
 #' 
 #' 

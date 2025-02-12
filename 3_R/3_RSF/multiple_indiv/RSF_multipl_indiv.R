@@ -48,57 +48,57 @@ detectCores()
 
 ### Settings ----
 #********************************************************************
-base <- "C:/Users/albordes/Documents/PhD"
+base <- "C:/Users/albordes/Documents/PhD/Tetralps"
 #********************************************************************
 
 # Loading data ----
 #********************************************************************
 ### DATASET
-birds_bg_dt <- read.csv2(file.path(base,"Tetralps/2_DATA/data_bg_pretelemetry_2024_10.csv"),sep=",") #upload the file from a csv, not a move2 object
+birds_bg_dt <- read.csv2(file.path(base,"2_DATA","data_bg_pretelemetry_2024_10.csv"),sep=",") #upload the file from a csv, not a move2 object
 
 ### VECTORS
 
 # 3V borders 
-borders_3V_vect <- st_read(file.path(base,"Tetralps/1_RAW_DATA/3V/borders_3V.gpkg"))
-borders_3V_vect <- terra::vect(file.path(base,"Tetralps/1_RAW_DATA/3V/borders_3V.gpkg"))
+borders_3V_vect <- st_read(file.path(base,"1_RAW_DATA","3V","borders_3V.gpkg"))
+borders_3V_vect <- terra::vect(file.path(base,"1_RAW_DATA","3V","borders_3V.gpkg"))
 
 # Environment stack
-load(file.path(base,"TetrAlps/3_R/0_Heavy_saved_models/environment_3V/env_RL_list.RData"))
-# load(file.path(base,"TetrAlps/3_R/0_Heavy_saved_models/environment_3V/scaled_env_RL_list.RData"))
-load(file.path(base,"TetrAlps/3_R/0_Heavy_saved_models/environment_3V/scaled_env_RL_list_10m_without_fractional_cover.RData"))
+load(file.path(base,"3_R","0_Heavy_saved_models","environment_3V","env_RL_list.RData"))
+# load(file.path(base,"3_R","0_Heavy_saved_models","environment_3V","scaled_env_RL_list.RData"))
+load(file.path(base,"3_R","0_Heavy_saved_models","environment_3V","scaled_env_RL_list_10m_without_fractional_cover.RData"))
 
 # scaled_env_RL_list_new <- scaled_env_RL_list
 # load(file.path(base,"TetrAlps_old/3_R/0_Heavy_saved_models/environment_3V/scaled_env_RL_list.RData"))
 # scaled_env_RL_list_old <- scaled_env_RL_list
 
 # Visitor numbers
-visitor_meribel <- read.csv2("C:/Users/albordes/Documents/PhD/TetrAlps/2_DATA/ski_resorts_visitor_numbers/meribel_visitors.csv", sep=",")
+visitor_meribel <- read.csv2(file.path(base,"2_DATA","ski_resorts_visitor_numbers","meribel_visitors.csv"), sep=",")
 visitor_meribel$Date <- as.Date(visitor_meribel$Date)
 
-visitor_valtho <- read.csv2("C:/Users/albordes/Documents/PhD/TetrAlps/2_DATA/ski_resorts_visitor_numbers/valtho_visitors.csv", sep=",")
+visitor_valtho <- read.csv2(file.path(base,"2_DATA","ski_resorts_visitor_numbers","valtho_visitors.csv"), sep=",")
 visitor_valtho$Date <- as.Date(visitor_valtho$Date)
 
-visitor_courch <- read.csv2("C:/Users/albordes/Documents/PhD/TetrAlps/2_DATA/ski_resorts_visitor_numbers/courchevel_visitors.csv", sep=",")
+visitor_courch <- read.csv2(file.path(base,"2_DATA","ski_resorts_visitor_numbers","courchevel_visitors.csv"), sep=",")
 visitor_courch$Date <- as.Date(visitor_courch$Date)
 
-visitor_menui <- read.csv2("C:/Users/albordes/Documents/PhD/TetrAlps/2_DATA/ski_resorts_visitor_numbers/menuires_visitors.csv", sep=",")
+visitor_menui <- read.csv2(file.path(base,"2_DATA","ski_resorts_visitor_numbers","menuires_visitors.csv"), sep=",")
 visitor_menui$Date <- as.Date(visitor_menui$Date)
 visitor_menui$Total <- as.integer(visitor_menui$Total)
 
 # Snow deph
-snow_meribel <- read.csv2("C:/Users/albordes/Documents/PhD/TetrAlps/2_DATA/snow_depth/meribel_snow_depth.csv", sep=",")
+snow_meribel <- read.csv2(file.path(base,"2_DATA","snow_depth","meribel_snow_depth.csv"), sep=",")
 snow_meribel$Date <- as.Date(snow_meribel$Date)
 snow_meribel <- snow_meribel %>% group_by(Date) %>% summarise(snow.depth = mean(cumul.H.neige.cm))
 snow_meribel <- as.data.frame(snow_meribel)
 
-snow_courch <- read.csv2("C:/Users/albordes/Documents/PhD/TetrAlps/2_DATA/snow_depth/courchevel_snow_depth.csv", sep=",")
+snow_courch <- read.csv2(file.path(base,"2_DATA","snow_depth","courchevel_snow_depth.csv"), sep=",")
 snow_courch$Date <- as.Date(snow_courch$Date)
 snow_courch <- snow_courch %>% group_by(Date) %>% summarise(snow.depth = mean(cumul.H.neige.cm))
 snow_courch <- as.data.frame(snow_courch)
 
 # ski resort identification
-ski_lift_traffic_3V <- st_read("C:/Users/albordes/Documents/PhD/TetrAlps/2_DATA/ski_lift_traffic_3V.gpkg")
-dt_resorts <- read.csv2(file.path(base,"Tetralps","2_Data","bg_winter_assign_valley_resort.csv"))
+ski_lift_traffic_3V <- st_read(file.path(base,"2_DATA","ski_lift_traffic_3V.gpkg"))
+dt_resorts <- read.csv2(file.path(base,"2_Data","bg_winter_assign_valley_resort.csv"))
 #********************************************************************
 
 
@@ -137,13 +137,13 @@ tele_akde(data = birds_bg_dt,
           # birds_vect = c("Alpha", "Caramel", "Dalton","Dario","Donald","Dynamite","Dyonisos","Ecolo","Eros","Fast","Ficelle","Flambeur","Fleau","Foliedouce"),
           season = "hiver",
           subset_category = "saison2",
-          outputfolder = file.path(base, "Tetralps", "3_R", "0_Heavy_saved_models", "birds_3V"),
+          outputfolder = file.path(base, "3_R", "0_Heavy_saved_models", "birds_3V"),
           write = TRUE)
 
 # tele_akde(data = bird_winter_outcovid,
 #           season = "hiver",
 #           subset_category = "saison",
-#           outputfolder = file.path(base, "Tetralps", "3_R", "0_Heavy_saved_models", "birds_3V"),
+#           outputfolder = file.path(base, "3_R", "0_Heavy_saved_models", "birds_3V"),
 #           write = TRUE)
 #********************************************************************
 
@@ -151,9 +151,9 @@ tele_akde(data = birds_bg_dt,
 ### 2.2_Data Loading of telemetry, guess, fit and akde objects for rsf ----
 #********************************************************************
 # to run with telemetry, guess, fit, akde
-  # load(file = file.path(base,"Tetralps","3_R","0_Heavy_saved_models","birds_3V", "raw_lists", "multipl_akde_winter_hiver.Rdata"))
+  # load(file = file.path(base,"3_R","0_Heavy_saved_models","birds_3V", "raw_lists", "multipl_akde_winter_hiver.Rdata"))
   # l_akde_winter_singlew <- l_akde_winter
-  # load(file = file.path(base,"Tetralps","3_R","0_Heavy_saved_models","birds_3V", "raw_lists", "multipl_akde_winter_saison2.Rdata"))
+  # load(file = file.path(base,"3_R","0_Heavy_saved_models","birds_3V", "raw_lists", "multipl_akde_winter_saison2.Rdata"))
   # l_akde_winter <- c(l_akde_winter_singlew[!(names(l_akde_winter_singlew) %in% names(l_akde_winter))], list_of_one(l_akde_winter))
   # # Identify elements with empty names
   # unnamed_indices <- which(names(l_akde_winter) == "")
@@ -161,14 +161,14 @@ tele_akde(data = birds_bg_dt,
   # if (length(unnamed_indices) > 0) {
   #   l_akde_winter <- l_akde_winter[-unnamed_indices]
   # }
-  # save(l_akde_winter, file = file.path(base,"Tetralps","3_R","0_Heavy_saved_models","birds_3V", "multipl_akde_winter.Rdata"))
+  # save(l_akde_winter, file = file.path(base,"3_R","0_Heavy_saved_models","birds_3V", "multipl_akde_winter.Rdata"))
 
   
 # Load the outputs of tele_akde with visitor number as continuous variable
-load(file = file.path(base,"Tetralps","3_R","0_Heavy_saved_models","birds_3V", "multipl_telemetry_winter_saison2_2025_01_23.Rdata"))
-load(file = file.path(base,"Tetralps","3_R","0_Heavy_saved_models","birds_3V", "multipl_guess_winter_saison2_2025_01_23.Rdata"))
-load(file = file.path(base,"Tetralps","3_R","0_Heavy_saved_models","birds_3V", "multipl_fit_winter_saison2_2025_01_23.Rdata"))
-load(file = file.path(base,"Tetralps","3_R","0_Heavy_saved_models","birds_3V", "multipl_akde_winter_saison2_2025_01_23.Rdata"))
+load(file = file.path(base,"3_R","0_Heavy_saved_models","birds_3V", "multipl_telemetry_winter_saison2_2025_01_23.Rdata"))
+load(file = file.path(base,"3_R","0_Heavy_saved_models","birds_3V", "multipl_guess_winter_saison2_2025_01_23.Rdata"))
+load(file = file.path(base,"3_R","0_Heavy_saved_models","birds_3V", "multipl_fit_winter_saison2_2025_01_23.Rdata"))
+load(file = file.path(base,"3_R","0_Heavy_saved_models","birds_3V", "multipl_akde_winter_saison2_2025_01_23.Rdata"))
 
 l_telemetry_winter <- list_of_one(l_telemetry_winter)
 l_akde_winter <- list_of_one(l_akde_winter)
@@ -232,13 +232,13 @@ library(terra)
 bird_variogram(l_telemetry_winter, 
                l_fit_winter,
                # dt_hour = c(1, 6, 12), 
-               outputfolder = file.path(base, "Tetralps", "5_OUTPUTS","RSF","variograms"), 
+               outputfolder = file.path(base, "5_OUTPUTS","RSF","variograms"), 
                write = TRUE)
   
   
   
 bird_sampling_sche(telemetry_list = l_telemetry_winter, 
-                   outputfolder = file.path(base, "Tetralps", "5_OUTPUTS","RSF","sampling"), 
+                   outputfolder = file.path(base, "5_OUTPUTS","RSF","sampling"), 
                    write = TRUE)
 #********************************************************************
   
@@ -354,7 +354,7 @@ RSF_results_multpl_birds <- RSF_birds(  #telemetry_list = l_telemetry_winter[!na
                                         rsf_formula = model_formula,
                                         rsf_integrator = "Riemann", # "MonteCarlo", 
                                         # grid = "full",
-                                        outputfolder = file.path(base, "TetrAlps", "5_OUTPUTS", "RSF", "rsf.fit_results"),
+                                        outputfolder = file.path(base, "5_OUTPUTS", "RSF", "rsf.fit_results"),
                                         write = TRUE
                                         ) 
 )
@@ -362,7 +362,7 @@ RSF_results_multpl_birds <- RSF_birds(  #telemetry_list = l_telemetry_winter[!na
 
 
 # # to link the different samples : 
-#     load(file = file.path(base, "Tetralps", "5_OUTPUTS", "RSF", "rsf.fit_results", paste0("rsf[31_59]_individual_2025_01_15.Rdata")))
+#     load(file = file.path(base, "5_OUTPUTS", "RSF", "rsf.fit_results", paste0("rsf[31_59]_individual_2025_01_15.Rdata")))
 #     sum_rsf_multipl3 <- sum_rsf_multipl
 #     sum_rsf_multipl <- c(sum_rsf_multipl1, sum_rsf_multipl2, sum_rsf_multipl3)
 #     # Identify elements with empty names
@@ -371,7 +371,7 @@ RSF_results_multpl_birds <- RSF_birds(  #telemetry_list = l_telemetry_winter[!na
 #     if (length(unnamed_indices) > 0) {
 #       l_akde_winter <- l_akde_winter[-unnamed_indices]
 #     }
-#     save(sum_rsf_multipl, file = file.path(base, "Tetralps", "5_OUTPUTS", "RSF", "rsf.fit_results", paste0("rsf_59birds_individual_2025_01_15.Rdata")))
+#     save(sum_rsf_multipl, file = file.path(base, "5_OUTPUTS", "RSF", "rsf.fit_results", paste0("rsf_59birds_individual_2025_01_15.Rdata")))
 
 
 
@@ -597,7 +597,7 @@ is_outlier <- function(x) {
 write.csv(cbind(as.data.frame(t(rsf_beta)), 
                 "any_outlier" = apply(apply(rsf_beta, 1, is_outlier), 1, any),
                 "strava_visit_outlier" = is_outlier(rsf_beta["strava:total.visitors.std",])),
-          file.path(base, "Tetralps", "5_OUTPUTS", "RSF", "meta_model", "individual_parameters_metamodel=59birds_individual_2025_01_13.csv"))
+          file.path(base, "5_OUTPUTS", "RSF", "meta_model", "individual_parameters_metamodel=59birds_individual_2025_01_13.csv"))
 
 # Fixed effect and random effects meta-analysis based on estimates (e.g. log hazard ratios) and their standard errors. The inverse variance method is used for pooling.
 meta_models <- lapply(1:nrow(rsf_beta), function(x) {
@@ -617,7 +617,7 @@ meta_model_coef <- data.frame(t(sapply(meta_models,
                                                      "ci.ub" = x$ci.ub,
                                                      "tau" = sqrt(x$tau2)))))
 rownames(meta_model_coef) <- names(sum_rsf_multipl[[1]]$beta)
-write.csv(meta_model_coef, file.path(base, "Tetralps", "5_OUTPUTS", "RSF", "meta_model","metamodel=59birds_individual_2025_01_13.csv"))
+write.csv(meta_model_coef, file.path(base, "5_OUTPUTS", "RSF", "meta_model","metamodel=59birds_individual_2025_01_13.csv"))
 
 
 
@@ -733,7 +733,7 @@ meta_model_table <- nice_table(meta_model_coef %>% dplyr::select(-"tau", -"se"),
                                note = c(
                                  "* p < .05, ** p < .01, *** p < .001"
                                ))
-flextable::save_as_docx(meta_model_table, path = file.path(base, "Tetralps", "5_OUTPUTS", "RSF", "meta_model","formatted_results_text" , "metamodel=59birds_individual_2025_01_13_formatted.docx"))
+flextable::save_as_docx(meta_model_table, path = file.path(base, "5_OUTPUTS", "RSF", "meta_model","formatted_results_text" , "metamodel=59birds_individual_2025_01_13_formatted.docx"))
 
 
 
@@ -763,7 +763,7 @@ hisuit_threshold <- mapply(median_in_mask, as.list(suit_ref), home_ranges)
 
 ### 4.1_Diagnostic graphs ----
 #********************************************************************
-metapara <- read.csv2(file.path(base, "Tetralps", "5_OUTPUTS","RSF" , "meta_model", "individual_model_parameters.csv"),
+metapara <- read.csv2(file.path(base, "5_OUTPUTS","RSF" , "meta_model", "individual_model_parameters.csv"),
                       sep = ",")
 
 # Reshape the data into long format
@@ -786,7 +786,7 @@ birds_bg_dt2$ski_season <- paste0(as.numeric(year(birds_bg_dt2$timestamp))-1,"_"
 #********************************************************************
 for (i in seq_along(l_telemetry_winter)) {
   bird <- names(l_telemetry_winter)[i]
-  png(file.path(base, "Tetralps", "5_OUTPUTS", "RSF", "rsf.fit_results", "residuals", paste0("residuals_", bird, ".png")),
+  png(file.path(base, "5_OUTPUTS", "RSF", "rsf.fit_results", "residuals", paste0("residuals_", bird, ".png")),
       res = 300, units = "cm", width = 20, height = 15)
   # par(mfrow = c(2,1))
   layout(matrix(c(1,1,2,3), ncol = 2, byrow = FALSE),
