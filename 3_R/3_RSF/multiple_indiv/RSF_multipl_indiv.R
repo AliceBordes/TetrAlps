@@ -65,8 +65,8 @@ borders_3V_vect <- terra::vect(file.path(base,"1_RAW_DATA","3V","borders_3V.gpkg
 
 # Environment stack
 load(file.path(base,"3_R","0_Heavy_saved_models","environment_3V","env_RL_list.RData"))
-# load(file.path(base,"3_R","0_Heavy_saved_models","environment_3V","scaled_env_RL_list.RData"))
-load(file.path(base,"3_R","0_Heavy_saved_models","environment_3V","scaled_env_RL_list_10m_without_fractional_cover.RData"))
+load(file.path(base,"3_R","0_Heavy_saved_models","environment_3V","scaled_env_RL_list.RData"))
+# load(file.path(base,"3_R","0_Heavy_saved_models","environment_3V","scaled_env_RL_list_10m_without_fractional_cover.RData"))
 
 # scaled_env_RL_list_new <- scaled_env_RL_list
 # load(file.path(base,"TetrAlps_old/3_R/0_Heavy_saved_models/environment_3V/scaled_env_RL_list.RData"))
@@ -98,8 +98,8 @@ snow_courch <- snow_courch %>% group_by(Date) %>% summarise(snow.depth = mean(cu
 snow_courch <- as.data.frame(snow_courch)
 
 # ski resort identification
-ski_lift_traffic_3V <- st_read(file.path(base,"2_DATA","ski_lift_traffic_3V.gpkg"))
-dt_resorts <- read.csv2(file.path(base,"2_Data","bg_winter_assign_valley_resort.csv"))
+ski_lift_traffic_3V <- st_read(file.path(base,"2_DATA","ski_resorts_visitor_numbers","osm", "ski_lift_traffic_3V.gpkg"))
+dt_resorts <- read.csv2(file.path(base,"2_Data","ski_resorts_visitor_numbers","bg_winter_assign_valley_resort.csv"))
 #********************************************************************
 
 
@@ -320,6 +320,18 @@ model_formula <- ~ elevation +
   Cliffs +
   Trees 
 
+
+# Define the formula
+model_formula <- ~ elevation + 
+  squared_elevation + 
+  strava_winter_sports +
+  strava_winter_sports:sl_open +
+  strava_winter_sports:sl_open:total.visitors.std +
+  strava_winter_sports:total.visitors.std +
+  Shrubs +
+  Cliffs +
+  Trees 
+
   # physico-climatic related variables
     # ~ elevation +
     # squared_elevation +
@@ -347,10 +359,10 @@ model_formula <- ~ elevation +
     # Cliffs:total.visitors.std
  
 system.time(
-RSF_results_multpl_birds <- RSF_birds(  #telemetry_list = l_telemetry_winter[!names(l_telemetry_winter)%in%covid_all], 
-                                        #akde_list = l_akde_winter[!names(l_akde_winter)%in%covid_all],
-                                        telemetry_list = l_telemetry_winter, 
-                                        akde_list = l_akde_winter,
+RSF_results_multpl_birds <- RSF_birds(  telemetry_list = l_telemetry_winter[!names(l_telemetry_winter)%in%covid], 
+                                        akde_list = l_akde_winter[!names(l_akde_winter)%in%covid],
+                                        # telemetry_list = l_telemetry_winter, 
+                                        # akde_list = l_akde_winter,
                                         env_raster_list = scaled_env_RL_list_selection,
                                         rsf_formula = model_formula,
                                         rsf_integrator = "Riemann", # "MonteCarlo", 

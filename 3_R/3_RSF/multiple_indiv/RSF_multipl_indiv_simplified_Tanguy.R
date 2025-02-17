@@ -48,7 +48,7 @@ detectCores()
 
 ### Settings ----
 #********************************************************************
-base <- "C:/Users/albordes/Documents/PhD/TetrAlps"
+base <- getwd()
 covid <- c("Caramel_2", "Daisy","Dalton","Dameur","Dario","Darkvador","Darwin","Dede","Destroy","Diot","Djal","Django","Donald","Durite","Dynamite","Dyonisos")
 #********************************************************************
 
@@ -173,7 +173,7 @@ system.time(try(
   RSF_results_multpl_birds <- RSF_birds(  
     telemetry_list = l_telemetry_winter[!names(l_telemetry_winter)%in%covid],
     akde_list = l_akde_winter[!names(l_akde_winter)%in%covid],
-    clusters = 8,
+    clusters = 16,
     # telemetry_list = l_telemetry_winter, 
     # akde_list = l_akde_winter,
     env_raster_list = scaled_env_RL_list_selection,
@@ -205,7 +205,7 @@ system.time(
   RSF_results_multpl_birds <- RSF_birds(  
     telemetry_list = l_telemetry_winter[!names(l_telemetry_winter)%in%covid],
     akde_list = l_akde_winter[!names(l_akde_winter)%in%covid],
-    clusters = 24,
+    clusters = 16,
     # telemetry_list = l_telemetry_winter, 
     # akde_list = l_akde_winter,
     env_raster_list = scaled_env_RL_list_selection,
