@@ -66,7 +66,6 @@ borders_3V_vect <- terra::vect(file.path(base,"1_RAW_DATA","3V","borders_3V.gpkg
 # Environment stack
 load(file.path(base,"3_R","0_Heavy_saved_models","environment_3V","env_RL_list.RData"))
 load(file.path(base,"3_R","0_Heavy_saved_models","environment_3V","scaled_env_RL_list.RData"))
-# load(file.path(base,"3_R","0_Heavy_saved_models","environment_3V","scaled_env_RL_list_10m_without_fractional_cover.RData"))
 
 # scaled_env_RL_list_new <- scaled_env_RL_list
 # load(file.path(base,"TetrAlps_old/3_R/0_Heavy_saved_models/environment_3V/scaled_env_RL_list.RData"))
@@ -126,6 +125,9 @@ birds_bg_dt <- assigning_visitors_depth(birds_bg_dt)
 ### 1.2_Creation of a variable fact.visitor.nb and a variable for ski lift opening hours ----
 #********************************************************************
 birds_bg_dt <- add_variables_visit_open(birds_bg_dt)
+
+birds_bg_dt <- birds_bg_dt %>%
+  mutate(day = ifelse(hms(time) > hms("04:30:00") & hms(time) < hms("09:30:00"), "displaying", "other"))
 #********************************************************************
 
   
@@ -134,7 +136,9 @@ birds_bg_dt <- add_variables_visit_open(birds_bg_dt)
 
 ### 2.1_Data creation of telemetry, guess, fit and akde objects for rsf ----
 #********************************************************************
-tele_akde(data = birds_bg_dt,
+birds_bg_dt_nodisplay <- birds_bg_dt[birds_bg_dt$day != "displaying", ]
+
+tele_akde(data = birds_bg_dt_nodisplay,
           # birds_vect = c("Alpha", "Caramel", "Dalton","Dario","Donald","Dynamite","Dyonisos","Ecolo","Eros","Fast","Ficelle","Flambeur","Fleau","Foliedouce"),
           season = "hiver",
           subset_category = "saison2",
@@ -166,10 +170,10 @@ tele_akde(data = birds_bg_dt,
 
   
 # Load the outputs of tele_akde with visitor number as continuous variable
-load(file = file.path(base,"3_R","0_Heavy_saved_models","birds_3V", "multipl_telemetry_winter_saison2_2025_01_23.Rdata"))
-load(file = file.path(base,"3_R","0_Heavy_saved_models","birds_3V", "multipl_guess_winter_saison2_2025_01_23.Rdata"))
-load(file = file.path(base,"3_R","0_Heavy_saved_models","birds_3V", "multipl_fit_winter_saison2_2025_01_23.Rdata"))
-load(file = file.path(base,"3_R","0_Heavy_saved_models","birds_3V", "multipl_akde_winter_saison2_2025_01_23.Rdata"))
+load(file = file.path(base,"3_R","0_Heavy_saved_models","birds_3V", "multipl_telemetry_winter_saison2_2025_02_18.Rdata"))
+load(file = file.path(base,"3_R","0_Heavy_saved_models","birds_3V", "multipl_guess_winter_saison2_2025_02_18.Rdata"))
+load(file = file.path(base,"3_R","0_Heavy_saved_models","birds_3V", "multipl_fit_winter_saison2_2025_02_18.Rdata"))
+load(file = file.path(base,"3_R","0_Heavy_saved_models","birds_3V", "multipl_akde_winter_saison2_2025_02_18.Rdata"))
 
 l_telemetry_winter <- list_of_one(l_telemetry_winter)
 l_akde_winter <- list_of_one(l_akde_winter)
@@ -359,13 +363,13 @@ model_formula <- ~ elevation +
     # Cliffs:total.visitors.std
  
 system.time(
-RSF_results_multpl_birds <- RSF_birds(  telemetry_list = l_telemetry_winter[!names(l_telemetry_winter)%in%covid], 
-                                        akde_list = l_akde_winter[!names(l_akde_winter)%in%covid],
-                                        # telemetry_list = l_telemetry_winter, 
-                                        # akde_list = l_akde_winter,
+RSF_results_multpl_birds <- RSF_birds(  # telemetry_list = l_telemetry_winter[!names(l_telemetry_winter)%in%covid], 
+                                        # akde_list = l_akde_winter[!names(l_akde_winter)%in%covid],
+                                        telemetry_list = l_telemetry_winter, 
+                                        akde_list = l_akde_winter,
                                         env_raster_list = scaled_env_RL_list_selection,
                                         rsf_formula = model_formula,
-                                        rsf_integrator = "Riemann", # "MonteCarlo", 
+                                        rsf_integrator = "MonteCarlo", #"Riemann", 
                                         # grid = "full",
                                         outputfolder = file.path(base, "5_OUTPUTS", "RSF", "rsf.fit_results"),
                                         write = TRUE

@@ -76,8 +76,10 @@ tele_akde <- function(data,
                                 keep = c("saison", "saison2", "period_jour", "animal.sex", 
                                          "animal.life.stage", "total.visitors", "snow.depth",
                                          "total.visitors.std", "snow.depth.std",
-                                         "time", "sl_open",
-                                         "visitor_breaks", "visitor_breaksNull", "visitor_breaksLow", "visitor_breaksMedium", "visitor_breaksHigh" , "visitor_breaksVery_high" ))
+                                         "time"
+                                         # "sl_open",
+                                         # "visitor_breaks", "visitor_breaksNull", "visitor_breaksLow", "visitor_breaksMedium", "visitor_breaksHigh" , "visitor_breaksVery_high" 
+                                         ))
       ctmm::projection(telemetry) <- "EPSG:2154"
       
       # Filter telemetry data for winter season

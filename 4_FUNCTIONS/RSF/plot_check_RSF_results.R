@@ -893,11 +893,11 @@ points_plot_rsf <- function(data_table,
         scale_color_manual(name = "Meta model", values = c("Meta estimates" = "blue")) +
         # Add blue segments for Meta estimates
         geom_segment(data = meta_data %>% dplyr::select(!p_ref) %>% filter(covariates %in% model_covar[!model_covar %in% list_excluded_covariables]), 
-                     aes(x = est, xend = est, y = as.numeric(as.factor(covariates)) - 0.4, yend = as.numeric(as.factor(covariates)) + 0.4, color = "Meta estimates"),
+                     aes(x = est_gr_ref, xend = est_gr_ref, y = as.numeric(as.factor(covariates)) - 0.4, yend = as.numeric(as.factor(covariates)) + 0.4, color = "Meta estimates"),
                      size = 1.2) +
         # Manual color adjustments
         geom_text(data = meta_data %>% filter(p_ref < 0.05 & covariates %in% model_covar[!model_covar %in% list_excluded_covariables]), 
-                  aes(x = est, y = as.numeric(as.factor(covariates)) + 0.3, label = "*"), 
+                  aes(x = est_gr_ref, y = as.numeric(as.factor(covariates)) + 0.3, label = "*"), 
                   color = "blue", size = 12, vjust = -1)  # Adjust vjust to position the asterisk
     }
     
@@ -914,11 +914,11 @@ points_plot_rsf <- function(data_table,
         scale_color_manual(name = "Meta model", values = c("Meta estimates" = "blue")) +
         # Add blue segments for Meta estimates
         geom_segment(data = meta_data %>% dplyr::select(!p_ref) %>% filter(covariates %in% model_covar[!model_covar %in% list_excluded_covariables]), 
-                     aes(x = est, xend = est, y = as.numeric(as.factor(covariates)) - 0.4, yend = as.numeric(as.factor(covariates)) + 0.4, color = "Meta estimates"),
+                     aes(x = est_gr_ref, xend = est_gr_ref, y = as.numeric(as.factor(covariates)) - 0.4, yend = as.numeric(as.factor(covariates)) + 0.4, color = "Meta estimates"),
                      size = 1.2) +
         # Manual color adjustments
         geom_text(data = meta_data %>% filter(p_ref < 0.05 & covariates %in% model_covar[!model_covar %in% list_excluded_covariables]), 
-                  aes(x = est, y = as.numeric(as.factor(covariates)) + 0.3, label = "*"), 
+                  aes(x = est_gr_ref, y = as.numeric(as.factor(covariates)) + 0.3, label = "*"), 
                   color = "blue", size = 12, vjust = -1)  # Adjust vjust to position the asterisk
     }
     

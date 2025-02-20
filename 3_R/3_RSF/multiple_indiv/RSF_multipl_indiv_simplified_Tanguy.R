@@ -59,6 +59,9 @@ birds_bg_dt <- read.csv2(file.path(base,"2_DATA","data_bg_pretelemetry_2024_10.c
 
 ### ENV
 load(file.path(base,"2_DATA","scaled_env_RL_list.RData"))
+scaled_env_RL_list2 <- scaled_env_RL_list[names(scaled_env_RL_list) %in% c("elevation", "squared_elevation", "strava_winter_sports")]
+load(file.path(base,"2_DATA","scaled_env_RL_list_nofractcover.RData"))
+scaled_env_RL_list <- c(scaled_env_RL_list, scaled_env_RL_list2)
 
 # Visitor numbers
 visitor_meribel <- read.csv2(file.path(base,"2_DATA","ski_resorts_visitor_numbers","meribel_visitors.csv"), sep=",")
@@ -157,6 +160,34 @@ scaled_env_RL_list_selection <-  scaled_env_RL_list[!(names(scaled_env_RL_list) 
 # scaled_env_RL_list_selection <-  scaled_env_RL_list[c("elevation", "squared_elevation", "strava","leks")]
 
 
+# Define the formula
+model_formula <- ~ elevation + 
+  squared_elevation + 
+  strava_winter_sports +
+  Shrubsnofractcover +
+  Cliffsnofractcover +
+  Treesnofractcover 
+
+system.time(try(
+  RSF_results_multpl_birds <- RSF_birds(  
+    # telemetry_list = l_telemetry_winter[!names(l_telemetry_winter)%in%covid],
+    # akde_list = l_akde_winter[!names(l_akde_winter)%in%covid],
+    clusters = 16,
+    telemetry_list = l_telemetry_winter,
+    akde_list = l_akde_winter,
+    env_raster_list = scaled_env_RL_list_selection,
+    rsf_formula = model_formula,
+    rsf_integrator = "MonteCarlo", #"Riemann",   
+    # grid = "full",
+    outputfolder = file.path(base),
+    write = TRUE
+  ) ) # end try
+)
+
+
+
+
+
 
 # Define the formula
 model_formula <- ~ elevation + 
@@ -178,7 +209,7 @@ system.time(try(
     # akde_list = l_akde_winter,
     env_raster_list = scaled_env_RL_list_selection,
     rsf_formula = model_formula,
-    rsf_integrator = "Riemann", # "MonteCarlo", 
+    rsf_integrator = "MonteCarlo", #"Riemann",   
     # grid = "full",
     outputfolder = file.path(base),
     write = TRUE
@@ -210,7 +241,7 @@ system.time(
     # akde_list = l_akde_winter,
     env_raster_list = scaled_env_RL_list_selection,
     rsf_formula = model_formula,
-    rsf_integrator = "Riemann", # "MonteCarlo", 
+    rsf_integrator = "MonteCarlo", #"Riemann", 
     # grid = "full",
     outputfolder = file.path(base),
     write = TRUE

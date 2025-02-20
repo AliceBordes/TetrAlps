@@ -17,15 +17,14 @@ library(terra)
 
 ### Settings
 #********************************************************************
-base <- "C:/Users/albordes/Documents/PhD"
+base <- "C:/Users/albordes/Documents/PhD/Tetralps"
 #********************************************************************
 
 # Loading rasters ----
 #********************************************************************
 ### RASTERS
-carto_habitats_3V <- terra::rast(file.path(base,"TetrAlps","2_DATA","carto_habitats_clara_3V.tif")) #carto Clara
+carto_habitats_3V <- terra::rast(file.path(base,"2_DATA","environmental_raster","carto_habitats_clara_3V.tif")) #carto Clara
 #********************************************************************
-
 
 
 # Create the raster carto habitats winter

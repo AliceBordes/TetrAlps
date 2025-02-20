@@ -21,7 +21,7 @@ library(dplyr)
 
 ### Settings ----
 #********************************************************************
-base <- "C:/Users/albordes/Documents/PhD"
+base <- "C:/Users/albordes/Documents/PhD/Tetralps"
 #********************************************************************
 
 
@@ -29,16 +29,20 @@ base <- "C:/Users/albordes/Documents/PhD"
 #********************************************************************
 ### GRID
 
-grid_10m <- terra::rast(terra::vect(file.path(base, "Tetralps","1_RAW_DATA","grid_10m.gpkg")))
+grid_10m <- terra::rast(terra::vect(file.path(base,"1_RAW_DATA","grid_10m.gpkg")))
 res(grid_10m) <- 10
 
 
 ### RASTERS
 
 # habitat cartography
-carto_habitats_3V_winter <- terra::rast(file.path(base, "TetrAlps","2_DATA","environmental_raster","carto_habitats_3V_winter_5classes_tree.tif"))
+carto_habitats_3V_winter <- terra::rast(file.path(base,"2_DATA","environmental_raster","carto_habitats_3V_winter_5classes_tree.tif"))
 #********************************************************************
 
+# Stats
+#********************************************************************
+sum(values(carto_habitats_3V_winter==5), na.rm = TRUE)/length(values(carto_habitats_3V_winter))
+#********************************************************************
 
 
 ### 1_Scale the environment stack included binary rasters ----
