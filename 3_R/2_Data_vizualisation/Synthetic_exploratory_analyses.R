@@ -55,7 +55,16 @@ borders_3V_vect <- st_read(file.path(base,"1_RAW_DATA","3V","borders_3V.gpkg"))
 borders_3V_vect <- terra::vect(file.path(base,"1_RAW_DATA","3V","borders_3V.gpkg"))
 
 # Environment stack
-load(file.path(base,"3_R","0_Heavy_saved_models","environment_3V","scaled_env_RL_list.RData"))
+load(file.path(base,"3_R","0_Heavy_saved_models","environment_3V","env_RL_list_10m.RData"))
+carto_habitats_3V_winter <- terra::rast(file.path(base,"2_DATA","environmental_raster","carto_habitats_3V_winter_5classes_tree_20_02_2025.tif"))
+carto_habitats_3V_winter_10m_near <- project(x = carto_habitats_3V_winter, y = carto_habitats_3V_winter_10m_fc, method = "near")
+
+# strava without removed cables
+strava <- terra::rast(file.path(base, "1_RAW_DATA","strava","3Vallees","strava_3V_winter_sports_rgb_single_3Vallees_25_06_2024.tif"))
+if(length(names(strava))!=1)
+{
+  strava <- strava::as_numeric(strava)
+}
 #********************************************************************
 
 ### Data Loading of telemetry, guess, fit and akde objects for rsf ----
@@ -122,6 +131,10 @@ combined_telemetry <- do.call(rbind,
                                 return(bird_data)
                               })
 )
+combined_telemetry <- combined_telemetry %>%
+  mutate(covid_period = ifelse(animal.ID %in% covid, "covid", "out_covid"))
+
+write.csv(combined_telemetry, file = file.path(base,"2_DATA","environmental_raster","telemetry_birds.csv"))
 
 # Convert to sf object
 combined_telemetry_sf <- combined_telemetry %>%
@@ -142,12 +155,33 @@ combined_telemetry_sf <- combined_telemetry_sf %>%
   mutate(color_category = ifelse(hms(time) > hms("08:30:00") & hms(time) < hms("18:00:00"), "red", "turquoise"),
          size_category = ifelse(hms(time) > hms("08:30:00") & hms(time) < hms("18:00:00"), 0.6, 0.5))
 
+combined_telemetry_sf <- combined_telemetry_sf %>%
+  mutate(color_category = "black",
+         size_category = 0.6)
+
+background_raster = carto_habitats_3V_winter 
+background_raster[is.nan(background_raster)] <- NA
+
+
+# background_raster = terra::rast(env_RL_list[["strava_winter_sports"]])
+background_raster = strava
+all = unique(combined_telemetry_sf$animal.ID)
+
+
+ani_name = "Fanfoue"
+
 map <- ggplot() +
         ggtitle("Bird locations in the 3 Vallées region") +
-        geom_spatraster(data = terra::rast(scaled_env_RL_list[["strava_winter_sports"]])) +
+        geom_spatraster(data = background_raster) +
         scale_fill_viridis_c(option = "viridis") +
+        # scale_fill_manual(values = c("Soils_low_vegetation" = "#CCCCCC",
+        #                                "Shrubs" = "#FF99CC",
+        #                                "Trees" = "#99FF99",
+        #                                "Cliffs" = "#333333",
+        #                                "Buildings" = "#993300", na.value = "transparent")) +
         # Plot the vector borders with valley names
-        geom_spatvector(data = borders_3V_vect, fill = NA, aes(color = NOM)) +
+        geom_spatvector(data = borders_3V_vect, fill = NA, aes(color = NOM), size = 2) +
+        new_scale_color()+
         scale_color_manual(values = c("Courchevel" = "darkgreen", "Les Allues" = "lightgreen", "Les Belleville" = "darkgrey")) +
         labs(color = "Valley") +
         new_scale_color() +
@@ -156,11 +190,14 @@ map <- ggplot() +
               legend.title = element_text(size=14),
               legend.position = "none",
               panel.grid = element_blank()) +
-        geom_sf(data = combined_telemetry_sf, 
-                aes(color = color_category, size = size_category)) +
-        scale_size_continuous(range = c(0.5, 0.7)) +  # Fine-tune size scaling
-        ylim(6471291, 6479247) +
-        xlim(970968, 980660)
+        geom_sf(data = combined_telemetry_sf %>% filter(animal.ID %in% ani_name),
+                color = "coral"
+                #, aes(color = color_category, size = size_category)
+                ) 
+
+        # scale_size_continuous(range = c(0.5, 0.7)) +  # Fine-tune size scaling
+        # ylim(6471291, 6479247) +
+        # xlim(970968, 980660)
 
 interactive_map <- ggplotly(map, tooltip = NULL, scrollZoom = TRUE)  # Converts ggplot into an interactive plot
 interactive_map
@@ -177,7 +214,8 @@ combined_telemetry$strava_value <- terra::extract(terra::rast(scaled_env_RL_list
 
 m_gam <- gam(strava_value ~ s(hour(hms(time)), bs = "cc"), data = combined_telemetry) # bs="cc" specifies a cyclic cubic regression splines
 summary(m_gam)
-plot(m_gam)
+plot(m_gam, main = "Strava winter sport intensity explained by time")
+abline(h=0, col = "red", lty = "dotted")
 
 boxplot(combined_telemetry$strava_value, main = "strava intensity values behind telemetry points")
 stats <- boxplot.stats(combined_telemetry$strava_value)$stats

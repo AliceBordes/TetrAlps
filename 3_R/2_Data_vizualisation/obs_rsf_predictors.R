@@ -13,6 +13,7 @@
 ### Loading libraries ---- 
 #********************************************************************
 library(ggplot2)
+library(gridExtra)
 library(tidyverse)
 library(dplyr)
 #********************************************************************
@@ -25,7 +26,7 @@ source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/Formatting_data/for
 
 ### Settings ----
 #********************************************************************
-base <- "C:/Users/albordes/Documents/PhD"
+base <- "C:/Users/albordes/Documents/PhD/Tetralps"
 #********************************************************************
 
 
@@ -47,9 +48,11 @@ visitor_menui$Total <- as.integer(visitor_menui$Total)
 #********************************************************************
 
 
-### 1_Visualizing temporal predictors ----
+### 1_Visualizing temporal predictors : daily visitor number ----
 #********************************************************************
 
+### 1.1_Daily visitor number across winter and ski seasons ----
+#********************************************************************
 visitor_nb <- rbind(visitor_menui %>% dplyr::select(Date, Total, ski_season) %>% mutate("resort" = "Les Ménuires"), 
                     visitor_meribel %>% dplyr::select(Date, Total, ski_season) %>% mutate("resort" = "Méribel"),
                     visitor_valtho %>% dplyr::select(Date, Total, ski_season) %>% mutate("resort" = "Val Thorens"),
@@ -71,8 +74,25 @@ yearly_visitor_trends <- do.call(grid.arrange, c(gg, ncol = length(unique(visito
 #********************************************************************
 
 
+### 1.2_Daily visitor number across winter and ski seasons ----
+#********************************************************************
 
-# 
+# download data on meteo france : https://donneespubliques.meteofrance.fr/?fond=produit&id_produit=94&id_rubrique=32 
+# metadata : https://donneespubliques.meteofrance.fr/client/document/doc_parametres_nivo_197.pdf ; http://www.meteo.fr/meteonet/DIR_reso40/fichiers_obs_france_web_reso40_f.htm 
+
+# - Temperature (t) 
+# - Average wind speed 10 mn (ff)
+# - Precipitations
+# - Total nebulosity (n)
+
+
+
+#********************************************************************
+
+
+
+
+
 # # 1_Data frame with total visitors/resort
 # tot_dt <- as.data.frame(valtho_visitors %>% select(Date,Total))
 # names(tot_dt) <- c("Date", "Valtho_tot")

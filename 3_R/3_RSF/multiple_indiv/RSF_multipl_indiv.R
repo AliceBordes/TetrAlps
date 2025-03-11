@@ -49,6 +49,8 @@ detectCores()
 ### Settings ----
 #********************************************************************
 base <- "C:/Users/albordes/Documents/PhD/Tetralps"
+telemetry_file <- "multipl_telemetry_winter_saison2_2025_02_21"
+akde_file <- "multipl_akde_winter_saison2_2025_02_21"
 covid <- c("Caramel_2", "Daisy","Dalton","Dameur","Dario","Darkvador","Darwin","Dede","Destroy","Diot","Djal","Django","Donald","Durite","Dynamite","Dyonisos")
 #********************************************************************
 
@@ -64,8 +66,14 @@ borders_3V_vect <- st_read(file.path(base,"1_RAW_DATA","3V","borders_3V.gpkg"))
 borders_3V_vect <- terra::vect(file.path(base,"1_RAW_DATA","3V","borders_3V.gpkg"))
 
 # Environment stack
-load(file.path(base,"3_R","0_Heavy_saved_models","environment_3V","env_RL_list.RData"))
-load(file.path(base,"3_R","0_Heavy_saved_models","environment_3V","scaled_env_RL_list.RData"))
+# load(file.path(base,"3_R","0_Heavy_saved_models","environment_3V","env_RL_list_10m.RData"))
+load(file.path(base,"3_R","0_Heavy_saved_models","environment_3V","scaled_env_RL_list_10m.RData"))
+load(file.path(base,"3_R","0_Heavy_saved_models","environment_3V","scaled_env_RL_list_1m.RData"))
+load(file.path(base,"3_R","0_Heavy_saved_models","environment_3V","scaled_env_RL_list_modal.RData"))
+
+strava_without_aerial_corr <- terra::rast(file.path(base,"2_DATA/environmental_raster/r_strava_without_aerial_cables.gpkg"))
+strava_without_aerial_corr <- scale(strava_without_aerial_corr)
+scaled_env_RL_list[["strava_winter_sports"]] <- strava_without_aerial_corr
 
 # scaled_env_RL_list_new <- scaled_env_RL_list
 # load(file.path(base,"TetrAlps_old/3_R/0_Heavy_saved_models/environment_3V/scaled_env_RL_list.RData"))
@@ -127,7 +135,13 @@ birds_bg_dt <- assigning_visitors_depth(birds_bg_dt)
 birds_bg_dt <- add_variables_visit_open(birds_bg_dt)
 
 birds_bg_dt <- birds_bg_dt %>%
-  mutate(day = ifelse(hms(time) > hms("04:30:00") & hms(time) < hms("09:30:00"), "displaying", "other"))
+  mutate(day_category = case_when(
+    hms(time) > hms("04:30:00") & hms(time) < hms("09:30:00") ~ "displaying",
+    hms(time) > hms("09:30:00") & hms(time) < hms("19:00:00") ~ "day",
+    TRUE ~ "night"  # Default to "night" for all other times
+  )) %>%
+  mutate(value = 1) %>%  # Add a column for pivoting
+  pivot_wider(names_from = day_category, values_from = value, values_fill = list(value = 0))
 #********************************************************************
 
   
@@ -136,9 +150,9 @@ birds_bg_dt <- birds_bg_dt %>%
 
 ### 2.1_Data creation of telemetry, guess, fit and akde objects for rsf ----
 #********************************************************************
-birds_bg_dt_nodisplay <- birds_bg_dt[birds_bg_dt$day != "displaying", ]
+# birds_bg_dt_nodisplay <- birds_bg_dt[birds_bg_dt$day != "displaying", ]
 
-tele_akde(data = birds_bg_dt_nodisplay,
+tele_akde(data = birds_bg_dt,
           # birds_vect = c("Alpha", "Caramel", "Dalton","Dario","Donald","Dynamite","Dyonisos","Ecolo","Eros","Fast","Ficelle","Flambeur","Fleau","Foliedouce"),
           season = "hiver",
           subset_category = "saison2",
@@ -170,21 +184,15 @@ tele_akde(data = birds_bg_dt_nodisplay,
 
   
 # Load the outputs of tele_akde with visitor number as continuous variable
-load(file = file.path(base,"3_R","0_Heavy_saved_models","birds_3V", "multipl_telemetry_winter_saison2_2025_02_18.Rdata"))
-load(file = file.path(base,"3_R","0_Heavy_saved_models","birds_3V", "multipl_guess_winter_saison2_2025_02_18.Rdata"))
-load(file = file.path(base,"3_R","0_Heavy_saved_models","birds_3V", "multipl_fit_winter_saison2_2025_02_18.Rdata"))
-load(file = file.path(base,"3_R","0_Heavy_saved_models","birds_3V", "multipl_akde_winter_saison2_2025_02_18.Rdata"))
+load(file = file.path(base,"3_R","0_Heavy_saved_models","birds_3V", paste0(telemetry_file,".Rdata")))
+load(file = file.path(base,"3_R","0_Heavy_saved_models","birds_3V", paste0(telemetry_file,".Rdata")))
 
 l_telemetry_winter <- list_of_one(l_telemetry_winter)
 l_akde_winter <- list_of_one(l_akde_winter)
-l_guess_winter <- list_of_one(l_guess_winter)
-l_fit_winter <- list_of_one(l_fit_winter)
 
   l_telemetry_winter <- covariates_NAN_cleaned(l_telemetry_winter)
   
   l_akde_winter <- l_akde_winter[names(l_akde_winter) %in% names(l_telemetry_winter)]
-  l_guess_winter <- l_guess_winter[names(l_guess_winter) %in% names(l_telemetry_winter)]
-  l_fit_winter <- l_fit_winter[names(l_fit_winter) %in% names(l_telemetry_winter)]
 #********************************************************************  
 
 ### 2.3_Identifying bird monitored during covid ----
@@ -251,7 +259,7 @@ bird_sampling_sche(telemetry_list = l_telemetry_winter,
 
 ### 3.2_Visualization "raw" HR (without environmental effects) ----
 #********************************************************************
-bird = "Ferie"
+bird = "Fanfoue"
   
 UD_mybird_spatial <- SpatialPolygonsDataFrame.UD(l_akde_winter[[bird]][["hiver1"]],level.UD=.95,level=.95)
 UD_mybird_spatial2 <- SpatialPolygonsDataFrame.UD(l_akde_winter[[bird]][["hiver2"]],level.UD=.95,level=.95)
@@ -336,6 +344,21 @@ model_formula <- ~ elevation +
   Cliffs +
   Trees 
 
+model_formula <- ~elevation + 
+  squared_elevation + 
+  strava_winter_sports +
+  strava_winter_sports:day + 
+  strava_winter_sports:displaying + 
+  Trees +
+  Trees:day + 
+  Trees:displaying + 
+  Shrubs +
+  Shrubs:day + 
+  Shrubs:displaying + 
+  Cliffs +
+  Cliffs:day + 
+  Cliffs:displaying 
+
   # physico-climatic related variables
     # ~ elevation +
     # squared_elevation +
@@ -367,6 +390,7 @@ RSF_results_multpl_birds <- RSF_birds(  # telemetry_list = l_telemetry_winter[!n
                                         # akde_list = l_akde_winter[!names(l_akde_winter)%in%covid],
                                         telemetry_list = l_telemetry_winter, 
                                         akde_list = l_akde_winter,
+                                        clusters = 1,
                                         env_raster_list = scaled_env_RL_list_selection,
                                         rsf_formula = model_formula,
                                         rsf_integrator = "MonteCarlo", #"Riemann", 

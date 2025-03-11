@@ -738,11 +738,32 @@ is_outlier <- function(x, coefficient = 1.5) {
 
 
 
+# Function to switch variable names (more readible)
+#*************************************************************
+swap_temporal_variable <- function(name, 
+                                   temporal_list = c("displaying", "day", "night")) {
+  name <- as.character(name)  # Ensure it's a character
+  
+  # Extract parts before and after ":"
+  parts <- unlist(strsplit(name, ":", fixed = TRUE))
+  
+  # Swap if the first part is a temporal variable
+  if (length(parts) > 1 && parts[1] %in% temporal_list) {
+    return(paste(parts[2], parts[1], sep=":"))  # Swap order
+  } else {
+    return(name)  # Keep the name unchanged
+  }
+}
+#*************************************************************
+
+
+
 # Function to formate RSF results
 #*************************************************************
 rsf_result_table <- function(data_rsf_results, 
                              coefficient)
 {
+
   RSF_results_multpl_birds <- lapply(data_rsf_results, summary)
   
   rsf_results_table <- data.frame()
@@ -760,6 +781,7 @@ rsf_result_table <- function(data_rsf_results,
           covariates == "diffusion" ~ "diffusion (ha/day)",
           TRUE ~ covariates # This ensures that any values in covariates that do not match the specified conditions remain unchanged.
         )
+        , covariates = sapply(covariates, swap_temporal_variable)  # Swap temporal covariates
       )
     # bind the summary of the different birds
     rsf_results_table <- rbind(rsf_results_table, rsf_results_dt)
@@ -820,19 +842,83 @@ rsf_result_table <- function(data_rsf_results,
 
 
 points_plot_rsf <- function(data_table, 
-                            list_excluded_covariables,
+                            list_excluded_covariates,
                             meta_data,
                             boxplot_by_group = FALSE,
+                            easy_look_results = FALSE,
                             outputfolder = file.path(base, "5_OUTPUTS", "RSF", "rsf.fit_results", model),
                             write = TRUE,
                             group = "none") {  # Add group parameter to control the group selection
+
+  warning("For easy_look_results = TRUE, the estimated values of the interaction effects are added to the estimated value of the main effect.")
+  
+  # To create more readible graphs
+  if(easy_look_results == TRUE) {
+    dt_l <- list(data_table[[1]], data_table[[2]], meta_data)
+    
+    # print("Before modification:")
+    # print(head(dt_l[[1]], n = 14))
+    
+    for(i in 1:3) {
+      
+      df <- dt_l[[i]]  
+      
+      # Split main and interaction effects
+      main_effects <- df %>%
+        dplyr::filter(!grepl(":", covariates)) %>%
+        rename(main_est = est, main_low = low, main_high = high)
+      
+      interaction_terms <- df %>%
+        dplyr::filter(grepl(":", covariates)) %>%
+        mutate(main_covariate = sub(":.*", "", covariates))  # Extracting main effects
+      
+      
+      # print("Main effects:")
+      # print(main_effects)
+      # 
+      # print("Interactions:")
+      # print(interaction_terms)
+      
+      # join interaction and main effects`
+      df_adjusted <- interaction_terms %>% dplyr::select(-c("high","low")) %>%
+        left_join(main_effects %>% dplyr::select(-any_of(c("period","p"))),  by = c("bird", "main_covariate" = "covariates")) %>%
+        mutate(
+          est = est + main_est,
+          high = NA,
+          low = NA
+        ) %>%
+        dplyr::select(-main_covariate)  
+
+      # print("Interactions after adjustment:")
+      # print(df_adjusted)
+
+      # Merging main and interactions effects
+      df_final <- bind_rows(df %>% dplyr::filter(!grepl(":", covariates)), df_adjusted)
+
+      dt_l[[i]] <- df_final  # replace the original dataset
+    }
+    
+    print("After modification:")
+    print(head(dt_l[[1]], n = 14))
+    # View(dt_l[[1]])
+    
+    meta_data = dt_l[[3]]
+    
+  }
+  
   
   
   model_covar <- unique(data_table[[1]]$covariates)[1:(length(unique(data_table[[1]]$covariates))-6)]
   
+  
   gg_points_rsf <- list()
   
   for(i in 1:length(data_table)) {
+    
+    if(easy_look_results == TRUE) { data_table[[i]] = dt_l[[i]] }
+    
+    # Convert covariates to a factor (preserving order)
+    # data_table[[i]]$covariates <- factor(data_table[[i]]$covariates, levels = model_covar)
     
     # Prepare the dataframe, adding period based on covid
     data_table[[i]]$period <- ifelse(data_table[[i]]$bird %in% covid, 
@@ -840,12 +926,12 @@ points_plot_rsf <- function(data_table,
                                      "normal_period")
     
     # Filter covariates to plot
-    data_table[[i]] = data_table[[i]] %>% filter(covariates %in% model_covar[!model_covar %in% list_excluded_covariables])
+    data_table[[i]] = data_table[[i]] %>% filter(covariates %in% model_covar[!model_covar %in% list_excluded_covariates])
     
     
     # Create the base ggplot
     gg_points_rsf[[i]] <- ggplot(data = data_table[[i]], 
-                            aes(y = covariates, x = est)) +
+                            aes(y = as.factor(covariates), x = est)) +
       
       geom_vline(xintercept = 0, linetype = "dashed") +
       labs(y = "Covariates", 
@@ -870,14 +956,14 @@ points_plot_rsf <- function(data_table,
         geom_jitter(color = "#666666", size = 3, alpha = 0.6) +
         scale_color_manual(name = "Meta model", values = c("Meta estimates" = "blue")) +
         # Add blue segments for Meta estimates
-        geom_segment(data = meta_data %>% dplyr::select(!p) %>% filter(covariates %in% model_covar[!model_covar %in% list_excluded_covariables]), 
+        geom_segment(data = meta_data %>% dplyr::select(!p) %>% filter(covariates %in% model_covar[!model_covar %in% list_excluded_covariates]), 
                      aes(x = est, xend = est, y = as.numeric(as.factor(covariates)) - 0.4, yend = as.numeric(as.factor(covariates)) + 0.4, color = "Meta estimates"),
-                     size = 1.2) +
+                     size = 1.2) 
         # Manual color adjustments
         # Add a blue asterisk above the segment if pval < 0.05
-        geom_text(data = meta_data %>% filter(p < 0.05 & covariates %in% model_covar[!model_covar %in% list_excluded_covariables]), 
-                  aes(x = est, y = as.numeric(as.factor(covariates)) + 1.1, label = "*"), 
-                  color = "blue", size = 12, vjust = -1)  # Adjust vjust to position the asterisk
+        # geom_text(data = meta_data %>% filter(p < 0.05 & covariates %in% model_covar[!model_covar %in% list_excluded_covariates]), 
+        #           aes(x = est, y = as.numeric(as.factor(covariates)) + 1.1, label = "*"), 
+        #           color = "blue", size = 12, vjust = -1)  # Adjust vjust to position the asterisk
     }
     
     if(group == "covid" & boxplot_by_group == FALSE) {
@@ -890,15 +976,7 @@ points_plot_rsf <- function(data_table,
                            values = c("Monitored during covid" = "red", "Others" = "#666666"),
                            labels = c("Monitored during covid" = "Monitored during covid", "Others" = "Monitored out covid")) +
         new_scale_color()+
-        scale_color_manual(name = "Meta model", values = c("Meta estimates" = "blue")) +
-        # Add blue segments for Meta estimates
-        geom_segment(data = meta_data %>% dplyr::select(!p_ref) %>% filter(covariates %in% model_covar[!model_covar %in% list_excluded_covariables]), 
-                     aes(x = est_gr_ref, xend = est_gr_ref, y = as.numeric(as.factor(covariates)) - 0.4, yend = as.numeric(as.factor(covariates)) + 0.4, color = "Meta estimates"),
-                     size = 1.2) +
-        # Manual color adjustments
-        geom_text(data = meta_data %>% filter(p_ref < 0.05 & covariates %in% model_covar[!model_covar %in% list_excluded_covariables]), 
-                  aes(x = est_gr_ref, y = as.numeric(as.factor(covariates)) + 0.3, label = "*"), 
-                  color = "blue", size = 12, vjust = -1)  # Adjust vjust to position the asterisk
+        scale_color_manual(name = "Meta model", values = c("Meta estimates" = "blue"))
     }
     
     if(group == "covid" & boxplot_by_group == TRUE) {
@@ -911,15 +989,7 @@ points_plot_rsf <- function(data_table,
                           values = c("covid_period" = "red", "normal_period" = "grey"),
                           labels = c("covid_period" = "Monitored during covid", "normal_period" = "Monitored out covid")) +
         new_scale_color()+
-        scale_color_manual(name = "Meta model", values = c("Meta estimates" = "blue")) +
-        # Add blue segments for Meta estimates
-        geom_segment(data = meta_data %>% dplyr::select(!p_ref) %>% filter(covariates %in% model_covar[!model_covar %in% list_excluded_covariables]), 
-                     aes(x = est_gr_ref, xend = est_gr_ref, y = as.numeric(as.factor(covariates)) - 0.4, yend = as.numeric(as.factor(covariates)) + 0.4, color = "Meta estimates"),
-                     size = 1.2) +
-        # Manual color adjustments
-        geom_text(data = meta_data %>% filter(p_ref < 0.05 & covariates %in% model_covar[!model_covar %in% list_excluded_covariables]), 
-                  aes(x = est_gr_ref, y = as.numeric(as.factor(covariates)) + 0.3, label = "*"), 
-                  color = "blue", size = 12, vjust = -1)  # Adjust vjust to position the asterisk
+        scale_color_manual(name = "Meta model", values = c("Meta estimates" = "blue")) 
     }
     
     
@@ -933,15 +1003,7 @@ points_plot_rsf <- function(data_table,
                            values = c("Female" = "deeppink", "Male" = "turquoise"),
                            labels = c("females" = "Female", "males" = "Male")) +
         new_scale_color()+
-        scale_color_manual(name = "Meta model", values = c("Meta estimates" = "blue")) +
-        # Add blue segments for Meta estimates
-        geom_segment(data = meta_data %>% dplyr::select(!p_ref) %>% filter(covariates %in% model_covar[!model_covar %in% list_excluded_covariables]), 
-                     aes(x = est, xend = est, y = as.numeric(as.factor(covariates)) - 0.4, yend = as.numeric(as.factor(covariates)) + 0.4, color = "Meta estimates"),
-                     size = 1.2) +
-        # Manual color adjustments
-        geom_text(data = meta_data %>% filter(p_ref < 0.05 & covariates %in% model_covar[!model_covar %in% list_excluded_covariables]), 
-                  aes(x = est, y = as.numeric(as.factor(covariates)) + 0.3, label = "*"), 
-                  color = "blue", size = 12, vjust = -1)  # Adjust vjust to position the asterisk
+        scale_color_manual(name = "Meta model", values = c("Meta estimates" = "blue"))
     }
     
   }
@@ -949,21 +1011,21 @@ points_plot_rsf <- function(data_table,
   # Save the plot
   if(write == TRUE & group == "none") {
     ggsave(gg_points_rsf[[1]], 
-           file = file.path(outputfolder, paste0("rsf_points_", names(data_table)[1],"_",group,".jpeg")),
+           file = file.path(outputfolder, paste0("rsf_points_", names(data_table)[1],"_",group,if(easy_look_results == TRUE) {"_easy_read"},".jpeg")),
            width = 25, height = 15, units = "in")
     ggsave(gg_points_rsf[[2]], 
-           file = file.path(outputfolder, paste0("rsf_points_", names(data_table)[2],"_",group,".jpeg")),
+           file = file.path(outputfolder, paste0("rsf_points_", names(data_table)[2],"_",group,if(easy_look_results == TRUE) {"_easy_read"},".jpeg")),
            width = 25, height = 15, units = "in")
     
   }
   if(write == TRUE & group != "none") {
     ggsave(gg_points_rsf[[2]], 
-           file = file.path(outputfolder, paste0("rsf_points_", names(data_table)[2],"_",group,if(boxplot_by_group == TRUE){"_box"},".jpeg")),
+           file = file.path(outputfolder, paste0("rsf_points_", names(data_table)[2],"_",group,if(boxplot_by_group == TRUE){"_box"},if(easy_look_results == TRUE) {"_easy_read"},".jpeg")),
            width = 25, height = 15, units = "in")
   }
   
   # Return the last ggplot object (for checking or further manipulation)
-  return()
+  return(dt_l[[1]])
 }
 
 
@@ -993,6 +1055,10 @@ metamodel <- function(raw_results,
     rsf_var <- sapply(raw_results, function(x) diag(x[["COV"]])[1:nrow(rsf_beta)])
 
 
+    rownames(rsf_beta) <- sapply(rownames(rsf_beta), swap_temporal_variable)
+    rownames(rsf_var) <- sapply(rownames(rsf_var), swap_temporal_variable)
+    
+    
     # Write results in a output file
     write.csv(cbind(as.data.frame(t(rsf_beta)),
                     "any_outlier" = apply(apply(rsf_beta, 1, is_outlier), 1, any)),
@@ -1002,10 +1068,14 @@ metamodel <- function(raw_results,
 
     # Fixed effect and random effects meta-analysis based on estimates (e.g. log hazard ratios) and their standard errors. The inverse variance method is used for pooling.
     meta_models <- lapply(1:nrow(rsf_beta), function(x) {
+      
+      
+      tryCatch({
 
       if(remove_outliers == TRUE)
       {
         ok <- !is_outlier(rsf_beta[x, ]) # remove outliers for each variable
+        warning("If not specified, outlier detection parameter coefficient = 1.5 times the interquartile range ")
       }else{
         ok <- rep(TRUE,ncol(rsf_beta)) # keep outliers for each variable
       }
@@ -1015,11 +1085,13 @@ metamodel <- function(raw_results,
                          studlab = names(raw_results)[ok]) # labels
 
       print(rownames(rsf_beta)[x])
-      print(meta_df)
+      # print(meta_df)
       
       if(is.null(group))
       {
         metareg <- metareg(meta_df, ~1)
+        
+        print(metareg)
       }
 
       if(!is.null(group) && group == "covid")
@@ -1032,6 +1104,8 @@ metamodel <- function(raw_results,
     
 
         metareg <- metareg(meta_df, ~ covid_indicator)
+        
+        print(metareg)
       }
       
       if(!is.null(group) && group == "sex")
@@ -1043,47 +1117,67 @@ metamodel <- function(raw_results,
         meta_df$data$male_indicator <- male_indicator[ok]
         
         metareg <- metareg(meta_df, ~ male_indicator)
+        
+        # print(metareg)
       }
 
       return(metareg)
+    },error = function(e) {
+      warning(paste("Meta-regression failed for row", x, ":", e$message))
+      return(NA)  # Return NA if metareg() fails
     })
-    
+})
     
     
     print(meta_models)
-
+    
     meta_model_coef <- data.frame(t(sapply(meta_models, function(x) {
-      # Initialize output vector
-      result <- c(
-        "se" = x$se,
-        "tau" = sqrt(x$tau2)
-      )
+      
+      
       
       # Check if 'group' is NULL (simple meta-analysis)
       if (is.null(group)) {
-        result <- c("coef_effect" = x$beta[1],
-                    "pval" = x$pval,
-                    "ci.lb" = x$ci.lb,
-                    "ci.ub" = x$ci.ub,
-                    result)
+                if (is.null(x) || (length(x) == 1 && is.na(x))) {
+          return(rep(NA, 6)) 
+        } else {
+        result <- c(
+          "se" = x$se, 
+          "tau" = sqrt(x$tau2),
+          "coef_effect" = ifelse(!is.null(x$beta[1]), x$beta[1], NA),
+          "pval" = ifelse(!is.null(x$pval), x$pval, NA),
+          "ci.lb" = ifelse(!is.null(x$ci.lb), x$ci.lb, NA),
+          "ci.ub" = ifelse(!is.null(x$ci.ub), x$ci.ub, NA)
+        ) }
       } else {
+        
+        if (is.null(x) || (length(x) == 1 && is.na(x))) {
+          return(rep(NA, 11)) 
+        } else {
+          
         # Meta-regression case: two coefficients (intercept & group effect)
         result <- c(
-          "intercept_effect" = x$beta[1],
-          "group_effect" = x$beta[2],
-          "pval_ref" = x$pval[1],
-          "pval_effect" = x$pval[2],
-          "ci.lb1" = x$ci.lb[1],
-          "ci.ub1" = x$ci.ub[1],
-          "ci.lb2" = x$ci.lb[2],
-          "ci.ub2" = x$ci.ub[2],
-          result
+          "se1" = x$se[1], 
+          "se2" = x$se[2], 
+          "tau" = sqrt(x$tau2),
+          "intercept_effect" = ifelse(!is.null(x$beta[1]), x$beta[1], NA),
+          "group_effect" = ifelse(length(x$beta) > 1, x$beta[2], NA),
+          "pval_ref" = ifelse(length(x$pval) > 1, x$pval[1], NA),
+          "pval_effect" = ifelse(length(x$pval) > 1, x$pval[2], NA),
+          "ci.lb1" = ifelse(length(x$ci.lb) > 1, x$ci.lb[1], NA),
+          "ci.ub1" = ifelse(length(x$ci.ub) > 1, x$ci.ub[1], NA),
+          "ci.lb2" = ifelse(length(x$ci.lb) > 1, x$ci.lb[2], NA),
+          "ci.ub2" = ifelse(length(x$ci.ub) > 1, x$ci.ub[2], NA)
         )
       }
       
+      cat(result,"\n")
+      print(names(result))
       return(result)
+      
+      }
+      
     })))
-    
+
     rownames(meta_model_coef) <- names(raw_results[[1]]$beta)
 
     write.csv(meta_model_coef, file.path(outputfolder,paste0("metamodel",if(remove_outliers == TRUE){"_out_removed"},".csv")))
@@ -1115,8 +1209,7 @@ metamodel <- function(raw_results,
                                            )
     }
     
-
-    print(rsf_results_table_meta)
+    rsf_results_table_meta$covariates = sapply(rsf_results_table_meta$covariates, swap_temporal_variable)  # Swap temporal covariates
 
     ### Plot results of the satatistical test
 
@@ -1137,7 +1230,7 @@ metamodel <- function(raw_results,
       
       
       
-    flextable::save_as_docx(meta_model_table, path = file.path(outputfolder,paste0("rsf_meta_results",if(remove_outliers == TRUE){"_out_removed"},if(!is.null(group)){paste0("_",group)},".docx")))
+    flextable::save_as_docx(meta_model_table, path = file.path(outputfolder,paste0("rsf_meta_results",if(remove_outliers == TRUE){paste0("_out_removed_range_interQ=",coefficient)},if(!is.null(group)){paste0("_",group)},".docx")))
 
 
 

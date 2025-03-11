@@ -49,6 +49,8 @@ detectCores()
 ### Settings ----
 #********************************************************************
 base <- getwd()
+telemetry_file <- "multipl_telemetry_winter_saison2_2025_02_21"
+akde_file <- "multipl_akde_winter_saison2_2025_02_21"
 covid <- c("Caramel_2", "Daisy","Dalton","Dameur","Dario","Darkvador","Darwin","Dede","Destroy","Diot","Djal","Django","Donald","Durite","Dynamite","Dyonisos")
 #********************************************************************
 
@@ -58,10 +60,16 @@ covid <- c("Caramel_2", "Daisy","Dalton","Dameur","Dario","Darkvador","Darwin","
 birds_bg_dt <- read.csv2(file.path(base,"2_DATA","data_bg_pretelemetry_2024_10.csv"),sep=",") #upload the file from a csv, not a move2 object
 
 ### ENV
-load(file.path(base,"2_DATA","scaled_env_RL_list.RData"))
-scaled_env_RL_list2 <- scaled_env_RL_list[names(scaled_env_RL_list) %in% c("elevation", "squared_elevation", "strava_winter_sports")]
-load(file.path(base,"2_DATA","scaled_env_RL_list_nofractcover.RData"))
-scaled_env_RL_list <- c(scaled_env_RL_list, scaled_env_RL_list2)
+# load(file.path(base,"2_DATA","scaled_env_RL_list_10m.RData"))
+load(file.path(base,"2_DATA","scaled_env_RL_list_1m.RData"))
+
+
+# scaled_env_RL_list2 <- scaled_env_RL_list[names(scaled_env_RL_list) %in% c("elevation", "squared_elevation", "strava_winter_sports")]
+# load(file.path(base,"2_DATA","scaled_env_RL_list_nofractcover.RData"))
+# scaled_env_RL_list <- c(scaled_env_RL_list, scaled_env_RL_list2)
+
+strava_without_aerial_corr <- terra::rast(file.path(base,"2_DATA/environmental_raster/r_strava_without_aerial_cables.gpkg"))
+
 
 # Visitor numbers
 visitor_meribel <- read.csv2(file.path(base,"2_DATA","ski_resorts_visitor_numbers","meribel_visitors.csv"), sep=",")
@@ -131,10 +139,8 @@ library(terra)
 
 #********************************************************************
 # Load the outputs of tele_akde with visitor number as continuous variable
-load(file = file.path(base,"2_DATA", "multipl_telemetry_winter_saison2_2025_01_23.Rdata"))
-load(file = file.path(base,"2_DATA", "multipl_guess_winter_saison2_2025_01_23.Rdata"))
-load(file = file.path(base,"2_DATA", "multipl_fit_winter_saison2_2025_01_23.Rdata"))
-load(file = file.path(base,"2_DATA", "multipl_akde_winter_saison2_2025_01_23.Rdata"))
+load(file = file.path(base,"2_DATA", paste0(telemetry_file,".Rdata")))
+load(file = file.path(base,"2_DATA",  paste0(telemetry_file,".Rdata")))
 
 l_telemetry_winter <- list_of_one(l_telemetry_winter)
 l_akde_winter <- list_of_one(l_akde_winter)
@@ -144,8 +150,6 @@ l_fit_winter <- list_of_one(l_fit_winter)
 l_telemetry_winter <- covariates_NAN_cleaned(l_telemetry_winter)
 
 l_akde_winter <- l_akde_winter[names(l_akde_winter) %in% names(l_telemetry_winter)]
-l_guess_winter <- l_guess_winter[names(l_guess_winter) %in% names(l_telemetry_winter)]
-l_fit_winter <- l_fit_winter[names(l_fit_winter) %in% names(l_telemetry_winter)]
 #********************************************************************  
 
 

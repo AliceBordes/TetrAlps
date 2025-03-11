@@ -76,7 +76,7 @@ tele_akde <- function(data,
                                 keep = c("saison", "saison2", "period_jour", "animal.sex", 
                                          "animal.life.stage", "total.visitors", "snow.depth",
                                          "total.visitors.std", "snow.depth.std",
-                                         "time"
+                                         "time", "day", "displaying", "night"
                                          # "sl_open",
                                          # "visitor_breaks", "visitor_breaksNull", "visitor_breaksLow", "visitor_breaksMedium", "visitor_breaksHigh" , "visitor_breaksVery_high" 
                                          ))
@@ -357,7 +357,7 @@ RSF_birds <- function(telemetry_list,
     start_time <- proc.time()
     
     # Print the current bird being processed
-    print(names(telemetry_list)[bg])
+    cat(names(telemetry_list)[bg])
     
     #### Size of the integration grid 
     if (grid == "full") {
@@ -398,7 +398,7 @@ RSF_birds <- function(telemetry_list,
     
     # Log elapsed time
     end_time <- proc.time()
-    print(end_time - start_time)
+    cat(end_time - start_time)
     
     return(mybird_rsf_mc_strava)
   }
@@ -409,7 +409,7 @@ RSF_birds <- function(telemetry_list,
   # Naming results
   names(sum_rsf_multipl) <- names(telemetry_list)
   
-  print("The model has been run successfully")
+  cat("The model has been run successfully")
   
   # Save results if needed
   if (write) {
@@ -427,7 +427,7 @@ RSF_birds <- function(telemetry_list,
       clean_name <- paste0("rsf_", length(telemetry_list), "birds","_covid")
     }
     
-    print(clean_name)
+    cat(clean_name)
     
     name_grid <- gsub('^"|"$', '', deparse(substitute(grid)))
     
@@ -475,7 +475,11 @@ cat("\n\n")
 
 # RSF formula
 cat("### RSF Formula ###\n")
-cat(deparse(rsf_formula), "\n")
+cat(deparse(rsf_formula), "\n\n")
+
+# Running time
+cat("### Running time ###\n")
+cat(end_time - start_time)
 
 sink()
 

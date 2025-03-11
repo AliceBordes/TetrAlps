@@ -27,12 +27,6 @@ base <- "C:/Users/albordes/Documents/PhD/Tetralps"
 
 # Loading rasters ----
 #********************************************************************
-### GRID
-
-grid_10m <- terra::rast(terra::vect(file.path(base,"1_RAW_DATA","grid_10m.gpkg")))
-res(grid_10m) <- 10
-
-
 ### RASTERS
 
 # habitat cartography
@@ -54,9 +48,10 @@ sum(values(carto_habitats_3V_winter==5), na.rm = TRUE)/length(values(carto_habit
 # In this case, multiple dummy variables would be created to represent each level of the variable, and only one dummy variable would take on a value of 1 for each observation.
 
 # Align the rasters carto_habitats_3V_winter and mnt
-# carto_habitats_3V_winter <- project(carto_habitats_3V_winter, y = mnt, method = "near")
-carto_habitats_3V_winter <- raster::raster(carto_habitats_3V_winter)
 terra::crs(carto_habitats_3V_winter) <- "EPSG:2154"
+# carto_habitats_3V_winter <- project(carto_habitats_3V_winter, y = grid_10m, method = "near")
+# carto_habitats_3V_winter <- raster::raster(carto_habitats_3V_winter)
+
 
 # Assume scaled_env_RL_list[["carto_habitats_winter"]] is your raster with 5 classes
 # carto_habitats_winter_bin <- scaled_env_RL_list[["carto_habitats_winter"]]
@@ -72,7 +67,8 @@ carto_habitats_winter_bins <- list()
 for (class in classes[!(is.nan(classes) | is.na(classes))]) {
   
   # Create a binary raster where pixels of the specified class are 1, others are 0
-  carto_habitats_winter_binary <- calc(carto_habitats_winter_bin, fun = function(x) { as.integer(x == class) })
+  # carto_habitats_winter_binary <- calc(carto_habitats_winter_bin, fun = function(x) { as.integer(x == class) })
+  carto_habitats_winter_binary <- app(carto_habitats_winter_bin, fun = function(x) { as.integer(x == class) })
   
   # Assign a meaningful name based on the class
   new_name <- case_when(
@@ -89,7 +85,7 @@ for (class in classes[!(is.nan(classes) | is.na(classes))]) {
   carto_habitats_winter_binary <- aggregate(carto_habitats_winter_binary, fact = 10, fun = "mean")
   
   terra::writeRaster(carto_habitats_winter_binary,
-                     filename = file.path(base,paste0("TetrAlps/2_DATA/environmental_raster/scaled_bin_",new_name,".tif")),
+                     filename = file.path(base,paste0("2_DATA/environmental_raster/scaled_bin_",new_name,".tif")),
                      overwrite = TRUE)
   
   # Add the binary raster to the list

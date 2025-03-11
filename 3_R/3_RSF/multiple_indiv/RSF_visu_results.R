@@ -41,6 +41,9 @@ library(parallel)
 library(meta)
 library(doParallel)
 library(rempsyc)
+library(mgcv)
+# devtools::install_github("stefanocoretta/tidymv")
+library(tidymv)
 detectCores()
 
 base <- "C:/Users/albordes/Documents/PhD/TetrAlps"
@@ -48,14 +51,14 @@ base <- "C:/Users/albordes/Documents/PhD/TetrAlps"
 
 ### Loading functions ----
 #********************************************************************
-source(file.path("4_FUNCTIONS","my_telemetry_transfo_data.R"))
-source(file.path("4_FUNCTIONS","Homerange_visu/mean_size_area.R"))
-source(file.path("4_FUNCTIONS","Homerange_visu/visu_home_range.R"))
-source(file.path("4_FUNCTIONS","Homerange_visu","distance_home_range_capture_site.R"))
-source(file.path("4_FUNCTIONS","Homerange_visu","multi_graph_home_range.R"))
-source(file.path("4_FUNCTIONS","RSF","plot_check_RSF_results.R"))
-source(file.path("4_FUNCTIONS","RSF","rsf_functions.R"))
-source(file.path("4_FUNCTIONS","Formatting_data/formatting_environment_data.R"))
+source(file.path(base,"4_FUNCTIONS","my_telemetry_transfo_data.R"))
+source(file.path(base,"4_FUNCTIONS","Homerange_visu/mean_size_area.R"))
+source(file.path(base,"4_FUNCTIONS","Homerange_visu/visu_home_range.R"))
+source(file.path(base,"4_FUNCTIONS","Homerange_visu","distance_home_range_capture_site.R"))
+source(file.path(base,"4_FUNCTIONS","Homerange_visu","multi_graph_home_range.R"))
+source(file.path(base,"4_FUNCTIONS","RSF","plot_check_RSF_results.R"))
+source(file.path(base,"4_FUNCTIONS","RSF","rsf_functions.R"))
+source(file.path(base,"4_FUNCTIONS","Formatting_data/formatting_environment_data.R"))
 #********************************************************************
 
 
@@ -63,6 +66,7 @@ source(file.path("4_FUNCTIONS","Formatting_data/formatting_environment_data.R"))
 #********************************************************************
 ### DATASET
 birds_bg_dt<-read.csv2(file.path(base,"2_DATA","data_bg_pretelemetry_2024_10.csv"),sep=",") #upload the file from a csv, not a move2 object
+resort_bird <- read.csv2(file.path(base,"2_DATA","ski_resorts_visitor_numbers","bg_winter_assign_valley_resort.csv"))
 
 # Visitor numbers
 visitor_meribel <- read.csv2(file.path(base,"2_DATA","ski_resorts_visitor_numbers","meribel_visitors.csv"), sep=",")
@@ -79,27 +83,21 @@ visitor_menui$Date <- as.Date(visitor_menui$Date)
 visitor_menui$Total <- as.integer(visitor_menui$Total)
 
 # Environment stack
-load(file.path(base,"3_R","0_Heavy_saved_models","environment_3V","scaled_env_RL_list.RData"))
+# load(file.path(base,"3_R","0_Heavy_saved_models","environment_3V","scaled_env_RL_list_10m.RData"))
 #********************************************************************
 
 
 #********************************************************************
 # Load the outputs of tele_akde with visitor number as continuous variable
 load(file = file.path(base,"3_R","0_Heavy_saved_models","birds_3V", "multipl_telemetry_winter_saison2_2025_01_23.Rdata"))
-load(file = file.path(base,"3_R","0_Heavy_saved_models","birds_3V", "multipl_guess_winter_saison2_2025_01_23.Rdata"))
-load(file = file.path(base,"3_R","0_Heavy_saved_models","birds_3V", "multipl_fit_winter_saison2_2025_01_23.Rdata"))
 load(file = file.path(base,"3_R","0_Heavy_saved_models","birds_3V", "multipl_akde_winter_saison2_2025_01_23.Rdata"))
 
 l_telemetry_winter <- list_of_one(l_telemetry_winter)
 l_akde_winter <- list_of_one(l_akde_winter)
-l_guess_winter <- list_of_one(l_guess_winter)
-l_fit_winter <- list_of_one(l_fit_winter)
 
 l_telemetry_winter <- covariates_NAN_cleaned(l_telemetry_winter)
 
 l_akde_winter <- l_akde_winter[names(l_akde_winter) %in% names(l_telemetry_winter)]
-l_guess_winter <- l_guess_winter[names(l_guess_winter) %in% names(l_telemetry_winter)]
-l_fit_winter <- l_fit_winter[names(l_fit_winter) %in% names(l_telemetry_winter)]
 #********************************************************************  
 
 
@@ -109,7 +107,7 @@ covid <- c("Caramel_2", "Daisy","Dalton","Dameur","Dario","Darkvador","Darwin","
 females <- unique((birds_bg_dt %>% filter(animal.sex == "femelle"))$animal.ID)
 males <- unique((birds_bg_dt %>% filter(animal.sex == "male"))$animal.ID)
 
-model <- "rsf_59birds_individual_2025_02_18_17h23min"
+model <- "rsf_59birds_individual_2025_03_04_13h58min"
 #********************************************************************
 
 
@@ -125,7 +123,16 @@ load(file = file.path(base, "5_OUTPUTS", "RSF", "rsf.fit_results", model, paste0
 
 ### 1.1_Formatting RSF results for multiple birds ----
 #********************************************************************
-l_dt_results <- rsf_result_table(sum_rsf_multipl, coefficient = 5)
+
+# switch variable names (more readible)
+# sum_rsf_multipl <- lapply(sum_rsf_multipl, function(x) {
+#   x@.Data[[22]] <- sapply(x@.Data[[22]], swap_temporal_variable) # sapply preserve the original vector format VS sapply returns a list
+#   return(x)  # Return modified object
+# })
+
+
+l_dt_results <- rsf_result_table(sum_rsf_multipl, 
+                                 coefficient = 5)
   # nb of outliers : sum(is.na(l_dt_results[[2]]$est))
   
 
@@ -134,6 +141,14 @@ l_dt_results <- rsf_result_table(sum_rsf_multipl, coefficient = 5)
 # rsf_results_table[rsf_results_table$covariates == "Buildings" & rsf_results_table$bird == "Dynamite_2", "est"] <- NA
 # rsf_results_table[rsf_results_table$covariates == "Cliffs" & rsf_results_table$bird == "Dameur", "est"] <- NA
 
+
+# AICc 
+# (= AIC correction for small sample sizes)
+# use of AICc avoid the probability of preferentially selecting a model with too many parameters
+
+clean_summary <- summary(sum_rsf_multipl)[,1][is.finite(summary(sum_rsf_multipl)[,1])]
+cat("Average AICc\n", mean(clean_summary))
+
 #********************************************************************  
   
 
@@ -141,15 +156,24 @@ l_dt_results <- rsf_result_table(sum_rsf_multipl, coefficient = 5)
 
 #********************************************************************
 rsf_meta_1 <- metamodel(sum_rsf_multipl,
-                      coefficient = 5,
-                      remove_outliers = FALSE,
-                      outputfolder = file.path(base, "5_OUTPUTS", "RSF", "rsf.fit_results", model))
+                        remove_outliers = FALSE,
+                        outputfolder = file.path(base, "5_OUTPUTS", "RSF", "rsf.fit_results", model))
+
+rsf_meta_1 <- metamodel(sum_rsf_multipl,
+                        coefficient = 1.5, # 5 fois l'écrat interquartile (1er et 3eme)
+                        remove_outliers = TRUE,
+                        outputfolder = file.path(base, "5_OUTPUTS", "RSF", "rsf.fit_results", model))
 
 rsf_meta_group <- metamodel(sum_rsf_multipl,
-                        coefficient = 5,
                         group = "covid",
                         remove_outliers = FALSE,
                         outputfolder = file.path(base, "5_OUTPUTS", "RSF", "rsf.fit_results", model))
+
+rsf_meta_group <- metamodel(sum_rsf_multipl,
+                            coefficient = 1.5,
+                            group = "covid",
+                            remove_outliers = TRUE,
+                            outputfolder = file.path(base, "5_OUTPUTS", "RSF", "rsf.fit_results", model))
 
 # Interpreting metagen() outputs 
 
@@ -171,26 +195,96 @@ rsf_meta_group <- metamodel(sum_rsf_multipl,
 points_plot_rsf(l_dt_results,
                 group = "none",
                 meta_data = rsf_meta_1,
+                easy_look_results = TRUE,
                 boxplot_by_group = FALSE,
-                list_excluded_covariables = c("elevation", "squared_elevation"))
+                list_excluded_covariates = c("elevation", "squared_elevation"))
 points_plot_rsf(l_dt_results,
                 group = "covid",
-                meta_data = rsf_meta_group,
+                meta_data = rsf_meta_1,
                 boxplot_by_group = FALSE,
-                list_excluded_covariables = c("elevation", "squared_elevation", "Buildings"))
+                easy_look_results = TRUE,
+                list_excluded_covariates = c("elevation", "squared_elevation", "Buildings"))
 points_plot_rsf(l_dt_results,
                 group = "covid",
-                meta_data = rsf_meta_group,
+                meta_data = rsf_meta_1,
+                easy_look_results = TRUE,
                 boxplot_by_group = TRUE,
-                list_excluded_covariables = c("elevation", "squared_elevation", "Buildings"))
+                list_excluded_covariates = c("elevation", "squared_elevation", "Buildings"))
 points_plot_rsf(l_dt_results,
                 group = "sex",
-                meta_data = rsf_meta_group,
+                meta_data = rsf_meta_1,
                 boxplot_by_group = FALSE,
-                list_excluded_covariables = c("elevation", "squared_elevation", "Buildings"))
+                list_excluded_covariates = c("elevation", "squared_elevation", "Buildings"))
 
 
 #********************************************************************
+
+
+
+# Are the bird with the higher preference for cliffs avoiding a lot strava? 
+#********************************************************************
+
+rsf_results_corrected <- points_plot_rsf(l_dt_results,
+                group = "none",
+                meta_data = rsf_meta_1,
+                easy_look_results = TRUE,
+                boxplot_by_group = FALSE,
+                list_excluded_covariates = c("elevation", "squared_elevation"))
+
+cliffs <- rsf_results_corrected %>% filter(covariates == "Cliffs:day")
+strava <- rsf_results_corrected %>% filter(covariates == "strava_winter_sports:day")
+
+# Faire le join et renommer les colonnes d'estimation
+c_s <- left_join(cliffs, strava, by = "bird" )
+
+c_s <- left_join(c_s, resort_bird, by = c("bird"="animal") )
+
+c_s <- c_s %>% filter(!bird %in% covid)
+
+c_s <- c_s %>% filter(resort == "Les Ménuires")
+
+p <- ggplot(c_s, aes(x = est.x, y = est.y, color = bird, text = bird)) +
+  geom_point() +
+  xlab(unique(c_s$covariates.x)) +
+  ylab(unique(c_s$covariates.y)) +
+  theme_minimal()
+p
+# Convertir en graphique interactif
+ggplotly(p, tooltip = "text")
+
+
+gam_m <- gam(est.y~s(est.x), data = c_s)
+summary(gam_m)
+plot.gam(gam_m)
+
+glm_m <- glm(est.y~est.x, data = c_s)
+summary(glm_m)
+plot(c_s$est.y~c_s$est.x, 
+     xlab = unique(c_s$covariates.x), 
+     ylab = unique(c_s$covariates.y), 
+     main = "GLM: Estimated strava value ~ estimated cliff value \n(from RSF model outputs)", 
+     col = as.factor(c_s$bird), pch = 19)
+
+# Ajouter la droite de régression
+abline(glm_m, col = "red", lwd = 2)
+
+
+
+
+smooth_plot <- plot_smooths(gam_m, "est.x")+  
+  geom_line(color = "red", size = 1) 
+
+smooth_plot +
+  geom_abline(slope = coef(glm_m)["est.x"], intercept = coef(glm_m)["(Intercept)"], color = "blue", size = 1) +
+  geom_point(data = c_s, aes(x = est.x, y = est.y, color = bird), size = 2)+
+  labs(title = "Estimated strava value ~ estimated cliff value, from RSF model outputs (day)",
+       subtitle = "GLM (blue) and GAM (red)",
+       x = unique(c_s$covariates.x),
+       y = unique(c_s$covariates.y))
+#********************************************************************
+
+
+
 
 
 

@@ -45,7 +45,9 @@ source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/Formatting_data/for
 
 ### Settings ----
 #********************************************************************
-base <- "C:/Users/albordes/Documents/PhD"
+base <- "C:/Users/albordes/Documents/PhD/Tetralps"
+grid_dim = "1m"
+scaled = "yes"
 #********************************************************************
 
 
@@ -53,57 +55,84 @@ base <- "C:/Users/albordes/Documents/PhD"
 #********************************************************************
 ### GRID
 
-grid_10m <- terra::rast(terra::vect(file.path(base, "Tetralps","1_RAW_DATA","grid_10m.gpkg")))
-res(grid_10m) <- 10
+# Define extent (same as mnt but rounded properly)
+xmin <- 963980
+xmax <- 1002350
+ymin <- 6464370
+ymax <- 6495470
+
+# The total width and height:
+  # Width = 1002350 - 963980 = 38370 meters
+  # Height = 6495470 - 6464370 = 31100 meters
+
+
+if(grid_dim == "10m" || grid_dim == "modal")
+{
+  # Create a 10m resolution grid matching the extent
+  grid <- rast(ext(c(xmin, xmax, ymin, ymax)), resolution = c(10, 10), crs = "EPSG:2154")
+}
+if(grid_dim == "1m")
+{
+  # Create a 1m resolution grid matching the extent
+  grid <- terra::rast(ext(c(xmin, xmax, ymin, ymax)), resolution = c(1, 1), crs = "EPSG:2154")
+}
+
+# grid_10m <- terra::rast(terra::vect(file.path(base,"1_RAW_DATA","grid_10m.gpkg")))
+# res(grid_10m) <- 10
 
 
 ### RASTERS
 
 # elevation
-mnt <- terra::rast(file.path(base, "Tetralps","2_DATA","environmental_raster","mnt_ign.tif"))
+mnt <- terra::rast(file.path(base,"2_DATA","environmental_raster","mnt_ign.tif"))
 
 # slope 3V
-slope_3V <- terra::rast(file.path(base,"Tetralps","2_DATA","environmental_raster","slope_3V_ign.tif"))
-crs(slope_3V) <- "EPSG:2154"
+slope_3V <- terra::rast(file.path(base,"2_DATA","environmental_raster","slope_3V_ign.tif"))
+crs(slope_3V) <- crs(mnt)
 
 # strava
-strava_without_aerial <- terra::rast(file.path(base,"TetrAlps","2_DATA","environmental_raster","r_strava_without_aerial_cables.gpkg"))
+strava_without_aerial <- terra::rast(file.path(base,"2_DATA","environmental_raster","r_strava_without_aerial_cables.gpkg"))
 
-strava_backcountry <- terra::rast(file.path(base, "Tetralps/2_DATA/strava/3Vallees/strava_sport_BackcountrySki_2025_01_09.tif"))
+strava_backcountry <- terra::rast(file.path(base,"1_RAW_DATA","strava","3Vallees","strava_sport_BackcountrySki_2025_01_09.tif"))
 if(length(names(strava_backcountry))!=1)
 {
   strava_backcountry <- strava::as_numeric(strava_backcountry)
 }
 
-strava <- terra::rast(file.path(base, "Tetralps/2_DATA/strava/3Vallees/strava_3V_winter_sports_rgb_single_3Vallees_25_06_2024.tif"))
+strava <- terra::rast(file.path(base, "1_RAW_DATA","strava","3Vallees","strava_3V_winter_sports_rgb_single_3Vallees_25_06_2024.tif"))
 if(length(names(strava))!=1)
 {
   strava <- strava::as_numeric(strava)
 }
 #if strava = rgb with 4 layers : 
-# strava <- terra::rast(file.path(base, "Tetralps/2_DATA/strava/3Vallees/strava_winter_2024_10_03.tif"))
+# strava <- terra::rast(file.path(base, "2_DATA/strava/3Vallees/strava_winter_2024_10_03.tif"))
 # strava_rgb <- terra::plotRGB(strava)
 # strava_rgb <- terra::plot(strava::as_numeric(strava), col = viridis::magma(256))
 # resolution of strava is set artificially at 9m such as mnt_9, but the true resolution is 38.21851m
 
 # leks
-r_leks_dist <- terra::rast(file.path(base,"TetrAlps","2_DATA","environmental_raster","r_leks_dist.gpkg"))
+# r_leks_dist <- terra::rast(file.path(base,"2_DATA","environmental_raster","r_leks_dist.gpkg"))
 
 # 3V winter trails (osm)
-# osm_winter <- terra::vect(file.path(base,"TetrAlps","2_DATA", "osm_ski_piste.gpkg"))
+# osm_winter <- terra::vect(file.path(base,"2_DATA", "osm_ski_piste.gpkg"))
 # ggplot()+geom_spatvector(data = osm_winter, aes(color = piste.type))+ggtitle("Ski trails Open Street Map by type")
 # osm_winter_sf <- as_sf(osm_winter)
 
 
 # habitat cartography
-carto_habitats_3V_winter <- terra::rast(file.path(base, "TetrAlps","2_DATA","environmental_raster","carto_habitats_3V_winter_5classes_tree.tif"))
-r_Trees <- terra::rast(file.path(base,paste0("TetrAlps/2_DATA/environmental_raster/scaled_bin_Trees.tif")))
-r_Shrubs <- terra::rast(file.path(base,paste0("TetrAlps/2_DATA/environmental_raster/scaled_bin_Shrubs.tif")))
-r_Buildings <- terra::rast(file.path(base,paste0("TetrAlps/2_DATA/environmental_raster/scaled_bin_Buildings.tif")))
-r_Cliffs <- terra::rast(file.path(base,paste0("TetrAlps/2_DATA/environmental_raster/scaled_bin_Cliffs.tif")))
+carto_habitats_3V_winter <- terra::rast(file.path(base, "2_DATA","environmental_raster","carto_habitats_3V_winter_5classes_tree.tif"))
+# r_Trees <- terra::rast(file.path(base,"2_DATA","environmental_raster",paste0("scaled_bin_Trees_",grid_dim,".tif")))
+# r_Shrubs <- terra::rast(file.path(base,"2_DATA","environmental_raster",paste0("scaled_bin_Shrubs_",grid_dim,".tif")))
+# r_Buildings <- terra::rast(file.path(base,"2_DATA","environmental_raster", paste0("scaled_bin_Buildings_",grid_dim,".tif")))
+# r_Cliffs <- terra::rast(file.path(base,"2_DATA","environmental_raster",paste0("scaled_bin_Cliffs_",grid_dim,".tif")))
 #To ensure the raster is in memory: use terra::readAll
 
-# carto_habitats_3V_ocsge <- terra::rast(file.path(base, "TetrAlps","2_DATA","environmental_raster","carto_habitats_3V_ocsge.tif"))
+r_Trees <- terra::rast(file.path(base,"2_DATA","environmental_raster",paste0("scaled_bin_Trees_",grid_dim,".tif")))
+r_Shrubs <- terra::rast(file.path(base,"2_DATA","environmental_raster",paste0("scaled_bin_Shrubs_",grid_dim,".tif")))
+r_Buildings <- terra::rast(file.path(base,"2_DATA","environmental_raster", paste0("scaled_bin_Buildings_",grid_dim,".tif")))
+r_Cliffs <- terra::rast(file.path(base,"2_DATA","environmental_raster",paste0("scaled_bin_Cliffs_",grid_dim,".tif")))
+
+# carto_habitats_3V_ocsge <- terra::rast(file.path(base,"2_DATA","environmental_raster","carto_habitats_3V_ocsge.tif"))
 #********************************************************************
 
 
@@ -112,7 +141,7 @@ r_Cliffs <- terra::rast(file.path(base,paste0("TetrAlps/2_DATA/environmental_ras
 #********************************************************************
 
 # Predation : Corentin the fox (probability of presence over the area)
-# fox_Corentin_sakde <- terra::rast(file.path(base,"TetrAlps/2_DATA/fox_Corentin_simple_akde_PMF.tif")) # simple akde over a period of 7 months
+# fox_Corentin_sakde <- terra::rast(file.path(base,"2_DATA/fox_Corentin_simple_akde_PMF.tif")) # simple akde over a period of 7 months
 
 # 1.1_Creating backcountry ski raster for the model ----
 
@@ -146,41 +175,45 @@ snow_courchevel <- courchevel_snow_formatting(save = TRUE)
 ### Reprojecting raster to homogenize the resolutions and to align them
 
 # numeric rasters
-mnt_10 <- aggregate(mnt, fact = 10, fun = "mean")
-mnt_10 <- project(mnt_10, y = grid_10m, "bilinear")
+if(grid_dim == "10m" || grid_dim == "modal")
+{
+  mnt <- aggregate(mnt, fact = 10, fun = "mean")
+}
+
+mnt <- project(mnt, y = grid, "bilinear")
 # if project(y = mnt_10) --> all projection will be aggregated at 10m such as mnt_10
-slope_3V_10 <- project(slope_3V, y = grid_10m, method = "bilinear") # resolution of slope_3V is set at 9m such as mnt_9
-strava_without_aerial_10 <- project(strava_without_aerial, y = grid_10m, method = "bilinear") # y = a raster to align on (avoid to use the function resample after), "EPSG:2154" can be specify if there is no argument y. pas besoin de mettre de focal (zone d'influence), method="belinear" advised for continuous raster
-strava_backcountry_10 <- project(strava_backcountry, y = grid_10m, method = "bilinear") 
-r_leks_dist_10 <- project(r_leks_dist, y = grid_10m, method = "bilinear")
-r_Trees <- project(r_Trees, y = grid_10m, method = "bilinear")
-r_Shrubs <- project(r_Shrubs, y = grid_10m, method = "bilinear")
-r_Buildings <- project(r_Buildings, y = grid_10m, method = "bilinear")
-r_Cliffs <- project(r_Cliffs, y = grid_10m, method = "bilinear")
+# slope_3V <- project(slope_3V, y = grid, method = "bilinear") # resolution of slope_3V is set at 9m such as mnt_9
+strava_without_aerial <- project(strava_without_aerial, y = grid, method = "bilinear") # y = a raster to align on (avoid to use the function resample after), "EPSG:2154" can be specify if there is no argument y. pas besoin de mettre de focal (zone d'influence), method="belinear" advised for continuous raster
+# strava_backcountry <- project(strava_backcountry, y = grid, method = "bilinear") 
+# r_leks_dist <- project(r_leks_dist, y = grid, method = "bilinear")
+r_Trees <- project(r_Trees, y = grid, method = "bilinear")
+r_Shrubs <- project(r_Shrubs, y = grid, method = "bilinear")
+r_Buildings <- project(r_Buildings, y = grid, method = "bilinear")
+r_Cliffs <- project(r_Cliffs, y = grid, method = "bilinear")
 
 # categorical rasters
-carto_habitats_3V_winter_10 <- project(carto_habitats_3V_winter, y = grid_10m, method = "near")
+carto_habitats_3V_winter <- project(carto_habitats_3V_winter, y = grid, method = "near")
 
 
 # Changing names
-mnt_10_squared <- mnt_10^2
-names(mnt_10_squared) <- "squared_elevation"
-names(mnt_10) <- "elevation"
-names(strava_without_aerial_10) <- "strava_winter_sports"
-names(strava_backcountry_10) <- "strava_backcountry"
-names(slope_3V_10) <- "slope"
-names(carto_habitats_3V_winter_10) <- "carto_habitats_winter"
-names(r_leks_dist_10) <- "leks"
+mnt_squared <- mnt^2
+names(mnt_squared) <- "squared_elevation"
+names(mnt) <- "elevation"
+names(strava_without_aerial) <- "strava_winter_sports"
+# names(strava_backcountry) <- "strava_backcountry"
+# names(slope_3V) <- "slope"
+names(carto_habitats_3V_winter) <- "carto_habitats_winter"
+# names(r_leks_dist) <- "leks"
 
 
 #' stacking it all in an env layer 
-envir_stack <- c(mnt_10,
-                 mnt_10_squared,
-                 strava_without_aerial_10,
-                 strava_backcountry_10,
-                 slope_3V_10,
-                 carto_habitats_3V_winter_10,
-                 r_leks_dist_10)
+envir_stack <- c(mnt,
+                 mnt_squared,
+                 strava_without_aerial,
+                 # strava_backcountry,
+                 # slope_3V,
+                 carto_habitats_3V_winter)
+                 # r_leks_dist)
 
 env_RL_list <- lapply(envir_stack,raster::raster)
 names(env_RL_list) <- names(envir_stack)
@@ -193,8 +226,8 @@ env_RL_list <- lapply(env_RL_list, function(x) {
 
 env_RL_list[["carto_habitats_winter"]] <- as.factor(env_RL_list[["carto_habitats_winter"]])
 
-save(env_RL_list,file=file.path(base,"TetrAlps/3_R/0_Heavy_saved_models/environment_3V/env_RL_list.RData"))
-load(file.path(base,"TetrAlps/3_R/0_Heavy_saved_models/environment_3V/env_RL_list.RData"))
+save(env_RL_list,file=file.path(base,"3_R","0_Heavy_saved_models","environment_3V",paste0("env_RL_list_",grid_dim,".RData")))
+load(file.path(base,"3_R","0_Heavy_saved_models","environment_3V",paste0("env_RL_list_",grid_dim,".RData")))
 #********************************************************************
 
 
@@ -203,65 +236,105 @@ load(file.path(base,"TetrAlps/3_R/0_Heavy_saved_models/environment_3V/env_RL_lis
 
 ### 3_Scale the environment stack ----
 #********************************************************************
+
 # Scaling of the rasters : needed for rsf with interaction in ctmm
 
-# Users are responsible for standardizing rasters when interactions are supplied!!!!!!
-# scaling raster for interactions : 
-# Scale all rasters in the list using the scale function
-scaled_env_RL_list <- lapply(env_RL_list, function(raster) {
-  # Check if the raster is categorical (e.g., by name or checking levels)
-  # Here, we assume the categorical raster has "carto" in its name
-  if (grepl("carto_habitats_winter", names(raster)) || grepl("leks", names(raster))) {
-    return(raster)  # Return the categorical raster unchanged
-  } else {
-    # If it's not categorical, scale the values
-    scaled_values <- scale(values(raster), center = TRUE, scale = TRUE)
-    raster <- setValues(raster, scaled_values)  # Replace raster values with scaled values
-    return(raster)  # Return the scaled raster
-  }
-})
+  # Scaling of the rasters : needed for rsf with interaction in ctmm
+  
+  # Users are responsible for standardizing rasters when interactions are supplied!!!!!!
+  # scaling raster for interactions : 
+  # Scale all rasters in the list using the scale function
+  scaled_env_RL_list_1 <- lapply(envir_stack, function(raster_item) {
+    # Check if the raster is categorical (e.g., by name or checking levels)
+    # Here, we assume the categorical raster has "carto" in its name
+    if (grepl("carto_habitats_winter", names(raster_item)) || grepl("leks", names(raster_item)) || grepl("squared_elevation", names(raster_item)) ) {
+      return(raster_item)  # Return the categorical raster unchanged
+    } else {
+      
+      print(names(raster_item))
+      
+      # If it's not categorical, scale the values
+      scaled_raster <- scale(raster_item, center = TRUE, scale = TRUE)
+    
+      # writeRaster(scaled_raster, filename = file.path(base,"2_DATA","environmental_raster",paste0("scaled_", names(raster_item),"_",grid_dim, ".tif")), overwrite = TRUE)
+      
+      gc()  # Force garbage collection to free up memory
 
+      return(scaled_raster)  # Return the scaled raster
+    }
+  })
 
-# std_squared_elevation = std_elevation^2 and not scale(squared_elevation)
-scaled_env_RL_list[["squared_elevation"]] <- scaled_env_RL_list[["elevation"]]^2 
+  
+  #' stacking it all in an env layer 
+  envir_list_hab <- list( r_Trees,
+                            r_Shrubs,
+                            r_Buildings,
+                            r_Cliffs)
+  
+  envir_list <- c(scaled_env_RL_list_1,envir_list_hab)
+  names(envir_list) <- lapply(envir_list, names)
+  
+  # Suppress carto_habitats_winter and replace it by multiple binary raster
+  envir_list <- envir_list[!names(envir_list) %in% c("carto_habitats_winter")] # supress the unsclaled raster
+  
+  
+  # Set the Lambert crs (EPSG:2154) to each raster element in env_RL_list
+  envir_list <- lapply(envir_list, function(x) {
+    crs(x) <- "EPSG:2154"
+    return(x)
+  })
+  
+  
+  
+  
+  # save raster in the memory
+  # envir_list <- lapply(envir_list, readAll)
 
+  
 
-#' stacking it all in an env layer 
-envir_stack2 <- c(r_Trees,
-                  r_Shrubs,
-                  r_Buildings,
-                  r_Cliffs)
-
-
-scaled_habitats_list <- lapply(envir_stack2,raster::raster)
-names(scaled_habitats_list) <- sub("scaled_bin_", "", names(envir_stack2))
-
-# Set the Lambert crs (EPSG:2154) to each raster element in env_RL_list
-scaled_habitats_list <- lapply(scaled_habitats_list, function(x) {
-  crs(x) <- "EPSG:2154"
-  return(x)
-})
-
-
-# Suppress carto_habitats_winter and replace it by multiple binary raster
-scaled_env_RL_list <- scaled_env_RL_list[!names(scaled_env_RL_list) %in% c("carto_habitats_winter")] # supress the unsclaled raster
-# scaled_env_RL_list <- c(scaled_env_RL_list, carto_habitats_winter_bins2[!names(carto_habitats_winter_bins2) %in% c("Soils_low_vegetation")]) # supress the raster "Soils_low_vegetation" = reference class : by default, all 0 common of the 4 other raster are consider Soils_low_vegetation  
-scaled_env_RL_list <- c(scaled_env_RL_list,scaled_habitats_list)
-
+  envir_list_r <- lapply(envir_list, raster::raster)
+  
+  
+  
+  
+  # Define the output directory (modify the path as needed)
+  output_dir <- file.path(base,"2_DATA","RSF_model","2_DATA","heavy_rasters")
+  # Create the directory if it doesn't exist
+  dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
+  # Apply writeRaster to each raster in the list
+  lapply(names(envir_list_r), function(name) {
+    raster_obj <- envir_list_r[[name]]  # Get the raster
+    
+    # Define the output filename
+    filename <- file.path(output_dir, paste0(name, ".tif"))
+    
+    # Write the raster to disk
+    writeRaster(raster_obj, filename, overwrite = TRUE)
+    
+    return(filename)  # Return the filename (optional, for debugging)
+  })
+  
+  
+  
+  scaled_env_RL_list <- lapply(envir_list_r,raster::readAll) # NOT WORKING
+  
+  
 # cat 1) Soils and low vegetation : Unclassified soil, Fine mineral soil, Coarse mineral soil, Dry or rocky grassland, Herbaceous, Low ligneous
 # cat 2) Shrubs
 # cat 3) Trees : Unclassified trees, Deciduous trees, Resinous trees
 # cat 4) Buildings
 # cat 5) Cliffs and water : Cliff, Natural pond, Artificial pond, Waterway, Unclassified
 
-
-save(scaled_env_RL_list,file=file.path(base,"TetrAlps/3_R/0_Heavy_saved_models/environment_3V/scaled_env_RL_list_10m_without_fractional_cover.RData"))
-load(file.path(base,"TetrAlps/3_R/0_Heavy_saved_models/environment_3V/scaled_env_RL_list.RData"))
+save(scaled_env_RL_list,file=file.path(base,"3_R","0_Heavy_saved_models","environment_3V",paste0("scaled_env_RL_list_",grid_dim,".RData")))
+load(file.path(base,"3_R","0_Heavy_saved_models","environment_3V",paste0("scaled_env_RL_list_",grid_dim,".RData")))
 #********************************************************************
 
-
-
-
+# 
+# load(file.path(base,"3_R","0_Heavy_saved_models","environment_3V",paste0("scaled_env_RL_list_",grid_dim,"_partial.RData")))
+# 
+# load(file.path(base,"3_R","0_Heavy_saved_models","environment_3V",paste0("scaled_env_RL_list_",grid_dim,"_partial2.RData")))
+# 
+# <- c(envir_list_hab_r,
 
 
 ### 4_Predictors' collinearity ----
