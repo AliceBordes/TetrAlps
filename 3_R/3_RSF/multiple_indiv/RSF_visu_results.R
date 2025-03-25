@@ -33,6 +33,7 @@ library(grid)
 library(openxlsx)
 library(janitor)
 library(dplyr)
+library(tibble)
 library(ctmm)
 library(adehabitatHR)
 library(sjmisc)
@@ -107,7 +108,7 @@ covid <- c("Caramel_2", "Daisy","Dalton","Dameur","Dario","Darkvador","Darwin","
 females <- unique((birds_bg_dt %>% filter(animal.sex == "femelle"))$animal.ID)
 males <- unique((birds_bg_dt %>% filter(animal.sex == "male"))$animal.ID)
 
-model <- "rsf_59birds_individual_2025_03_04_13h58min"
+model <- "rsf_59birds_individual_2025_03_21_20h57min"
 #********************************************************************
 
 
@@ -117,11 +118,56 @@ model <- "rsf_59birds_individual_2025_03_04_13h58min"
 load(file = file.path(base, "5_OUTPUTS", "RSF", "rsf.fit_results", model, paste0(model, ".Rdata")))
 #********************************************************************
 
+### 1_AIC calculation ----
+#********************************************************************
+# AICc 
+# (= AIC correction for small sample sizes)
+# use of AICc avoid the probability of preferentially selecting a model with too many parameters
 
-### 1_Vizualising RSF results for multiple birds ----
+AIC_summary <- summary(sum_rsf_multipl)[,1]
+cat("Sum of the AICc\n", sum(AIC_summary[is.finite(AIC_summary)]))
+
+# Save the AICc 
+clean_summary_df <- enframe(AIC_summary, name = "RSF_Bird", value = "AIC")
+AIC_table <- bind_rows(clean_summary_df, data.frame(RSF_Bird = "Total_sum", AIC = sum(AIC_summary[is.finite(AIC_summary)])))
+write.csv(AIC_table, file.path(base, "5_OUTPUTS", "RSF", "rsf.fit_results", model,"AIC_table.csv"))
+
+
+
+
+# Call the AICc of all the models 
+model_file_l <- list.files(file.path(base, "5_OUTPUTS", "RSF", "rsf.fit_results"), pattern = "min$")
+
+list_AICt <- list()
+for(f in seq_along(model_file_l))
+{
+  if(file.exists(file.path(base, "5_OUTPUTS", "RSF", "rsf.fit_results", model_file_l[f],"AIC_table.csv")))
+  {
+    list_AICt[[model_file_l[f]]] <- read.table(file.path(base, "5_OUTPUTS", "RSF", "rsf.fit_results", model_file_l[f],"AIC_table.csv"), sep = ",", header = TRUE, col.names = c("RSF_Bird", "AIC"))
+  }
+}
+
+df_AIC <- do.call(rbind, Map(cbind, Model = names(list_AICt), list_AICt))
+
+df_AIC <- df_AIC %>%
+  arrange(Model, AIC) %>%  # Sort AIC within each Model
+  mutate(RSF_Bird = factor(RSF_Bird, levels = unique(RSF_Bird)))  # Reorder factor levels
+
+
+ggplot(df_AIC, aes(y = log(AIC), x = RSF_Bird)) +
+  geom_point(aes(color = Model)) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
+  labs(title = "AIC Comparison for Each Bird", x = "Bird", y = "AIC (log scale")
+
 #********************************************************************
 
-### 1.1_Formatting RSF results for multiple birds ----
+
+
+
+### 2_Vizualising RSF results for multiple birds ----
+#********************************************************************
+
+### 2.1_Formatting RSF results for multiple birds ----
 #********************************************************************
 
 # switch variable names (more readible)
@@ -140,15 +186,6 @@ l_dt_results <- rsf_result_table(sum_rsf_multipl,
 # rsf_results_table[rsf_results_table$covariates == "Buildings" & rsf_results_table$bird == "Fiasco", "est"] <- NA
 # rsf_results_table[rsf_results_table$covariates == "Buildings" & rsf_results_table$bird == "Dynamite_2", "est"] <- NA
 # rsf_results_table[rsf_results_table$covariates == "Cliffs" & rsf_results_table$bird == "Dameur", "est"] <- NA
-
-
-# AICc 
-# (= AIC correction for small sample sizes)
-# use of AICc avoid the probability of preferentially selecting a model with too many parameters
-
-clean_summary <- summary(sum_rsf_multipl)[,1][is.finite(summary(sum_rsf_multipl)[,1])]
-cat("Average AICc\n", mean(clean_summary))
-
 #********************************************************************  
   
 
@@ -189,7 +226,7 @@ rsf_meta_group <- metamodel(sum_rsf_multipl,
 
 
 
-### 1.2_Vizualising all effets (1 point = 1 indiv) ----
+### 2.2_Vizualising all effets (1 point = 1 indiv) ----
 #********************************************************************
 
 points_plot_rsf(l_dt_results,

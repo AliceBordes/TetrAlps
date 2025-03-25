@@ -113,14 +113,14 @@ dt_resorts <- read.csv2(file.path(base,"2_Data","ski_resorts_visitor_numbers","b
 
 ### Loading functions ----
 #********************************************************************
-source(file.path("4_FUNCTIONS","my_telemetry_transfo_data.R"))
-source(file.path("4_FUNCTIONS","Homerange_visu/mean_size_area.R"))
-source(file.path("4_FUNCTIONS","Homerange_visu/visu_home_range.R"))
-source(file.path("4_FUNCTIONS","Homerange_visu","distance_home_range_capture_site.R"))
-source(file.path("4_FUNCTIONS","Homerange_visu","multi_graph_home_range.R"))
-source(file.path("4_FUNCTIONS","RSF","plot_check_RSF_results.R"))
-source(file.path("4_FUNCTIONS","RSF","rsf_functions.R"))
-source(file.path("4_FUNCTIONS","Formatting_data/formatting_environment_data.R"))
+source(file.path(base,"4_FUNCTIONS","my_telemetry_transfo_data.R"))
+source(file.path(base,"4_FUNCTIONS","Homerange_visu/mean_size_area.R"))
+source(file.path(base,"4_FUNCTIONS","Homerange_visu/visu_home_range.R"))
+source(file.path(base,"4_FUNCTIONS","Homerange_visu","distance_home_range_capture_site.R"))
+source(file.path(base,"4_FUNCTIONS","Homerange_visu","multi_graph_home_range.R"))
+source(file.path(base,"4_FUNCTIONS","RSF","plot_check_RSF_results.R"))
+source(file.path(base,"4_FUNCTIONS","RSF","rsf_functions.R"))
+source(file.path(base,"4_FUNCTIONS","Formatting_data/formatting_environment_data.R"))
 #********************************************************************
 
 
@@ -185,7 +185,7 @@ tele_akde(data = birds_bg_dt,
   
 # Load the outputs of tele_akde with visitor number as continuous variable
 load(file = file.path(base,"3_R","0_Heavy_saved_models","birds_3V", paste0(telemetry_file,".Rdata")))
-load(file = file.path(base,"3_R","0_Heavy_saved_models","birds_3V", paste0(telemetry_file,".Rdata")))
+load(file = file.path(base,"3_R","0_Heavy_saved_models","birds_3V", paste0(akde_file,".Rdata")))
 
 l_telemetry_winter <- list_of_one(l_telemetry_winter)
 l_akde_winter <- list_of_one(l_akde_winter)

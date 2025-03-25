@@ -839,8 +839,6 @@ rsf_result_table <- function(data_rsf_results,
 
 # Function to plot RSF results (points)
 #*************************************************************
-
-
 points_plot_rsf <- function(data_table, 
                             list_excluded_covariates,
                             meta_data,
@@ -849,11 +847,14 @@ points_plot_rsf <- function(data_table,
                             outputfolder = file.path(base, "5_OUTPUTS", "RSF", "rsf.fit_results", model),
                             write = TRUE,
                             group = "none") {  # Add group parameter to control the group selection
-
+  
   warning("For easy_look_results = TRUE, the estimated values of the interaction effects are added to the estimated value of the main effect.")
+  
+  
   
   # To create more readible graphs
   if(easy_look_results == TRUE) {
+    
     dt_l <- list(data_table[[1]], data_table[[2]], meta_data)
     
     # print("Before modification:")
@@ -870,8 +871,8 @@ points_plot_rsf <- function(data_table,
       
       interaction_terms <- df %>%
         dplyr::filter(grepl(":", covariates)) %>%
-        mutate(main_covariate = sub(":.*", "", covariates))  # Extracting main effects
-      
+        mutate(main_covariate = sub(":.*", "", covariates),
+               range = high-low)  # Extracting main effects
       
       # print("Main effects:")
       # print(main_effects)
@@ -879,8 +880,7 @@ points_plot_rsf <- function(data_table,
       # print("Interactions:")
       # print(interaction_terms)
       
-      # join interaction and main effects`
-      df_adjusted <- interaction_terms %>% dplyr::select(-c("high","low")) %>%
+        df_adjusted <- interaction_terms %>% dplyr::select(-c("high","low")) %>%
         left_join(main_effects %>% dplyr::select(-any_of(c("period","p"))),  by = c("bird", "main_covariate" = "covariates")) %>%
         mutate(
           est = est + main_est,
@@ -888,25 +888,24 @@ points_plot_rsf <- function(data_table,
           low = NA
         ) %>%
         dplyr::select(-main_covariate)  
-
+      
       # print("Interactions after adjustment:")
       # print(df_adjusted)
-
+      
+        
       # Merging main and interactions effects
-      df_final <- bind_rows(df %>% dplyr::filter(!grepl(":", covariates)), df_adjusted)
-
+      df_final <- bind_rows(df %>% dplyr::filter(!grepl(":", covariates)) %>% mutate(range = high-low), df_adjusted)
+      
       dt_l[[i]] <- df_final  # replace the original dataset
     }
     
     print("After modification:")
     print(head(dt_l[[1]], n = 14))
-    # View(dt_l[[1]])
     
     meta_data = dt_l[[3]]
     
   }
-  
-  
+
   
   model_covar <- unique(data_table[[1]]$covariates)[1:(length(unique(data_table[[1]]$covariates))-6)]
   
@@ -931,7 +930,7 @@ points_plot_rsf <- function(data_table,
     
     # Create the base ggplot
     gg_points_rsf[[i]] <- ggplot(data = data_table[[i]], 
-                            aes(y = as.factor(covariates), x = est)) +
+                                 aes(y = as.factor(covariates), x = est)) +
       
       geom_vline(xintercept = 0, linetype = "dashed") +
       labs(y = "Covariates", 
@@ -945,7 +944,7 @@ points_plot_rsf <- function(data_table,
             axis.text = element_text(size = 24),
             legend.title = element_text(size = 26),
             legend.text = element_text(size = 24))
-    
+  
     
     # Add conditional layers based on the group type
     if(group == "none") {
@@ -953,25 +952,28 @@ points_plot_rsf <- function(data_table,
       gg_points_rsf[[i]] <- gg_points_rsf[[i]] + 
         geom_boxplot(aes(color = covariates), fill = alpha("grey", 0.2), notch = TRUE) +
         new_scale_color() +
-        geom_jitter(color = "#666666", size = 3, alpha = 0.6) +
+        #if there is na, they will be detected and identified by a green point
+        geom_jitter(aes(color = ifelse(is.na(data_table[[i]]$range), "green", "#666666"), size = ifelse(is.na(range), min(data_table[[i]]$range, na.rm = TRUE), range)), alpha = 0.6) +
+        # geom_jitter(color = "#666666", aes(size = ifelse(is.na(range), min(data_table[[i]]$range, na.rm = TRUE), range)), alpha = 0.6) +
+        scale_size("Incertitude", trans="log10") +
         scale_color_manual(name = "Meta model", values = c("Meta estimates" = "blue")) +
         # Add blue segments for Meta estimates
-        geom_segment(data = meta_data %>% dplyr::select(!p) %>% filter(covariates %in% model_covar[!model_covar %in% list_excluded_covariates]), 
+        geom_segment(data = meta_data %>% dplyr::select(covariates,est) %>% filter(covariates %in% model_covar[!model_covar %in% list_excluded_covariates]), 
                      aes(x = est, xend = est, y = as.numeric(as.factor(covariates)) - 0.4, yend = as.numeric(as.factor(covariates)) + 0.4, color = "Meta estimates"),
                      size = 1.2) 
-        # Manual color adjustments
-        # Add a blue asterisk above the segment if pval < 0.05
-        # geom_text(data = meta_data %>% filter(p < 0.05 & covariates %in% model_covar[!model_covar %in% list_excluded_covariates]), 
-        #           aes(x = est, y = as.numeric(as.factor(covariates)) + 1.1, label = "*"), 
-        #           color = "blue", size = 12, vjust = -1)  # Adjust vjust to position the asterisk
+      # Manual color adjustments
+      # Add a blue asterisk above the segment if pval < 0.05
+      # geom_text(data = meta_data %>% filter(p < 0.05 & covariates %in% model_covar[!model_covar %in% list_excluded_covariates]), 
+      #           aes(x = est, y = as.numeric(as.factor(covariates)) + 1.1, label = "*"), 
+      #           color = "blue", size = 12, vjust = -1)  # Adjust vjust to position the asterisk
     }
     
     if(group == "covid" & boxplot_by_group == FALSE) {
       gg_points_rsf[[i]] <- gg_points_rsf[[i]] + 
         geom_boxplot(aes(color = covariates), fill = alpha("grey", 0.2), notch = TRUE) +
         new_scale_color() +
-        geom_jitter(aes(color = ifelse(bird %in% covid, "Monitored during covid", "Others")), 
-                    size = 3, alpha = 0.6) +
+        geom_jitter(aes(color = ifelse(bird %in% covid, "Monitored during covid", "Others"), size = ifelse(is.na(range), min(data_table[[i]]$range, na.rm = TRUE), range)), alpha = 0.6) +
+        scale_size("Incertitude", trans="log10") +
         scale_color_manual(name = "Bird groups", 
                            values = c("Monitored during covid" = "red", "Others" = "#666666"),
                            labels = c("Monitored during covid" = "Monitored during covid", "Others" = "Monitored out covid")) +
@@ -997,8 +999,8 @@ points_plot_rsf <- function(data_table,
       gg_points_rsf[[i]] <- gg_points_rsf[[i]] + 
         geom_boxplot(aes(color = covariates), fill = alpha("grey", 0.2), notch = TRUE) +
         new_scale_color() +
-        geom_jitter(aes(color = ifelse(bird %in% females, "Female", "Male")), 
-                    size = 3, alpha = 0.6) +
+        geom_jitter(aes(color = ifelse(bird %in% females, "Female", "Male"), size = ifelse(is.na(range), min(data_table[[i]]$range, na.rm = TRUE), range)), alpha = 0.6) +
+        scale_size("Incertitude", trans="log10") +
         scale_color_manual(name = "Bird groups", 
                            values = c("Female" = "deeppink", "Male" = "turquoise"),
                            labels = c("females" = "Female", "males" = "Male")) +
@@ -1025,8 +1027,199 @@ points_plot_rsf <- function(data_table,
   }
   
   # Return the last ggplot object (for checking or further manipulation)
-  return(dt_l[[1]])
+  return(data_table[[1]])
 }
+
+
+# points_plot_rsf <- function(data_table, 
+#                             list_excluded_covariates,
+#                             meta_data,
+#                             boxplot_by_group = FALSE,
+#                             easy_look_results = FALSE,
+#                             outputfolder = file.path(base, "5_OUTPUTS", "RSF", "rsf.fit_results", model),
+#                             write = TRUE,
+#                             group = "none") {  # Add group parameter to control the group selection
+# 
+#   warning("For easy_look_results = TRUE, the estimated values of the interaction effects are added to the estimated value of the main effect.")
+#   
+#   # To create more readible graphs
+#   if(easy_look_results == TRUE) {
+#     dt_l <- list(data_table[[1]], data_table[[2]], meta_data)
+#     
+#     # print("Before modification:")
+#     # print(head(dt_l[[1]], n = 14))
+#     
+#     for(i in 1:3) {
+#       
+#       df <- dt_l[[i]]  
+#       
+#       # Split main and interaction effects
+#       main_effects <- df %>%
+#         dplyr::filter(!grepl(":", covariates)) %>%
+#         rename(main_est = est, main_low = low, main_high = high)
+#       
+#       interaction_terms <- df %>%
+#         dplyr::filter(grepl(":", covariates)) %>%
+#         mutate(main_covariate = sub(":.*", "", covariates))  # Extracting main effects
+#       
+#       
+#       # print("Main effects:")
+#       # print(main_effects)
+#       # 
+#       # print("Interactions:")
+#       # print(interaction_terms)
+#       
+#       # join interaction and main effects`
+#       df_adjusted <- interaction_terms %>% dplyr::select(-c("high","low")) %>%
+#         left_join(main_effects %>% dplyr::select(-any_of(c("period","p"))),  by = c("bird", "main_covariate" = "covariates")) %>%
+#         mutate(
+#           est = est + main_est,
+#           high = NA,
+#           low = NA
+#         ) %>%
+#         dplyr::select(-main_covariate)  
+# 
+#       # print("Interactions after adjustment:")
+#       # print(df_adjusted)
+# 
+#       # Merging main and interactions effects
+#       df_final <- bind_rows(df %>% dplyr::filter(!grepl(":", covariates)), df_adjusted)
+# 
+#       View(df_final)
+#       
+#       dt_l[[i]] <- df_final  # replace the original dataset
+#     }
+#     
+#     print("After modification:")
+#     print(head(dt_l[[1]], n = 14))
+#     # View(dt_l[[1]])
+#     
+#     meta_data = dt_l[[3]]
+#     View(meta_data)
+#     
+#   }
+#   
+#   
+#   
+#   model_covar <- unique(data_table[[1]]$covariates)[1:(length(unique(data_table[[1]]$covariates))-6)]
+#   
+#   
+#   gg_points_rsf <- list()
+#   
+#   for(i in 1:length(data_table)) {
+#     
+#     if(easy_look_results == TRUE) { data_table[[i]] = dt_l[[i]] }
+#     
+#     # Convert covariates to a factor (preserving order)
+#     # data_table[[i]]$covariates <- factor(data_table[[i]]$covariates, levels = model_covar)
+#     
+#     # Prepare the dataframe, adding period based on covid
+#     data_table[[i]]$period <- ifelse(data_table[[i]]$bird %in% covid, 
+#                                      "covid_period", 
+#                                      "normal_period")
+#     
+#     # Filter covariates to plot
+#     data_table[[i]] = data_table[[i]] %>% filter(covariates %in% model_covar[!model_covar %in% list_excluded_covariates])
+#     
+#     
+#     # Create the base ggplot
+#     gg_points_rsf[[i]] <- ggplot(data = data_table[[i]], 
+#                             aes(y = as.factor(covariates), x = est)) +
+#       
+#       geom_vline(xintercept = 0, linetype = "dashed") +
+#       labs(y = "Covariates", 
+#            x = "Estimates", 
+#            title = paste0("Results of the RSF performed on ", length(unique(data_table[[i]]$bird)), " birds \n(estimated coefficients by covariate)")) +
+#       theme(axis.text.x = element_text(hjust = 1),  
+#             panel.background = element_blank(),
+#             plot.title = element_text(size = 28),
+#             plot.subtitle = element_text(size = 26),
+#             axis.title = element_text(size = 26),
+#             axis.text = element_text(size = 24),
+#             legend.title = element_text(size = 26),
+#             legend.text = element_text(size = 24))
+#     
+#     
+#     # Add conditional layers based on the group type
+#     if(group == "none") {
+#       # If no grouping is applied, all birds are black
+#       gg_points_rsf[[i]] <- gg_points_rsf[[i]] + 
+#         geom_boxplot(aes(color = covariates), fill = alpha("grey", 0.2), notch = TRUE) +
+#         new_scale_color() +
+#         geom_jitter(color = "#666666", size = 3, alpha = 0.6) +
+#         scale_color_manual(name = "Meta model", values = c("Meta estimates" = "blue")) +
+#         # Add blue segments for Meta estimates
+#         geom_segment(data = meta_data %>% dplyr::select(covariates,est) %>% filter(covariates %in% model_covar[!model_covar %in% list_excluded_covariates]), 
+#                      aes(x = est, xend = est, y = as.numeric(as.factor(covariates)) - 0.4, yend = as.numeric(as.factor(covariates)) + 0.4, color = "Meta estimates"),
+#                      size = 1.2) 
+#         # Manual color adjustments
+#         # Add a blue asterisk above the segment if pval < 0.05
+#         # geom_text(data = meta_data %>% filter(p < 0.05 & covariates %in% model_covar[!model_covar %in% list_excluded_covariates]), 
+#         #           aes(x = est, y = as.numeric(as.factor(covariates)) + 1.1, label = "*"), 
+#         #           color = "blue", size = 12, vjust = -1)  # Adjust vjust to position the asterisk
+#     }
+#     
+#     if(group == "covid" & boxplot_by_group == FALSE) {
+#       gg_points_rsf[[i]] <- gg_points_rsf[[i]] + 
+#         geom_boxplot(aes(color = covariates), fill = alpha("grey", 0.2), notch = TRUE) +
+#         new_scale_color() +
+#         geom_jitter(aes(color = ifelse(bird %in% covid, "Monitored during covid", "Others")), 
+#                     size = 3, alpha = 0.6) +
+#         scale_color_manual(name = "Bird groups", 
+#                            values = c("Monitored during covid" = "red", "Others" = "#666666"),
+#                            labels = c("Monitored during covid" = "Monitored during covid", "Others" = "Monitored out covid")) +
+#         new_scale_color()+
+#         scale_color_manual(name = "Meta model", values = c("Meta estimates" = "blue"))
+#     }
+#     
+#     if(group == "covid" & boxplot_by_group == TRUE) {
+#       gg_points_rsf[[i]] <- gg_points_rsf[[i]] + 
+#         geom_boxplot(aes(color = covariates, fill = factor(period)), 
+#                      alpha = 0.2, 
+#                      position = position_dodge(width = 0.8),
+#                      notch = TRUE) +
+#         scale_fill_manual(name = "Bird groups",
+#                           values = c("covid_period" = "red", "normal_period" = "grey"),
+#                           labels = c("covid_period" = "Monitored during covid", "normal_period" = "Monitored out covid")) +
+#         new_scale_color()+
+#         scale_color_manual(name = "Meta model", values = c("Meta estimates" = "blue")) 
+#     }
+#     
+#     
+#     if(group == "sex") {
+#       gg_points_rsf[[i]] <- gg_points_rsf[[i]] + 
+#         geom_boxplot(aes(color = covariates), fill = alpha("grey", 0.2), notch = TRUE) +
+#         new_scale_color() +
+#         geom_jitter(aes(color = ifelse(bird %in% females, "Female", "Male")), 
+#                     size = 3, alpha = 0.6) +
+#         scale_color_manual(name = "Bird groups", 
+#                            values = c("Female" = "deeppink", "Male" = "turquoise"),
+#                            labels = c("females" = "Female", "males" = "Male")) +
+#         new_scale_color()+
+#         scale_color_manual(name = "Meta model", values = c("Meta estimates" = "blue"))
+#     }
+#     
+#   }
+#   
+#   # Save the plot
+#   if(write == TRUE & group == "none") {
+#     ggsave(gg_points_rsf[[1]], 
+#            file = file.path(outputfolder, paste0("rsf_points_", names(data_table)[1],"_",group,if(easy_look_results == TRUE) {"_easy_read"},".jpeg")),
+#            width = 25, height = 15, units = "in")
+#     ggsave(gg_points_rsf[[2]], 
+#            file = file.path(outputfolder, paste0("rsf_points_", names(data_table)[2],"_",group,if(easy_look_results == TRUE) {"_easy_read"},".jpeg")),
+#            width = 25, height = 15, units = "in")
+#     
+#   }
+#   if(write == TRUE & group != "none") {
+#     ggsave(gg_points_rsf[[2]], 
+#            file = file.path(outputfolder, paste0("rsf_points_", names(data_table)[2],"_",group,if(boxplot_by_group == TRUE){"_box"},if(easy_look_results == TRUE) {"_easy_read"},".jpeg")),
+#            width = 25, height = 15, units = "in")
+#   }
+#   
+#   # Return the last ggplot object (for checking or further manipulation)
+#   return(dt_l[[1]])
+# }
 
 
 #*************************************************************
