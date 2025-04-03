@@ -67,9 +67,10 @@ borders_3V_vect <- terra::vect(file.path(base,"1_RAW_DATA","3V","borders_3V.gpkg
 
 # Environment stack
 # load(file.path(base,"3_R","0_Heavy_saved_models","environment_3V","env_RL_list_10m.RData"))
-load(file.path(base,"3_R","0_Heavy_saved_models","environment_3V","scaled_env_RL_list_10m.RData"))
-load(file.path(base,"3_R","0_Heavy_saved_models","environment_3V","scaled_env_RL_list_1m.RData"))
+# load(file.path(base,"3_R","0_Heavy_saved_models","environment_3V","scaled_env_RL_list_10m.RData"))
+# load(file.path(base,"3_R","0_Heavy_saved_models","environment_3V","scaled_env_RL_list_1m.RData"))
 load(file.path(base,"3_R","0_Heavy_saved_models","environment_3V","scaled_env_RL_list_modal.RData"))
+load(file.path(base,"3_R","0_Heavy_saved_models","environment_3V","scaled_env_RL_list_modal02_04_2025.RData"))
 
 strava_without_aerial_corr <- terra::rast(file.path(base,"2_DATA/environmental_raster/r_strava_without_aerial_cables.gpkg"))
 strava_without_aerial_corr <- scale(strava_without_aerial_corr)
@@ -330,7 +331,7 @@ model_formula <- ~ elevation +
   strava_winter_sports +
   Shrubs +
   Cliffs +
-  Trees 
+  Trees
 
 
 # Define the formula
@@ -393,7 +394,7 @@ RSF_results_multpl_birds <- RSF_birds(  # telemetry_list = l_telemetry_winter[!n
                                         clusters = 1,
                                         env_raster_list = scaled_env_RL_list_selection,
                                         rsf_formula = model_formula,
-                                        rsf_integrator = "MonteCarlo", #"Riemann", 
+                                        rsf_integrator = "Riemann", #"MonteCarlo", 
                                         # grid = "full",
                                         outputfolder = file.path(base, "5_OUTPUTS", "RSF", "rsf.fit_results"),
                                         write = TRUE

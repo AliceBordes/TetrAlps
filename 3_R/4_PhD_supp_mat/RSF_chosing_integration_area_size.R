@@ -317,42 +317,38 @@ rsf_points <- function(x, UD, R = NULL, n = 1e5, k = 1e6, type = "Riemann",
   xy <- st_coordinates(xx)
   colnames(xy) <- c("x_", "y_")
   sd <- sqrt(UD@CTMM$sigma[1,1])
-  # xy[,1] <- (xy[,1] - UD@CTMM$mu[1])/sd   # telemetry point coordinate x - HR center coordinate x/sd  = standardization
-  # xy[,2] <- (xy[,2] - UD@CTMM$mu[2])/sd   # telemetry point coordinate y - HR center coordinate y/sd  = standardization
+  # scaling of the locations : 
+  xy[,1] <- (xy[,1] - UD@CTMM$mu[1])/sd   # telemetry point coordinate x - HR center coordinate x/sd  = standardization
+  xy[,2] <- (xy[,2] - UD@CTMM$mu[2])/sd   # telemetry point coordinate y - HR center coordinate y/sd  = standardization
   xx <- cbind(xy, xx)
   xx
 }
 
 
-buffered_polygon1 <- terra::buffer(polygon, width = buff_vector[1], joinstyle = "mitre") # joinstyle = "mitre" : to correctly represent the limit of the area # width = Unit is meter if x has a longitude/latitude CRS, or in the units of the coordinate reference system in other cases (typically also meter)
-# ggplot()+geom_sf(data=buffered_polygon)+geom_sf(data=polygon)
-
-e_mybird_buff1 <- as.vector(ext(buffered_polygon1))
-
-
-### Crop the environment stack around the bird of interest
-#' cropping the stack environment to the extent of the bird data locations *2
-scaled_env_RL_list_cropped <- lapply(scaled_env_RL_list_selection, function(raster) {
-  terra::crop(raster, extent(e_mybird_buff1)*2)
-})
-names(scaled_env_RL_list_cropped[["squared_elevation"]]) <- "squared_elevation"
-
-raster_brick_env <- stack(scaled_env_RL_list_cropped)
-raster_brick_env <- brick(scaled_env_RL_list_cropped)
-# scaled_env_RL_list_brick <- brick(scaled_env_RL_list_selection)
-
-# RSF
-set.seed(3)
-rsf_abel_df <- rsf_points(x = telemetry_winter, UD = akde_winter, R = raster_brick_env, interpolation = TRUE)
-# rsf_abel_df$carto_habitats_winter <- factor(rsf_abel_df$carto_habitats_winter, levels = c(1, 2, 3, 4, 5)) # ensuring carto_habitats_winter is a categorical raster
-# rsf_abel_df <- rsf_abel_df[!is.na(rsf_abel_df$carto_habitats_winter), ] # Remove lines with NA values
-
-
-
-
-
-
-
+#' buffered_polygon1 <- terra::buffer(polygon, width = buff_vector[1], joinstyle = "mitre") # joinstyle = "mitre" : to correctly represent the limit of the area # width = Unit is meter if x has a longitude/latitude CRS, or in the units of the coordinate reference system in other cases (typically also meter)
+#' # ggplot()+geom_sf(data=buffered_polygon)+geom_sf(data=polygon)
+#' 
+#' e_mybird_buff1 <- as.vector(ext(buffered_polygon1))
+#' 
+#' 
+#' ### Crop the environment stack around the bird of interest
+#' #' cropping the stack environment to the extent of the bird data locations *2
+#' scaled_env_RL_list_cropped <- lapply(scaled_env_RL_list_selection, function(raster) {
+#'   terra::crop(raster, extent(e_mybird_buff1)*2)
+#' })
+#' names(scaled_env_RL_list_cropped[["squared_elevation"]]) <- "squared_elevation"
+#' 
+#' raster_brick_env <- stack(scaled_env_RL_list_cropped)
+#' raster_brick_env <- brick(scaled_env_RL_list_cropped)
+#' # scaled_env_RL_list_brick <- brick(scaled_env_RL_list_selection)
+#' 
+#' # RSF
+#' set.seed(3)
+#' rsf_abel_df <- rsf_points(x = telemetry_winter, UD = akde_winter, R = raster_brick_env, interpolation = TRUE)
+#' # rsf_abel_df$carto_habitats_winter <- factor(rsf_abel_df$carto_habitats_winter, levels = c(1, 2, 3, 4, 5)) # ensuring carto_habitats_winter is a categorical raster
+#' # rsf_abel_df <- rsf_abel_df[!is.na(rsf_abel_df$carto_habitats_winter), ] # Remove lines with NA values
+#' 
+#' 
 
 
 
@@ -646,9 +642,9 @@ for(i in seq_along(unique(rsf_glm_table$IA))) {
     covariates = "area (km^2)",
     IA = current_IA,
     method = "glm", 
-    est = pi * chich * sqrt(det(diag(1 / (covariate_est), 2))),
-    low = pi * chich * sqrt(det(diag(1 / (covariate_low), 2))),
-    high = pi * chich * sqrt(det(diag(1 / (covariate_high), 2)))
+    est = pi * chich * sqrt(det(diag(1/covariate_est, 2))),
+    low = pi * chich * sqrt(det(diag(1/covariate_low, 2))),
+    high = pi * chich * sqrt(det(diag(1/covariate_high, 2)))
   )
   
   print(rsf_glm_table2[[i]])
@@ -674,7 +670,12 @@ values_color = c("#FF6633","#3399FF")
 
 # plot estimated parameters beta ~ the integrated area 
 plot_rsf_multi <-
-  ggplot(data = rsf_table_multi_plot %>% filter(!covariates%in%c("(Intercept)", "strava_backcountry")))+
+  ggplot(data = rsf_table_multi_plot %>% filter(!covariates%in%c("(Intercept)", "strava_backcountry"))
+         %>%
+           mutate(covariates = factor(covariates, levels = c("Cliffs","Shrubs","Trees","strava_winter_sports",
+                                                             "squared_elevation","elevation","area (km^2)","τ[position] (days)",  
+                                                             "τ[velocity]","speed","diffusion (ha/day)",         
+                                                             "x_","y_","I(-(x_^2 + y_^2)/2)"))))+
   geom_point(aes(y = est, 
                  x = IA, 
                  group = IA,

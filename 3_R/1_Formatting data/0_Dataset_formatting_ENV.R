@@ -46,7 +46,7 @@ source("C:/Users/albordes/Documents/PhD/TetrAlps/4_FUNCTIONS/Formatting_data/for
 ### Settings ----
 #********************************************************************
 base <- "C:/Users/albordes/Documents/PhD/Tetralps"
-grid_dim = "1m"
+grid_dim = "modal"
 scaled = "yes"
 #********************************************************************
 
@@ -69,7 +69,7 @@ ymax <- 6495470
 if(grid_dim == "10m" || grid_dim == "modal")
 {
   # Create a 10m resolution grid matching the extent
-  grid <- rast(ext(c(xmin, xmax, ymin, ymax)), resolution = c(10, 10), crs = "EPSG:2154")
+  grid <- terra::rast(ext(c(xmin, xmax, ymin, ymax)), resolution = c(10, 10), crs = "EPSG:2154")
 }
 if(grid_dim == "1m")
 {
@@ -186,10 +186,22 @@ mnt <- project(mnt, y = grid, "bilinear")
 strava_without_aerial <- project(strava_without_aerial, y = grid, method = "bilinear") # y = a raster to align on (avoid to use the function resample after), "EPSG:2154" can be specify if there is no argument y. pas besoin de mettre de focal (zone d'influence), method="belinear" advised for continuous raster
 # strava_backcountry <- project(strava_backcountry, y = grid, method = "bilinear") 
 # r_leks_dist <- project(r_leks_dist, y = grid, method = "bilinear")
-r_Trees <- project(r_Trees, y = grid, method = "bilinear")
-r_Shrubs <- project(r_Shrubs, y = grid, method = "bilinear")
-r_Buildings <- project(r_Buildings, y = grid, method = "bilinear")
-r_Cliffs <- project(r_Cliffs, y = grid, method = "bilinear")
+
+if(grid_dim == "10m")
+{
+  r_Trees <- project(r_Trees, y = grid, method = "bilinear")
+  r_Shrubs <- project(r_Shrubs, y = grid, method = "bilinear")
+  r_Buildings <- project(r_Buildings, y = grid, method = "bilinear")
+  r_Cliffs <- project(r_Cliffs, y = grid, method = "bilinear")
+}
+
+if(grid_dim == "modal")
+{
+r_Trees <- project(r_Trees, y = grid, method = "near")
+r_Shrubs <- project(r_Shrubs, y = grid, method = "near")
+r_Buildings <- project(r_Buildings, y = grid, method = "near")
+r_Cliffs <- project(r_Cliffs, y = grid, method = "near")
+}
 
 # categorical rasters
 carto_habitats_3V_winter <- project(carto_habitats_3V_winter, y = grid, method = "near")
@@ -226,8 +238,8 @@ env_RL_list <- lapply(env_RL_list, function(x) {
 
 env_RL_list[["carto_habitats_winter"]] <- as.factor(env_RL_list[["carto_habitats_winter"]])
 
-save(env_RL_list,file=file.path(base,"3_R","0_Heavy_saved_models","environment_3V",paste0("env_RL_list_",grid_dim,".RData")))
-load(file.path(base,"3_R","0_Heavy_saved_models","environment_3V",paste0("env_RL_list_",grid_dim,".RData")))
+save(env_RL_list,file=file.path(base,"3_R","0_Heavy_saved_models","environment_3V",paste0("env_RL_list_",grid_dim,"02_04_2025.RData")))
+load(file.path(base,"3_R","0_Heavy_saved_models","environment_3V",paste0("env_RL_list_",grid_dim,"02_04_2025.RData")))
 #********************************************************************
 
 
@@ -250,29 +262,29 @@ load(file.path(base,"3_R","0_Heavy_saved_models","environment_3V",paste0("env_RL
     if (grepl("carto_habitats_winter", names(raster_item)) || grepl("leks", names(raster_item)) || grepl("squared_elevation", names(raster_item)) ) {
       return(raster_item)  # Return the categorical raster unchanged
     } else {
-      
-      print(names(raster_item))
-      
       # If it's not categorical, scale the values
       scaled_raster <- scale(raster_item, center = TRUE, scale = TRUE)
     
       # writeRaster(scaled_raster, filename = file.path(base,"2_DATA","environmental_raster",paste0("scaled_", names(raster_item),"_",grid_dim, ".tif")), overwrite = TRUE)
       
       gc()  # Force garbage collection to free up memory
-
+      
       return(scaled_raster)  # Return the scaled raster
     }
   })
-
+  names(scaled_env_RL_list_1) <- names(envir_stack)
+  
+  scaled_env_RL_list_1[["squared_elevation"]] <- scaled_env_RL_list_1[["elevation"]]^2
+  names( scaled_env_RL_list_1[["squared_elevation"]]) <- "squared_elevation"
   
   #' stacking it all in an env layer 
   envir_list_hab <- list( r_Trees,
-                            r_Shrubs,
-                            r_Buildings,
-                            r_Cliffs)
+                          r_Shrubs,
+                          r_Buildings,
+                          r_Cliffs)
+  names(envir_list_hab) <- lapply(envir_list_hab, names)
   
   envir_list <- c(scaled_env_RL_list_1,envir_list_hab)
-  names(envir_list) <- lapply(envir_list, names)
   
   # Suppress carto_habitats_winter and replace it by multiple binary raster
   envir_list <- envir_list[!names(envir_list) %in% c("carto_habitats_winter")] # supress the unsclaled raster
@@ -292,31 +304,33 @@ load(file.path(base,"3_R","0_Heavy_saved_models","environment_3V",paste0("env_RL
 
   
 
-  envir_list_r <- lapply(envir_list, raster::raster)
+  scaled_env_RL_list <- lapply(envir_list, raster::raster)
+  
+  scaled_env_RL_list[["Trees"]] <- as.factor(scaled_env_RL_list[["Trees"]])
+  scaled_env_RL_list[["Shrubs"]] <- as.factor(scaled_env_RL_list[["Shrubs"]])
+  scaled_env_RL_list[["Cliffs"]] <- as.factor(scaled_env_RL_list[["Cliffs"]])
+  scaled_env_RL_list[["Buildings"]] <- as.factor(scaled_env_RL_list[["Buildings"]])
+  
+  # # Define the output directory (modify the path as needed)
+  # output_dir <- file.path(base,"2_DATA","RSF_model","2_DATA","heavy_rasters")
+  # # Create the directory if it doesn't exist
+  # dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
+  # # Apply writeRaster to each raster in the list
+  # lapply(names(envir_list_r), function(name) {
+  #   raster_obj <- envir_list_r[[name]]  # Get the raster
+  #   
+  #   # Define the output filename
+  #   filename <- file.path(output_dir, paste0(name, ".tif"))
+  #   
+  #   # Write the raster to disk
+  #   writeRaster(raster_obj, filename, overwrite = TRUE)
+  #   
+  #   return(filename)  # Return the filename (optional, for debugging)
+  # })
+  # 
   
   
-  
-  
-  # Define the output directory (modify the path as needed)
-  output_dir <- file.path(base,"2_DATA","RSF_model","2_DATA","heavy_rasters")
-  # Create the directory if it doesn't exist
-  dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
-  # Apply writeRaster to each raster in the list
-  lapply(names(envir_list_r), function(name) {
-    raster_obj <- envir_list_r[[name]]  # Get the raster
-    
-    # Define the output filename
-    filename <- file.path(output_dir, paste0(name, ".tif"))
-    
-    # Write the raster to disk
-    writeRaster(raster_obj, filename, overwrite = TRUE)
-    
-    return(filename)  # Return the filename (optional, for debugging)
-  })
-  
-  
-  
-  scaled_env_RL_list <- lapply(envir_list_r,raster::readAll) # NOT WORKING
+  # scaled_env_RL_list <- lapply(envir_list_r,raster::readAll) # NOT WORKING
   
   
 # cat 1) Soils and low vegetation : Unclassified soil, Fine mineral soil, Coarse mineral soil, Dry or rocky grassland, Herbaceous, Low ligneous
@@ -325,8 +339,8 @@ load(file.path(base,"3_R","0_Heavy_saved_models","environment_3V",paste0("env_RL
 # cat 4) Buildings
 # cat 5) Cliffs and water : Cliff, Natural pond, Artificial pond, Waterway, Unclassified
 
-save(scaled_env_RL_list,file=file.path(base,"3_R","0_Heavy_saved_models","environment_3V",paste0("scaled_env_RL_list_",grid_dim,".RData")))
-load(file.path(base,"3_R","0_Heavy_saved_models","environment_3V",paste0("scaled_env_RL_list_",grid_dim,".RData")))
+save(scaled_env_RL_list,file=file.path(base,"3_R","0_Heavy_saved_models","environment_3V",paste0("scaled_env_RL_list_",grid_dim,"02_04_2025.RData")))
+load(file.path(base,"3_R","0_Heavy_saved_models","environment_3V",paste0("scaled_env_RL_list_",grid_dim,"02_04_2025.RData")))
 #********************************************************************
 
 # 

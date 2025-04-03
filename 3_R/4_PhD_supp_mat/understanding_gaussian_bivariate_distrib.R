@@ -52,7 +52,7 @@ errbnd <- 0.05 # equivalent 1/20 values falls outside of my predictions
 confidence <- 1-errbnd
 
 
-#### Marginal analisis = if i study each of the variable individually/independently without thinking of the relashionship with the other one
+#### Marginal analysis = if i study each of the variable individually/independently without thinking of the relationship with the other one
 cfsingle = qnorm(1-errbnd/2) 
 # qnorm() to find the quantile for the normal distribution = calculates the inverse of the cumulative distribution function for a normal distribution
 # 1.96 times the sd = the confidence interval for a single normal variable
